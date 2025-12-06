@@ -1,6 +1,11 @@
 import difflib
-import pandas as pd
-from typing import Dict, List, Any
+# pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+import pandas as pd  # type: ignore[import-not-found]
+from typing import Dict, List, Any, cast
+import streamlit as st  # type: ignore[import-not-found]
+
+st = cast(Any, st)
+pd = cast(Any, pd)
 
 import re
 from typing import List
@@ -47,7 +52,8 @@ def match_known_patterns(values: List[str]) -> str:
             return "zip"
     return "unknown"
 
-def get_enhanced_automap(layout_df: pd.DataFrame, claims_df: pd.DataFrame, threshold: float = 0.6) -> Dict[str, Dict[str, Any]]:
+@st.cache_data(show_spinner=False)
+def get_enhanced_automap(layout_df: Any, claims_df: Any, threshold: float = 0.6) -> Dict[str, Dict[str, Any]]:
     """
     Suggests best source column for each internal field using enhanced heuristics:
     fuzzy match, sample value matching, regex pattern detection, and type guessing.
@@ -71,7 +77,7 @@ def get_enhanced_automap(layout_df: pd.DataFrame, claims_df: pd.DataFrame, thres
             name_score = difflib.SequenceMatcher(None, internal.lower(), source.lower()).ratio()
 
             # Step 2: Sample value related boosts
-            sample_values = claims_df[source].dropna().astype(str).head(5).tolist()  # type: ignore[no-untyped-call]
+            sample_values: List[str] = claims_df[source].dropna().astype(str).head(5).tolist()  # type: ignore[no-untyped-call]
 
             # Example match boost
             example_boost = 0

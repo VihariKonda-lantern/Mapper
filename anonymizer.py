@@ -1,7 +1,12 @@
-import pandas as pd
+# pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+import pandas as pd  # type: ignore[import-not-found]
+import streamlit as st  # type: ignore[import-not-found]
 import random
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional, cast
+
+st = cast(Any, st)
+pd = cast(Any, pd)
 
 # local helper to safely read a possibly-None key
 def _safe_row_get(row: Dict[str, Any], key: Optional[str]) -> Any:
@@ -41,7 +46,8 @@ def generate_fake_ssn(seed_val: int) -> str:
     return f"{random.randint(100, 899)}-{random.randint(10, 89):02}-{random.randint(1000, 9999):04}"
 
 # --- Main function ---
-def anonymize_claims_data(df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]]) -> pd.DataFrame:
+@st.cache_data(show_spinner=False)
+def anonymize_claims_data(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
     df_copy = df.copy()
 
     insured_id_col: Optional[str] = None

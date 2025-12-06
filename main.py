@@ -1,6 +1,13 @@
 # --- main.py ---
-import streamlit as st
-import pandas as pd
+"""
+pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnknownParameterType=false, reportUnknownAttributeType=false
+"""
+import streamlit as st  # type: ignore[import-not-found]
+import pandas as pd  # type: ignore[import-not-found]
+from typing import Any
+
+st: Any = st  # type: ignore[assignment]
+pd: Any = pd  # type: ignore[assignment]
 import zipfile
 import io
 from typing import Tuple, Optional, List, Dict, Any, Set
@@ -63,7 +70,7 @@ def render_title():
     st.markdown("<div style='font-size: 22px; font-weight: 600; margin-bottom: 10px;'>Claims File Mapper and Validator</div>", unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False)
-def load_layout_cached(file: Any) -> pd.DataFrame:
+def load_layout_cached(file: Any) -> Any:
     return load_internal_layout(file)
 
 @st.cache_data(show_spinner=False)
@@ -87,7 +94,8 @@ def render_lookup_summary_section():
     else:
         st.info("Upload a valid diagnosis lookup file to preview MSK/BAR codes.")
 
-def generate_mapping_table(layout_df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]], claims_df: pd.DataFrame) -> pd.DataFrame:
+@st.cache_data(show_spinner=False)
+def generate_mapping_table(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]], claims_df: Any) -> Any:
     """
     Generates a full mapping table listing:
     - All internal fields from layout (mapped or unmapped)
@@ -102,7 +110,7 @@ def generate_mapping_table(layout_df: pd.DataFrame, final_mapping: Dict[str, Dic
         claims_df (pd.DataFrame): Uploaded claims DataFrame
 
     Returns:
-        pd.DataFrame: Full mapping table
+        Any: Full mapping table
     """
     records: List[Dict[str, Any]] = []
 
@@ -200,35 +208,37 @@ def render_upload_and_claims_preview():
 
         try:
             # --- Preview first 3 rows
-            claims_file.seek(0)
-            preview_df = (
-                pd.read_csv(claims_file, nrows=3, header=None, delimiter=delimiter, on_bad_lines="skip")  # type: ignore[no-untyped-call]
-                if ext.endswith((".csv", ".txt", ".tsv")) else
-                pd.read_excel(claims_file, nrows=3, header=None)  # type: ignore[no-untyped-call]
-            )
+            with st.spinner("Preparing preview..."):
+                claims_file.seek(0)
+                preview_df = (
+                    pd.read_csv(claims_file, nrows=3, header=None, delimiter=delimiter, on_bad_lines="skip")  # type: ignore[no-untyped-call]
+                    if ext.endswith((".csv", ".txt", ".tsv")) else
+                    pd.read_excel(claims_file, nrows=3, header=None)  # type: ignore[no-untyped-call]
+                )
 
-            st.markdown("**Preview of Claims File (First 3 Rows):**")
-            st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
+                st.markdown("**Preview of Claims File (First 3 Rows):**")
+                st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
 
             # --- Read full claims file
-            claims_file.seek(0)
-            claims_df = read_claims_with_header_option(
-                claims_file,
-                headerless=(header_file is not None),
-                header_file=header_file,
-                delimiter=delimiter
-            )
+            with st.spinner("Loading claims file..."):
+                claims_file.seek(0)
+                claims_df = read_claims_with_header_option(
+                    claims_file,
+                    headerless=(header_file is not None),
+                    header_file=header_file,
+                    delimiter=delimiter
+                )
 
-            # Fallback for junk columns
-            if claims_df.columns.isnull().any():
-                claims_df.columns = [f"col_{i}" if not col or pd.isna(col) else str(col) for i, col in enumerate(claims_df.columns)]
+                # Fallback for junk columns
+                if claims_df.columns.isnull().any():
+                    claims_df.columns = [f"col_{i}" if not col or pd.isna(col) else str(col) for i, col in enumerate(claims_df.columns)]
 
-            # Save to session
-            st.session_state.claims_df = claims_df
-            capture_claims_file_metadata(claims_file, has_header=(header_file is None))
+                # Save to session
+                st.session_state.claims_df = claims_df
+                capture_claims_file_metadata(claims_file, has_header=(header_file is None))
 
-            st.success("✅ Claims file loaded successfully using " +
-                       ("embedded headers." if header_file is None else "external header file."))
+                st.success("✅ Claims file loaded successfully using " +
+                           ("embedded headers." if header_file is None else "external header file."))
 
         except Exception as e:
             st.error(f"Error processing claims file: {e}")
@@ -277,7 +287,7 @@ def render_field_mapping_tab():
     required_fields = get_required_fields(layout_df)
 
     # --- Safety Check ---
-    if not isinstance(required_fields, pd.DataFrame):  # type: ignore[redundant-cast]
+    if not isinstance(required_fields, pd.DataFrame):  # type: ignore[redundant-cast,type-py]
         st.error("Error: Required fields extraction failed. Please check layout file format.")
         st.stop()
 
@@ -411,7 +421,7 @@ def render_field_mapping_tab():
     optional_fields = get_optional_fields(layout_df)
 
     # --- Safety Check ---
-    if not isinstance(optional_fields, pd.DataFrame):  # type: ignore[redundant-cast]
+    if not isinstance(optional_fields, pd.DataFrame):  # type: ignore[redundant-cast,type-py]
         st.error("Error: Optional fields extraction failed. Please check layout file format.")
         st.stop()
 
@@ -494,7 +504,7 @@ def render_field_mapping_tab():
     if st.session_state.get("final_mapping"):
         generate_all_outputs()
 
-def calculate_mapping_progress(layout_df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]]) -> Tuple[int, int, int]:
+def calculate_mapping_progress(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Tuple[int, int, int]:
     """Calculates progress stats for required fields mapping."""
     required_fields = get_required_fields(layout_df)["Internal Field"].tolist()
     mapped_fields = [field for field in required_fields if field in final_mapping and final_mapping[field]["value"]]
@@ -631,15 +641,22 @@ with tab2:
 
     # --- Main Mapping Section ---
     st.markdown("## Manual Field Mapping")
-    render_field_mapping_tab()
+    # Gate heavy mapping updates behind a form submit to avoid recomputation on every rerun
+    with st.form("mapping_form"):
+        render_field_mapping_tab()
+        apply_mappings = st.form_submit_button("Apply Mappings")
+        if apply_mappings:
+            st.session_state["mappings_ready"] = True
 
     st.divider()
 
     # --- AI Suggestions Section ---
     st.markdown("## AI Auto-Mapping Suggestions")
 
-    if "auto_mapping" not in st.session_state:
-        st.session_state.auto_mapping = get_enhanced_automap(layout_df, claims_df)
+    # Compute AI suggestions only when needed
+    if "auto_mapping" not in st.session_state and st.session_state.get("mappings_ready"):
+        with st.spinner("Running AI mapping suggestions..."):
+            st.session_state.auto_mapping = get_enhanced_automap(layout_df, claims_df)
 
     ai_suggestions = st.session_state.get("auto_mapping", {})
     auto_mapped_fields = st.session_state.get("auto_mapped_fields", [])
@@ -666,21 +683,23 @@ with tab2:
                     if selected:
                         selected_fields.append(field)
 
-            if selected_fields and st.button("✅ Commit Selected Suggestions"):
-                for field in selected_fields:
-                    st.session_state.final_mapping[field] = {
-                        "mode": "auto",
-                        "value": ai_suggestions[field]["value"]
-                    }
+                if selected_fields and st.button("✅ Commit Selected Suggestions"):
+                    for field in selected_fields:
+                        st.session_state.final_mapping[field] = {
+                            "mode": "auto",
+                            "value": ai_suggestions[field]["value"]
+                        }
 
-                st.success(f"Committed {len(selected_fields)} suggestion(s).")
-                generate_all_outputs()
+                    with st.spinner("Applying selected suggestions..."):
+                        st.success(f"Committed {len(selected_fields)} suggestion(s).")
+                        generate_all_outputs()
 
-                # --- Refresh transformed dataframe ---
-                claims_df = st.session_state.get("claims_df")
-                final_mapping = st.session_state.get("final_mapping", {})
-                if claims_df is not None and final_mapping:
-                    st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping)
+                        # --- Refresh transformed dataframe ---
+                        claims_df = st.session_state.get("claims_df")
+                        final_mapping = st.session_state.get("final_mapping", {})
+                        if claims_df is not None and final_mapping:
+                            st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping)
+                            st.session_state["transformed_ready"] = True
 
     else:
         st.info("No additional AI mapping suggestions available.")
@@ -693,12 +712,19 @@ with tab3:
         st.info("Please complete field mappings and preview transformed data first.")
         st.stop()
 
-    # --- Validation Results ---
-    required_fields = [field for field, mapping in final_mapping.items() if mapping.get("mode")]
-    mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
+    # --- Validation gating ---
+    run_val = st.button("Run Validation")
+    if run_val:
+        st.session_state["validation_ready"] = True
 
-    validation_results = run_validations(transformed_df, required_fields, mapped_fields)
-    st.session_state.validation_results = validation_results
+    if st.session_state.get("validation_ready"):
+        with st.spinner("Running validation checks..."):
+            required_fields = [field for field, mapping in final_mapping.items() if mapping.get("mode")]
+            mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
+            validation_results = run_validations(transformed_df, required_fields, mapped_fields)
+            st.session_state.validation_results = validation_results
+    else:
+        validation_results = st.session_state.get("validation_results", [])
 
     # --- Validation Metrics Summary ---
     st.markdown("### Validation Summary")
@@ -870,14 +896,15 @@ with tab4:
                     )
                 with col2:
                     if st.button("Regenerate Anonymized File"):
-                        claims_df_local = st.session_state.get("claims_df")
-                        final_mapping_local = st.session_state.get("final_mapping", {})
-                        if claims_df_local is not None:
-                            st.session_state.anonymized_df = anonymize_claims_data(
-                                claims_df_local,
-                                final_mapping_local
-                            )
-                        _notify("✅ Anonymized file regenerated!")
+                        with st.spinner("Regenerating anonymized data..."):
+                            claims_df_local = st.session_state.get("claims_df")
+                            final_mapping_local = st.session_state.get("final_mapping", {})
+                            if claims_df_local is not None:
+                                st.session_state.anonymized_df = anonymize_claims_data(
+                                    claims_df_local,
+                                    final_mapping_local
+                                )
+                            _notify("✅ Anonymized file regenerated!")
 
             # --- Field Mapping Table Section ---
             with st.expander("Field Mapping Table Preview", expanded=True):
@@ -896,16 +923,17 @@ with tab4:
                     )
                 with col2:
                     if st.button("Regenerate Mapping Table"):
-                        layout_df_local = st.session_state.get("layout_df")
-                        claims_df_local = st.session_state.get("claims_df")
-                        final_mapping_local = st.session_state.get("final_mapping", {})
-                        if layout_df_local is not None and claims_df_local is not None:
-                            st.session_state.mapping_table = generate_mapping_table(
-                                layout_df_local,
-                                final_mapping_local,
-                                claims_df_local
-                            )
-                        _notify("✅ Mapping table regenerated!")
+                        with st.spinner("Regenerating mapping table..."):
+                            layout_df_local = st.session_state.get("layout_df")
+                            claims_df_local = st.session_state.get("claims_df")
+                            final_mapping_local = st.session_state.get("final_mapping", {})
+                            if layout_df_local is not None and claims_df_local is not None:
+                                st.session_state.mapping_table = generate_mapping_table(
+                                    layout_df_local,
+                                    final_mapping_local,
+                                    claims_df_local
+                                )
+                            _notify("✅ Mapping table regenerated!")
 
             # --- Optional Attachments Section ---
             st.markdown("### Optional Attachments to Include in ZIP")
@@ -932,8 +960,10 @@ with tab4:
                 zip_file.writestr(anon_file_name, anonymized_data)
                 zip_file.writestr("field_mapping_table.csv", mapping_csv)
                 zip_file.writestr("readme.txt", readme_text)
-                for attachment in uploaded_attachments or []:
-                    zip_file.writestr(attachment.name, attachment.getvalue())
+                for attachment in uploaded_attachments or []:  # type: ignore[var-annotated]
+                    att_name: Any = attachment.name  # type: ignore[attr-defined]
+                    att_bytes: Any = attachment.getvalue()  # type: ignore[call-arg]
+                    zip_file.writestr(att_name, att_bytes)  # type: ignore[arg-type]
 
             buffer.seek(0)
 
@@ -948,8 +978,9 @@ with tab4:
                 )
             with col2:
                 if st.button("Regenerate All Outputs"):
-                    if claims_df is not None:
-                        st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
-                    if layout_df is not None and claims_df is not None:
-                        st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
-                    _notify("All outputs regenerated.")
+                    with st.spinner("Regenerating all outputs..."):
+                        if claims_df is not None:
+                            st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
+                        if layout_df is not None and claims_df is not None:
+                            st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
+                        _notify("All outputs regenerated.")

@@ -1,5 +1,11 @@
-import streamlit as st
-import pandas as pd
+# pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+import streamlit as st  # type: ignore[import-not-found]
+import pandas as pd  # type: ignore[import-not-found]
+from typing import Any, Optional, cast
+
+# Help the type checker understand dynamic Streamlit/Pandas attributes
+st = cast(Any, st)
+pd = cast(Any, pd)
 from typing import Optional, Any, IO
 from file_handler import detect_delimiter, read_claims_with_header_option
 import csv
@@ -118,7 +124,7 @@ def render_file_upload_section() -> None:
                 delimiter: Optional[str] = detect_delimiter(claims_file) if ext.endswith((".csv", ".txt", ".tsv")) else None
                 claims_file.seek(0)
 
-                claims_df: pd.DataFrame = read_claims_with_header_option(
+                claims_df: Any = read_claims_with_header_option(
                     claims_file,
                     headerless=(header_confirm == "No"),
                     header_file=header_file,

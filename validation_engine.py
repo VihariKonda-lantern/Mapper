@@ -1,12 +1,17 @@
-import pandas as pd
+# pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+import pandas as pd  # type: ignore[import-not-found]
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, cast
+import streamlit as st  # type: ignore[import-not-found]
+
+st = cast(Any, st)
+pd = cast(Any, pd)
 
 # ================================================================
 # 📄 FIELD-LEVEL VALIDATIONS (Row-by-Row Checks)
 # ================================================================
 
-def check_required_fields_completeness(df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]]) -> float:
+def check_required_fields_completeness(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> float:
     """Calculates % completeness for required fields."""
     required_fields = [field for field, mapping in final_mapping.items() if mapping.get("value")]
     if not required_fields:
@@ -14,10 +19,10 @@ def check_required_fields_completeness(df: pd.DataFrame, final_mapping: Dict[str
 
     total_cells = df[required_fields].shape[0] * len(required_fields)
     filled_cells = df[required_fields].notnull().sum().sum()  # type: ignore[no-untyped-call]
-    completeness = (filled_cells / total_cells) * 100 if total_cells > 0 else 0.0
+    completeness: float = (filled_cells / total_cells) * 100 if total_cells > 0 else 0.0
     return completeness
 
-def check_age_validation(df: pd.DataFrame) -> float:
+def check_age_validation(df: Any) -> float:
     """Checks percentage of patients 18+ based on Patient_DOB."""
     if "Patient_DOB" not in df.columns:
         return 0.0
@@ -29,7 +34,7 @@ def check_age_validation(df: pd.DataFrame) -> float:
     valid_count = over_18.sum()
     return (valid_count / len(df)) * 100 if len(df) > 0 else 0.0
 
-def check_date_range(df: pd.DataFrame) -> float:
+def check_date_range(df: Any) -> float:
     """Checks if Begin_Date is within last 6 months."""
     if "Begin_Date" not in df.columns:
         return 0.0
@@ -41,7 +46,7 @@ def check_date_range(df: pd.DataFrame) -> float:
     valid_count = valid_dates.sum()
     return (valid_count / len(df)) * 100 if len(df) > 0 else 0.0
 
-def check_required_fields(df: pd.DataFrame, required_fields: List[str]) -> List[Dict[str, Any]]:
+def check_required_fields(df: Any, required_fields: List[str]) -> List[Dict[str, Any]]:
     """Check if required fields are non-null for all rows."""
     results: List[Dict[str, Any]] = []
     for field in required_fields:
@@ -63,7 +68,7 @@ def check_required_fields(df: pd.DataFrame, required_fields: List[str]) -> List[
                 })
     return results
 
-def check_date_validity(df: pd.DataFrame, date_fields: List[str]) -> List[Dict[str, Any]]:
+def check_date_validity(df: Any, date_fields: List[str]) -> List[Dict[str, Any]]:
     """Check that dates are valid and not way out of range."""
     results: List[Dict[str, Any]] = []
     for field in date_fields:
@@ -85,7 +90,7 @@ def check_date_validity(df: pd.DataFrame, date_fields: List[str]) -> List[Dict[s
                 })
     return results
 
-def check_age_over_18(df: pd.DataFrame, dob_field: str) -> List[Dict[str, Any]]:
+def check_age_over_18(df: Any, dob_field: str) -> List[Dict[str, Any]]:
     """Check that patients are over 18 years old."""
     results: List[Dict[str, Any]] = []
     if dob_field in df.columns:
@@ -112,7 +117,7 @@ def check_age_over_18(df: pd.DataFrame, dob_field: str) -> List[Dict[str, Any]]:
 
     return results
 
-def check_fill_rate(df: pd.DataFrame, mapped_fields: List[str]) -> List[Dict[str, Any]]:
+def check_fill_rate(df: Any, mapped_fields: List[str]) -> List[Dict[str, Any]]:
     """Check that mapped fields have a decent fill rate (warn if too sparse)."""
     results: List[Dict[str, Any]] = []
     for field in mapped_fields:
@@ -134,7 +139,8 @@ def check_fill_rate(df: pd.DataFrame, mapped_fields: List[str]) -> List[Dict[str
                 })
     return results
 
-def run_validations(transformed_df: pd.DataFrame, required_fields: List[str], mapped_fields: List[str]) -> List[Dict[str, Any]]:
+@st.cache_data(show_spinner=False)
+def run_validations(transformed_df: Any, required_fields: List[str], mapped_fields: List[str]) -> List[Dict[str, Any]]:
     """Runs all validations and returns a list of validation results."""
     results: List[Dict[str, Any]] = []
     results.extend(check_required_fields(transformed_df, required_fields))
@@ -159,7 +165,7 @@ def run_validations(transformed_df: pd.DataFrame, required_fields: List[str], ma
 # 📄 FILE-LEVEL VALIDATIONS (File Completeness / Range Checks)
 # ================================================================
 
-def run_required_field_check(df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def run_required_field_check(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """Check overall required field completeness % for the file."""
     required_fields = list(final_mapping.keys())
     missing_values = df[required_fields].isnull().sum().sum()  # type: ignore[no-untyped-call]
@@ -173,7 +179,7 @@ def run_required_field_check(df: pd.DataFrame, final_mapping: Dict[str, Dict[str
         "message": f"{completeness:.1f}% fields filled"
     }
 
-def run_age_check(df: pd.DataFrame, dob_field: str) -> Dict[str, Any]:
+def run_age_check(df: Any, dob_field: str) -> Dict[str, Any]:
     """Check if 90%+ patients are 18+."""
     today = pd.Timestamp.today()
     dob = pd.to_datetime(df[dob_field], errors="coerce")  # type: ignore[no-untyped-call]
@@ -187,7 +193,7 @@ def run_age_check(df: pd.DataFrame, dob_field: str) -> Dict[str, Any]:
         "message": f"{over_18_pct:.1f}% patients are 18+"
     }
 
-def run_date_range_check(df: pd.DataFrame, date_field: str) -> Dict[str, Any]:
+def run_date_range_check(df: Any, date_field: str) -> Dict[str, Any]:
     """Check if 80%+ claims fall within last 6 months."""
     today = pd.Timestamp.today()
     six_months_ago = today - pd.DateOffset(months=6)
@@ -201,7 +207,7 @@ def run_date_range_check(df: pd.DataFrame, date_field: str) -> Dict[str, Any]:
         "message": f"{valid_dates_pct:.1f}% claims within last 6 months"
     }
 
-def run_diagnosis_code_summary(df: pd.DataFrame, dx_fields: List[str]) -> Dict[str, Any]:
+def run_diagnosis_code_summary(df: Any, dx_fields: List[str]) -> Dict[str, Any]:
     """Summarizes MSK/BAR diagnosis code presence."""
     total_dx: int = 0
     msk_count: int = 0
@@ -234,7 +240,7 @@ def run_diagnosis_code_summary(df: pd.DataFrame, dx_fields: List[str]) -> Dict[s
         "message": message
     }
 
-def dynamic_run_validations(transformed_df: pd.DataFrame, final_mapping: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+def dynamic_run_validations(transformed_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Dynamically runs overall file-level validations."""
     results: List[Dict[str, Any]] = []
 

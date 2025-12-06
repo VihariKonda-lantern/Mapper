@@ -1,8 +1,13 @@
-import streamlit as st
-import pandas as pd
+# pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+import streamlit as st  # type: ignore[import-not-found]
+import pandas as pd  # type: ignore[import-not-found]
+from typing import Any, cast
+
+st = cast(Any, st)
+pd = cast(Any, pd)
 from typing import List, Dict, Any
 
-def detect_encoding_issues(claims_df: pd.DataFrame) -> None:
+def detect_encoding_issues(claims_df: Any) -> None:
     issue_columns: List[str] = []
     for col in claims_df.select_dtypes(include="object").columns:
         try:
