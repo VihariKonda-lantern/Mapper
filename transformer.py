@@ -1,14 +1,22 @@
 # pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any, cast
+from typing import Any, cast, Dict, Optional
 
 pd = cast(Any, pd)
-from typing import Dict, Any, Optional
 
 def transform_claims_data(claims_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
-    """
-    Transforms claims file based on final_mapping.
-    Standardizes dates, strips strings, and cleans ID fields.
+    """Transform claims data into internal layout columns using mappings.
+
+    Copies mapped columns, fills missing columns with `None`, and applies
+    simple cleaning rules: trim strings, standardize date-like columns,
+    and normalize ID-like fields (e.g., SSN/NPI/ZIP/CPT/HCPCS).
+
+    Args:
+        claims_df: Source claims DataFrame-like.
+        final_mapping: Mapping dict `{internal_field: {"value": source_col}}`.
+
+    Returns:
+        Transformed DataFrame-like aligned to internal fields.
     """
     transformed: Any = pd.DataFrame()
 
@@ -26,17 +34,63 @@ def transform_claims_data(claims_df: Any, final_mapping: Dict[str, Dict[str, Any
 
         if "date" in col.lower():
             s = transformed[col]
-            # Handle Excel serial dates (numeric > 40000) and general parsing vectorized
+            # Convert to string first to handle various input types
+            s_str = s.astype(str).str.strip()  # type: ignore[no-untyped-call]
+            
+            # Try to detect Excel serial dates vs other formats
             numeric = pd.to_numeric(s, errors='coerce')  # type: ignore[no-untyped-call]
-            mask_excel = numeric.notna() & (numeric > 40000)
-            result = pd.Series(index=s.index, dtype='datetime64[ns]')
-            result.loc[mask_excel] = pd.to_datetime('1899-12-30') + pd.to_timedelta(numeric.loc[mask_excel].astype(int), unit='D')  # type: ignore[no-untyped-call]
-            mask_other = ~mask_excel
-            result.loc[mask_other] = pd.to_datetime(s.loc[mask_other], errors='coerce')  # type: ignore[no-untyped-call]
-            # Match previous behaviour: invalids as None (not NaT)
-            result_obj = result.astype('object')
-            result_obj[pd.isna(result_obj)] = None  # type: ignore[no-untyped-call]
-            transformed[col] = result_obj
+            
+            # Excel serial dates: typically between 1 and 100000 (covers dates from 1900 to ~2174)
+            # Values like 20250916 are YYYYMMDD format (8 digits), not Excel serial dates
+            # Check if value looks like YYYYMMDD using vectorized operations
+            # Must be exactly 8 digits, all numeric
+            is_8_digits = (s_str.str.len() == 8) & (s_str.str.isdigit())  # type: ignore[no-untyped-call]
+            # Extract year (first 4 digits) and check if in reasonable range (1900-2100)
+            year_str = s_str.str[:4]  # type: ignore[no-untyped-call]
+            year_numeric = pd.to_numeric(year_str, errors='coerce')  # type: ignore[no-untyped-call]
+            valid_year = (year_numeric >= 1900) & (year_numeric <= 2100)
+            # Extract month and day for basic validation
+            month_str = s_str.str[4:6]  # type: ignore[no-untyped-call]
+            day_str = s_str.str[6:8]  # type: ignore[no-untyped-call]
+            month_numeric = pd.to_numeric(month_str, errors='coerce')  # type: ignore[no-untyped-call]
+            day_numeric = pd.to_numeric(day_str, errors='coerce')  # type: ignore[no-untyped-call]
+            valid_month = (month_numeric >= 1) & (month_numeric <= 12)
+            valid_day = (day_numeric >= 1) & (day_numeric <= 31)
+            
+            # Identify YYYYMMDD format values
+            mask_yyyymmdd = is_8_digits & valid_year & valid_month & valid_day
+            
+            # Excel serial dates: between 1 and 100000, and not YYYYMMDD format
+            mask_excel = numeric.notna() & (numeric >= 1) & (numeric <= 100000) & ~mask_yyyymmdd
+            
+            result = pd.Series(index=s.index, dtype='object')
+            
+            # Process YYYYMMDD format first
+            if mask_yyyymmdd.any():
+                yyyymmdd_values = s_str.loc[mask_yyyymmdd]
+                # Parse YYYYMMDD format
+                parsed = pd.to_datetime(yyyymmdd_values, format='%Y%m%d', errors='coerce')  # type: ignore[no-untyped-call]
+                result.loc[mask_yyyymmdd] = parsed
+            
+            # Process Excel serial dates
+            if mask_excel.any():
+                try:
+                    excel_dates = pd.to_datetime('1899-12-30') + pd.to_timedelta(numeric.loc[mask_excel].astype(int), unit='D')  # type: ignore[no-untyped-call]
+                    result.loc[mask_excel] = excel_dates
+                except (OverflowError, ValueError, pd.errors.OutOfBoundsTimedelta):
+                    # If Excel conversion fails (overflow), treat as regular date string
+                    # Fall back to string parsing
+                    result.loc[mask_excel] = pd.to_datetime(s_str.loc[mask_excel], errors='coerce')  # type: ignore[no-untyped-call]
+            
+            # Process other values as regular date strings
+            mask_other = ~mask_excel & ~mask_yyyymmdd
+            if mask_other.any():
+                # Try parsing as various date formats
+                result.loc[mask_other] = pd.to_datetime(s_str.loc[mask_other], errors='coerce')  # type: ignore[no-untyped-call]
+            
+            # Convert NaT to None
+            result = result.where(pd.notna(result), None)  # type: ignore[no-untyped-call]
+            transformed[col] = result
 
         if any(key in col.lower() for key in ["ssn", "npi", "zip", "cpt", "hcpcs"]):
             series = transformed[col].astype(str)  # type: ignore[no-untyped-call]
@@ -49,6 +103,17 @@ def transform_claims_data(claims_df: Any, final_mapping: Dict[str, Dict[str, Any
     return transformed
 
 def standardize_date(val: Any) -> Optional[Any]:
+    """Standardize a date value from diverse inputs.
+
+    Supports Excel serial dates (values > 40000) and string/parsed timestamps,
+    returning `None` for invalids.
+
+    Args:
+        val: Input value possibly representing a date.
+
+    Returns:
+        Parsed timestamp-like object or `None`.
+    """
     if pd.isnull(val) or val == '':
         return None
     try:
@@ -61,5 +126,13 @@ def standardize_date(val: Any) -> Optional[Any]:
         return None
 
 def clean_id(val: str) -> Optional[str]:
-    val_clean = ''.join(filter(str.isalnum, val))  # Keep only alphanumeric
+    """Normalize an identifier by stripping non-alphanumeric characters.
+
+    Args:
+        val: Raw identifier string.
+
+    Returns:
+        Cleaned alphanumeric identifier or `None` if empty.
+    """
+    val_clean = ''.join(filter(str.isalnum, val))
     return val_clean if val_clean else None

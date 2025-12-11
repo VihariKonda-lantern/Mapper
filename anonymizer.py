@@ -25,6 +25,10 @@ SSN_FIELDS = ["Insured_SSN", "Patient_SSN"]
 FIRST_SYLLABLES = ["Jo", "Mi", "Ra", "Ka", "De", "El", "Sa", "Lu", "Ti", "Zo"]
 LAST_SYLLABLES = ["lin", "den", "von", "mar", "tis", "berg", "ton", "sor", "ley", "vick"]
 
+# Seed offsets for generating different fake data from same base
+LAST_NAME_SEED_OFFSET = 42
+MIDDLE_INITIAL_SEED_OFFSET = 99
+
 # --- Helper functions ---
 def hash_seed(value: str) -> int:
     return int(hashlib.sha256(value.encode()).hexdigest(), 16) % (10 ** 8)
@@ -34,11 +38,11 @@ def generate_fake_first_name(seed_val: int) -> str:
     return random.choice(FIRST_SYLLABLES) + random.choice(FIRST_SYLLABLES)
 
 def generate_fake_last_name(seed_val: int) -> str:
-    random.seed(seed_val + 42)  # offset to get different names
+    random.seed(seed_val + LAST_NAME_SEED_OFFSET)
     return random.choice(LAST_SYLLABLES).capitalize() + random.choice(LAST_SYLLABLES)
 
 def generate_fake_middle_initial(seed_val: int) -> str:
-    random.seed(seed_val + 99)
+    random.seed(seed_val + MIDDLE_INITIAL_SEED_OFFSET)
     return random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 def generate_fake_ssn(seed_val: int) -> str:
@@ -57,7 +61,7 @@ def anonymize_claims_data(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> 
         if mapping_info.get("value"):
             if field == "Insured_ID":
                 insured_id_col = mapping_info["value"]
-            if field == "Patient_ID":
+            elif field == "Patient_ID":
                 patient_id_col = mapping_info["value"]
 
     for field, mapping_info in final_mapping.items():

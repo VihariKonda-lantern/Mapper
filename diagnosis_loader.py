@@ -13,6 +13,23 @@ import io
 
 @st.cache_data(show_spinner=False)
 def _load_msk_bar_lookups_cached(content: bytes) -> Tuple[Set[str], Set[str]]:
+    """Parse MSK and BAR diagnosis codes from an Excel file buffer.
+
+    Uses pandas to read the required sheets ("MSK" and "BAR") from the
+    provided `content` and returns the first column as sets of codes.
+
+    This function is cached via Streamlit to avoid repeated parsing.
+
+    Args:
+        content: Raw bytes of the uploaded Excel file.
+
+    Returns:
+        A tuple of (`msk_codes`, `bar_codes`) as sets of strings.
+
+    Raises:
+        ValueError: If the file cannot be read, or required sheets are missing,
+            or if parsing errors occur.
+    """
     try:
         xls = pd.ExcelFile(io.BytesIO(content))
         sheets = xls.sheet_names
@@ -37,19 +54,19 @@ def _load_msk_bar_lookups_cached(content: bytes) -> Tuple[Set[str], Set[str]]:
         raise ValueError("Error parsing Diagnosis Lookup sheets.") from e
 
 def load_msk_bar_lookups(file: Any) -> Tuple[Set[str], Set[str]]:
-    """
-    Loads the Diagnosis Lookup file and extracts MSK and BAR code sets.
+    """Load the Diagnosis Lookup file (.xlsx) and extract MSK/BAR code sets.
+
+    Wraps the cached loader by reading the file content and delegating to
+    `_load_msk_bar_lookups_cached` to parse and return sets.
 
     Args:
-        file: Uploaded Streamlit file-like object (.xlsx)
+        file: Streamlit-uploaded file-like object for the lookup Excel.
 
     Returns:
-        Tuple containing:
-        - Set of MSK diagnosis codes
-        - Set of BAR diagnosis codes
+        A tuple of (`msk_codes`, `bar_codes`) as sets of strings.
 
     Raises:
-        ValueError: If expected sheets or columns are missing
+        ValueError: If required sheets or expected columns are missing.
     """
     file.seek(0)
     content = file.read()

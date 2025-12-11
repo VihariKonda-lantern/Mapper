@@ -1,39 +1,33 @@
 # pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any, Optional, cast
+from typing import Any, Optional, cast, IO
+from file_handler import detect_delimiter, read_claims_with_header_option
 
 # Help the type checker understand dynamic Streamlit/Pandas attributes
 st = cast(Any, st)
 pd = cast(Any, pd)
-from typing import Optional, Any, IO
-from file_handler import detect_delimiter, read_claims_with_header_option
-import csv
 
-def detect_separator(file_obj: IO[bytes]) -> str:
-    """
-    Attempts to detect delimiter from first few lines of the file.
-    Defaults to comma if unable to detect.
-    """
-    try:
-        sample = file_obj.read(2048).decode('utf-8')
-        file_obj.seek(0)
-        sniffer = csv.Sniffer()
-        dialect = sniffer.sniff(sample)
-        return dialect.delimiter
-    except Exception:
-        return ','  # default
+# Removed duplicate function - use detect_delimiter from file_handler instead
 
 def capture_claims_file_metadata(file: Any, has_header: bool) -> None:
-    """
-    Captures format, separator, header info for the uploaded claims file.
-    Saves into st.session_state.claims_file_metadata.
+    """Record basic metadata for an uploaded claims file in session state.
+
+    Determines format by extension and estimates separator when relevant.
+
+    Args:
+        file: Streamlit-uploaded file-like object.
+        has_header: Whether the file appears to contain a header row.
+
+    Side Effects:
+        Sets `st.session_state.claims_file_metadata` with format, sep, header,
+        and a default date format.
     """
     filename = file.name.lower()
 
     if filename.endswith(".csv") or filename.endswith(".txt") or filename.endswith(".tsv"):
         format_detected = "csv"
-        sep = detect_separator(file)
+        sep = detect_delimiter(file)
     elif filename.endswith(".xlsx") or filename.endswith(".xls"):
         format_detected = "excel"
         sep = None  # Excel doesn't need sep
@@ -55,8 +49,10 @@ def capture_claims_file_metadata(file: Any, has_header: bool) -> None:
     }
 
 def render_file_upload_section() -> None:
-    """
-    Handles file upload UI and logic for layout, claims, lookup, and header files.
+    """Render the upload UI and manage file-related session state.
+
+    Provides inputs for layout, diagnosis lookup, claims file, and optional
+    external header file, updating `st.session_state` accordingly.
     """
     st.markdown("#### Step 1: Upload Required Files")
     layout_col, claims_col, lookup_col = st.columns(3)

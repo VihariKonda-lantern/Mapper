@@ -3,16 +3,22 @@ import difflib
 import pandas as pd  # type: ignore[import-not-found]
 from typing import Dict, List, Any, cast
 import streamlit as st  # type: ignore[import-not-found]
+import re
 
 st = cast(Any, st)
 pd = cast(Any, pd)
 
-import re
-from typing import List
-
 def guess_column_type(values: List[str]) -> str:
-    """
-    Very simple guess of column type based on sample values.
+    """Guess a coarse column type from sample string values.
+
+    Counts matches for numeric, text, and date-like patterns and returns the
+    majority type among these categories.
+
+    Args:
+        values: Sample cell values as strings.
+
+    Returns:
+        One of {"numeric", "text", "date"} based on heuristic counts.
     """
     numeric_count = 0
     text_count = 0
@@ -37,8 +43,16 @@ def guess_column_type(values: List[str]) -> str:
     return max(counts, key=lambda k: counts.get(k, 0))
 
 def match_known_patterns(values: List[str]) -> str:
-    """
-    Try to match known structures like ICD, CPT, NPI, ZIP.
+    """Detect known medical codes (ICD, CPT, NPI, ZIP) from values.
+
+    Checks regex patterns for common code formats and returns a tag for the
+    first match.
+
+    Args:
+        values: Sample cell values as strings.
+
+    Returns:
+        One of {"icd", "cpt", "npi", "zip", "unknown"}.
     """
     for v in values:
         v = str(v).strip()
@@ -54,9 +68,18 @@ def match_known_patterns(values: List[str]) -> str:
 
 @st.cache_data(show_spinner=False)
 def get_enhanced_automap(layout_df: Any, claims_df: Any, threshold: float = 0.6) -> Dict[str, Dict[str, Any]]:
-    """
-    Suggests best source column for each internal field using enhanced heuristics:
-    fuzzy match, sample value matching, regex pattern detection, and type guessing.
+    """Suggest source columns for internal fields using multiple heuristics.
+
+    Combines fuzzy string matching, sample value inspection, known pattern
+    detection, and coarse type guessing to propose mappings with confidence.
+
+    Args:
+        layout_df: Internal layout DataFrame-like, including "Internal Field".
+        claims_df: Source claims DataFrame-like.
+        threshold: Minimum fuzzy match ratio to consider a candidate.
+
+    Returns:
+        Mapping suggestions as a dict: {internal_field: {"value": col, "confidence": float}}.
     """
     suggestions: Dict[str, Dict[str, Any]] = {}
     internal_fields: List[str] = [str(x) for x in layout_df["Internal Field"].dropna().tolist()]  # type: ignore[no-untyped-call]

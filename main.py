@@ -10,6 +10,7 @@ st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
 import zipfile
 import io
+import hashlib
 from typing import Tuple, Optional, List, Dict, Any, Set
 # Removed unused matplotlib import
 
@@ -32,6 +33,7 @@ from utils import render_claims_file_summary
 from transformer import transform_claims_data
 from validation_engine import (
     run_validations,
+    dynamic_run_validations,
 )
 from anonymizer import anonymize_claims_data
 
@@ -60,7 +62,6 @@ def render_file_upload_button(label: str, key: str, types: List[str]) -> Optiona
             st.session_state[f"{key}_clicked"] = True
 
     if st.session_state[f"{key}_clicked"]:
-        st.caption(f"[debug] File types accepted: {types}")
         return container.file_uploader("", type=types, key=key, label_visibility="collapsed")
     
     return None
@@ -78,7 +79,10 @@ def load_lookups_cached(file: Any):
     return load_msk_bar_lookups(file)
 
 def render_lookup_summary_section():
-    """Loads and previews the MSK and BAR diagnosis lookup file."""
+    """Preview summary for MSK and BAR diagnosis lookup codes.
+
+    Reads code sets from session state and displays small samples and counts.
+    """
     if "msk_codes" in st.session_state and "bar_codes" in st.session_state:
         msk_codes = st.session_state.msk_codes
         bar_codes = st.session_state.bar_codes
@@ -96,21 +100,18 @@ def render_lookup_summary_section():
 
 @st.cache_data(show_spinner=False)
 def generate_mapping_table(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]], claims_df: Any) -> Any:
-    """
-    Generates a full mapping table listing:
-    - All internal fields from layout (mapped or unmapped)
-    - Their corresponding claims file column (if mapped)
-    - Data type of mapped column (from claims_df)
-    - Required/Optional
-    - Also lists unmapped claims file columns after
+    """Build a comprehensive mapping table across internal and claims fields.
+
+    Includes internal fields with mapped claims columns, data types, and
+    required/optional flag, plus a section for unmapped claims columns.
 
     Args:
-        layout_df (pd.DataFrame): Internal layout DataFrame
-        final_mapping (dict): Final field mappings
-        claims_df (pd.DataFrame): Uploaded claims DataFrame
+        layout_df: Internal layout DataFrame-like.
+        final_mapping: Final field mappings `{internal: {"value": col}}`.
+        claims_df: Uploaded claims DataFrame-like.
 
     Returns:
-        Any: Full mapping table
+        DataFrame-like representing the full mapping table.
     """
     records: List[Dict[str, Any]] = []
 
@@ -280,6 +281,9 @@ def render_field_mapping_tab():
         st.info("Please upload both layout and claims files to begin mapping.")
         return
 
+    # Initialize widget counter for unique keys (reset each time function is called)
+    widget_counter = 0
+
     # --- Claims File Preview ---
     st.markdown("#### Claims File Preview (First 5 Rows)")
     st.dataframe(claims_df.head(), use_container_width=True)  # type: ignore[no-untyped-call]
@@ -330,6 +334,9 @@ def render_field_mapping_tab():
     # --- Required Fields Mapping ---
     for group in field_groups:
         group_fields = required_fields[required_fields["Category"] == group]
+        
+        # Deduplicate fields within the group - keep first occurrence of each field
+        group_fields = group_fields.drop_duplicates(subset=["Internal Field"], keep="first")  # type: ignore[no-untyped-call]
 
         group_field_names = group_fields["Internal Field"].tolist()
         mapped_count = sum(
@@ -340,7 +347,7 @@ def render_field_mapping_tab():
         group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
 
         with st.expander(group_label, expanded=False):
-            for _, row in group_fields.iterrows():
+            for row_idx, (original_idx, row) in enumerate(group_fields.iterrows()):
                 field_name = row["Internal Field"]
                 raw_columns = claims_df.columns.tolist()
 
@@ -367,10 +374,20 @@ def render_field_mapping_tab():
                     else:
                         default_label = str(default_value)
 
+                # Create unique key using group, field name, and incrementing counter
+                # Counter ensures absolute uniqueness even with duplicate rows
+                widget_counter += 1
+                unique_key = f"req_{group}_{field_name}_{widget_counter}"
+                # Sanitize key to remove special characters that might cause issues
+                unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+
                 selected_clean: Optional[str] = None
                 if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                    selected = dual_input_field(field_name, col_options, key_prefix=f"optional_dropdown_{field_name}_optional")
-                    manual_key = f"{field_name}_manual"
+                    widget_counter += 1
+                    key_prefix = f"req_{group}_{field_name}_{widget_counter}"
+                    key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+                    selected = dual_input_field(field_name, col_options, key_prefix=key_prefix)
+                    manual_key = f"{key_prefix}_manual"
                     manual_value = st.session_state.get(manual_key)
 
                     if manual_value:
@@ -378,12 +395,12 @@ def render_field_mapping_tab():
                     else:
                         selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
                 else:
-                    idx = col_options.index(default_label) + 1 if (default_label is not None and default_label in col_options) else 0
+                    select_idx = col_options.index(default_label) + 1 if (default_label is not None and default_label in col_options) else 0
                     selected = st.selectbox(
                         f"{field_name}",
                         options=[""] + col_options,
-                        index=idx,
-                        key=f"required_dropdown_{field_name}_required"
+                        index=select_idx,
+                        key=unique_key
                     )
                     selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
 
@@ -439,6 +456,9 @@ def render_field_mapping_tab():
 
         for group in optional_field_groups:
             group_fields = optional_fields[optional_fields["Category"] == group]
+            
+            # Deduplicate fields within the group - keep first occurrence of each field
+            group_fields = group_fields.drop_duplicates(subset=["Internal Field"], keep="first")  # type: ignore[no-untyped-call]
 
             group_field_names = group_fields["Internal Field"].tolist()
             mapped_count = sum(
@@ -449,7 +469,7 @@ def render_field_mapping_tab():
             group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
 
             with st.expander(group_label, expanded=False):
-                for _, row in group_fields.iterrows():
+                for row_idx, (original_idx, row) in enumerate(group_fields.iterrows()):
                     field_name = row["Internal Field"]
                     raw_columns = claims_df.columns.tolist()
 
@@ -475,15 +495,25 @@ def render_field_mapping_tab():
                         else:
                             default_label = default_value
 
+                    # Create unique key using group, field name, and incrementing counter
+                    # Counter ensures absolute uniqueness even with duplicate rows
+                    widget_counter += 1
+                    unique_key = f"opt_{group}_{field_name}_{widget_counter}"
+                    # Sanitize key to remove special characters that might cause issues
+                    unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+
                     selected_clean: Optional[str] = None
                     if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                        selected = dual_input_field(field_name, col_options, key_prefix=f"optional_dropdown_{field_name}_optional")
+                        widget_counter += 1
+                        key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
+                        key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+                        selected = dual_input_field(field_name, col_options, key_prefix=key_prefix)
                     else:
                         selected = st.selectbox(
                             f"{field_name}",
                             options=[""] + col_options,
                             index=col_options.index(default_label) + 1 if default_label in col_options else 0,
-                            key=f"optional_dropdown_{field_name}_optional"
+                            key=unique_key
                         )
                         selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
 
@@ -516,7 +546,7 @@ def calculate_mapping_progress(layout_df: Any, final_mapping: Dict[str, Dict[str
 
 def generate_all_outputs():
     """
-    Generates YAML, anonymized claims file, and mapping table outputs
+    Generates anonymized claims file and mapping table outputs
     based on the latest field mappings.
     """
     final_mapping = st.session_state.get("final_mapping")
@@ -707,24 +737,49 @@ with tab2:
 with tab3:
     transformed_df = st.session_state.get("transformed_df")
     final_mapping = st.session_state.get("final_mapping", {})
+    layout_df = st.session_state.get("layout_df")
 
     if transformed_df is None or not final_mapping:
         st.info("Please complete field mappings and preview transformed data first.")
         st.stop()
 
-    # --- Validation gating ---
-    run_val = st.button("Run Validation")
-    if run_val:
-        st.session_state["validation_ready"] = True
-
-    if st.session_state.get("validation_ready"):
+    # --- Auto-run validation (cached to avoid re-running on every rerun) ---
+    # Create a hash of the data to detect changes
+    data_hash = hashlib.md5(
+        (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
+    ).hexdigest()
+    
+    # Check if we need to re-run validations
+    cached_hash = st.session_state.get("validation_data_hash")
+    validation_results = st.session_state.get("validation_results", [])
+    
+    if cached_hash != data_hash or not validation_results:
         with st.spinner("Running validation checks..."):
-            required_fields = [field for field, mapping in final_mapping.items() if mapping.get("mode")]
+            # Get required fields from layout file, not from mapping
+            if layout_df is not None:
+                required_fields_df = get_required_fields(layout_df)
+                required_fields = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
+            else:
+                # Fallback: use all mapped fields as required
+                required_fields = list(final_mapping.keys())
+            
+            # Get ALL mapped internal fields (both required and optional)
+            all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
+            
+            # Get mapped field values (source column names) for reference
             mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
-            validation_results = run_validations(transformed_df, required_fields, mapped_fields)
+            
+            # Run field-level validations (row-by-row checks)
+            # Pass all mapped internal fields to ensure comprehensive validation
+            field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
+            
+            # Run file-level validations (summary/aggregate checks)
+            file_level_results = dynamic_run_validations(transformed_df, final_mapping)
+            
+            # Combine both types of validation results
+            validation_results = field_level_results + file_level_results
             st.session_state.validation_results = validation_results
-    else:
-        validation_results = st.session_state.get("validation_results", [])
+            st.session_state.validation_data_hash = data_hash
 
     # --- Validation Metrics Summary ---
     st.markdown("### Validation Summary")
@@ -746,17 +801,20 @@ with tab3:
 
     # --- Detailed Validation Table ---
     st.markdown("### Detailed Validation Results")
-    validation_df = pd.DataFrame(validation_results)
-    st.dataframe(validation_df, use_container_width=True)  # type: ignore[no-untyped-call]
+    if validation_results:
+        validation_df = pd.DataFrame(validation_results)
+        st.dataframe(validation_df, use_container_width=True)  # type: ignore[no-untyped-call]
 
-    val_csv = validation_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Validation Report",
-        data=val_csv,
-        file_name="validation_report.csv",
-        mime="text/csv",
-        on_click=lambda: _notify("✅ Validation Report Ready!")
-    )
+        val_csv = validation_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Validation Report",
+            data=val_csv,
+            file_name="validation_report.csv",
+            mime="text/csv",
+            on_click=lambda: _notify("✅ Validation Report Ready!")
+        )
+    else:
+        st.info("No validation results to display. Click 'Run Validation' to perform checks.")
 
     st.divider()
 

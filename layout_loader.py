@@ -10,14 +10,20 @@ pd = cast(_Any, pd)
 REQUIRED_COLUMNS = ["Data Field", "Usage", "Category"]
 
 def load_internal_layout(file: Any) -> Any:
-    """
-    Loads and validates the internal layout Excel file.
+    """Load and normalize the internal layout Excel file.
+
+    Validates required columns, trims and standardizes string fields, renames
+    to canonical column names, and returns a cleaned DataFrame-like object.
 
     Args:
-        file: Uploaded Excel layout file
+        file: Uploaded Excel layout file.
 
     Returns:
-        DataFrame with renamed columns: Internal Field, Usage, Category
+        Cleaned layout with columns: `Internal Field`, `Usage`, `Category`.
+
+    Raises:
+        ValueError: If file format is unsupported, reading fails, or required
+            columns are missing.
     """
     try:
         if not file.name.endswith(".xlsx"):
@@ -69,48 +75,48 @@ def load_internal_layout(file: Any) -> Any:
     return df
 
 def get_required_fields(layout_df: Any) -> Any:
-    """
-    Returns a DataFrame containing only mandatory fields from the layout.
+    """Return a filtered view with only mandatory fields.
 
     Args:
-        layout_df (pd.DataFrame): Parsed internal layout DataFrame
+        layout_df: Cleaned internal layout DataFrame-like object.
 
     Returns:
-        pd.DataFrame: Filtered layout DataFrame for mandatory fields
+        DataFrame-like with rows where `Usage == "Mandatory"`.
     """
     return layout_df[layout_df["Usage"] == "Mandatory"].copy()
 
 
 def get_optional_fields(layout_df: Any) -> Any:
-    """
-    Returns a DataFrame containing only optional fields from the layout.
+    """Return a filtered view with only optional fields.
 
     Args:
-        layout_df (pd.DataFrame): Parsed internal layout DataFrame
+        layout_df: Cleaned internal layout DataFrame-like object.
 
     Returns:
-        pd.DataFrame: Filtered layout DataFrame for optional fields
+        DataFrame-like with rows where `Usage == "Optional"`.
     """
     return layout_df[layout_df["Usage"] == "Optional"].copy()
 
 
 def get_field_groups(layout_df: Any) -> List[str]:
-    """
-    Extracts the unique field categories (groups) from the layout.
+    """Extract distinct field categories from the layout.
 
     Args:
-        layout_df (pd.DataFrame): Parsed internal layout DataFrame
+        layout_df: Cleaned internal layout DataFrame-like object.
 
     Returns:
-        List[str]: List of distinct categories
+        Sorted list of non-empty category names.
     """
-    cats: List[str] = layout_df["Category"].dropna().astype(str).tolist()  # type: ignore[no-untyped-call]
+    # Get unique categories, drop NaN, convert to string, filter empty strings, and sort
+    cats = layout_df["Category"].dropna().astype(str).unique().tolist()  # type: ignore[no-untyped-call]
     return sorted([c for c in cats if c])
 
 
 def render_layout_summary_section() -> None:
-    """
-    Shows summary of internal layout fields (already loaded into session).
+    """Render a summary of the internal layout currently loaded in session.
+
+    Displays counts for total/required/optional fields, category breakdown,
+    and a compact data table preview.
     """
     layout_df = st.session_state.get("layout_df")
 

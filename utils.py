@@ -1,13 +1,23 @@
 # pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any, cast
+from typing import Any, cast, List, Dict
 
 st = cast(Any, st)
 pd = cast(Any, pd)
-from typing import List, Dict, Any
 
 def detect_encoding_issues(claims_df: Any) -> None:
+    """Check object columns for potential UTF-8 encoding issues.
+
+    Attempts to encode non-null values in object-typed columns; if any
+    exception occurs, the column is flagged and a warning is shown.
+
+    Args:
+        claims_df: Claims DataFrame-like object.
+
+    Side Effects:
+        Emits a Streamlit warning when suspect columns are found.
+    """
     issue_columns: List[str] = []
     for col in claims_df.select_dtypes(include="object").columns:
         try:
@@ -19,8 +29,13 @@ def detect_encoding_issues(claims_df: Any) -> None:
 
 # --- Helper Function ---
 def infer_date_format(sample: str) -> str:
-    """
-    Tries to infer a date format string from a sample value.
+    """Infer a likely date format string from a sample value.
+
+    Args:
+        sample: Example date string.
+
+    Returns:
+        A format descriptor like "YYYY-MM-DD", "MM/DD/YYYY", or "Unknown".
     """
     sample = sample.strip()
 
@@ -46,8 +61,10 @@ def infer_date_format(sample: str) -> str:
 
 # --- Main Summary Function ---
 def render_claims_file_summary() -> None:
-    """
-    Displays a detailed summary of the uploaded claims file: basic stats, nulls, date ranges, types, encoding.
+    """Render a detailed summary for the uploaded claims file.
+
+    Shows file metadata, row/column counts, date fields and ranges, data types
+    overview, and potential encoding issues.
     """
     claims_df = st.session_state.get("claims_df")
     metadata = st.session_state.get("claims_file_metadata", {})
