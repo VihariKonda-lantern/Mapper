@@ -138,6 +138,7 @@ def render_layout_summary_section() -> None:
 
         with st.expander("View Layout Table"):
             st.dataframe(layout_df[["Internal Field", "Usage", "Category"]], use_container_width=True)  # type: ignore[no-untyped-call]
-    else:
+    elif st.session_state.get("layout_upload_attempted", False):
+        # Only show info if user has attempted to upload a file
         st.info("Layout file not uploaded yet.")
 

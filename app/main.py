@@ -40,9 +40,539 @@ from anonymizer import anonymize_claims_data
 # --- Streamlit Setup ---
 st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
 
+# --- Custom CSS for Modern Summary Cards and UX Features ---
+def inject_summary_card_css():
+    """Inject CSS for modern, symmetrical summary cards and all UX enhancements."""
+    st.markdown("""
+    <style>
+    /* Modern Page Styling */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1400px;
+    }
+    
+    /* Modern Headings */
+    h1, h2, h3 {
+        color: #1f2937 !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.02em;
+    }
+    
+    h2 {
+        font-size: 1.75rem !important;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 0.5rem;
+    }
+    
+    h3 {
+        font-size: 1.5rem !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* Modern Expanders */
+    .streamlit-expanderHeader {
+        background-color: #f9fafb !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background-color: #f3f4f6 !important;
+        border-color: #d1d5db !important;
+    }
+    
+    .streamlit-expanderContent {
+        padding: 1rem !important;
+        background-color: #ffffff !important;
+        border-radius: 0 0 8px 8px !important;
+        border: 1px solid #e5e7eb !important;
+        border-top: none !important;
+    }
+    
+    /* Modern Buttons - All Blue with White Text */
+    .stButton > button,
+    button[data-baseweb="button"],
+    .stDownloadButton > button {
+        background-color: #3b82f6 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    }
+    
+    .stButton > button:hover,
+    button[data-baseweb="button"]:hover,
+    .stDownloadButton > button:hover {
+        background-color: #2563eb !important;
+        color: white !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+        transform: translateY(-1px);
+    }
+    
+    .stButton > button:disabled,
+    button[data-baseweb="button"]:disabled,
+    .stDownloadButton > button:disabled {
+        background-color: #9ca3af !important;
+        color: white !important;
+        cursor: not-allowed !important;
+    }
+    
+    /* Form Submit Buttons */
+    .stForm > div > button {
+        background-color: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    .stForm > div > button:hover {
+        background-color: #2563eb !important;
+        color: white !important;
+    }
+    
+    /* Modern Input Fields */
+    .stTextInput > div > div > input {
+        border-radius: 6px !important;
+        border: 1px solid #d1d5db !important;
+        padding: 0.5rem 0.75rem !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        outline: none !important;
+    }
+    
+    /* Modern Selectbox */
+    .stSelectbox > div > div {
+        border-radius: 6px !important;
+        border: 1px solid #d1d5db !important;
+    }
+    
+    /* Modern Progress Bar Container */
+    div[style*="position: sticky"] {
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+    }
+    
+    /* Modern Dataframes */
+    .stDataFrame {
+        border-radius: 8px !important;
+        overflow: hidden !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    }
+    
+    /* Modern Forms */
+    .stForm {
+        border: 1px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        padding: 1.5rem !important;
+        background-color: #f9fafb !important;
+    }
+    
+    /* Modern File Uploader */
+    .stFileUploader {
+        border: 2px dashed #d1d5db !important;
+        border-radius: 8px !important;
+        padding: 1.5rem !important;
+        background-color: #f9fafb !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stFileUploader:hover {
+        border-color: #3b82f6 !important;
+        background-color: #eff6ff !important;
+    }
+    
+    /* Modern Alerts/Info Boxes */
+    .stAlert {
+        border-radius: 8px !important;
+        border-left: 4px solid !important;
+        padding: 1rem !important;
+    }
+    
+    /* Style summary cards wrapper - target all columns */
+    .summary-cards-wrapper [data-testid="column"] {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e8e8e8;
+        min-height: 450px;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+    }
+    
+    /* Ensure equal heights using flexbox */
+    .summary-cards-wrapper [data-testid="column"] > div {{
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }}
+    
+    /* Style headings within cards */
+    .summary-cards-wrapper h4 {
+        margin-top: 0 !important;
+        margin-bottom: 1rem !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        color: #1a1a1a !important;
+    }
+    
+    /* Consistent spacing for text in cards */
+    .summary-cards-wrapper .stMarkdown p {
+        margin-bottom: 0.5rem !important;
+        line-height: 1.6 !important;
+        color: #1a1a1a !important;
+    }
+    
+    /* Style expanders in cards - ensure consistent spacing */
+    .summary-cards-wrapper .streamlit-expanderHeader {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        margin-top: 0.75rem !important;
+        color: #1a1a1a !important;
+    }
+    
+    .summary-cards-wrapper .streamlit-expander {{
+        margin-top: 0.5rem !important;
+    }}
+    
+    /* Add bottom margin to last expander to balance spacing */
+    .summary-cards-wrapper [data-testid="column"] .streamlit-expander:last-child {{
+        margin-bottom: 0.5rem !important;
+    }}
+    
+    /* Style info boxes */
+    .summary-cards-wrapper .stAlert {{
+        margin-top: 1rem !important;
+    }}
+    
+    /* Compact spacing for file description line */
+    .summary-cards-wrapper [data-testid="column"] .stMarkdown:first-of-type p {{
+        margin-bottom: 0.5rem !important;
+    }}
+    
+    /* Reduce spacing between title and first content */
+    .summary-cards-wrapper h4 + .stMarkdown {{
+        margin-top: -0.5rem !important;
+    }}
+    
+    /* Tooltip Styles */
+    .tooltip-wrapper {{
+        position: relative;
+        display: inline-block;
+        cursor: help;
+    }}
+    
+    .tooltip-text {{
+        visibility: hidden;
+        width: 200px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 1000;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -100px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 12px;
+    }}
+    
+    .tooltip-wrapper:hover .tooltip-text {{
+        visibility: visible;
+        opacity: 1;
+    }}
+    
+    /* Visual Indicators */
+    .status-indicator {{
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulse 2s infinite;
+    }}
+    
+    .status-mapped {{ background-color: #4caf50; }}
+    .status-unmapped {{ background-color: #f44336; }}
+    .status-suggested {{ background-color: #ff9800; }}
+    
+    @keyframes pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+    }}
+    
+    /* Progress Indicators */
+    .progress-container {{
+        position: relative;
+        width: 100%;
+        height: 20px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+    }}
+    
+    .progress-bar {{
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }}
+    
+    /* Drag and Drop Styles */
+    .drag-drop-zone {{
+        border: 2px dashed #4caf50;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        background-color: rgba(76, 175, 80, 0.05);
+        transition: all 0.3s ease;
+    }}
+    
+    .drag-drop-zone.dragover {{
+        border-color: #2e7d32;
+        background-color: rgba(76, 175, 80, 0.1);
+    }}
+    
+    /* Search/Filter Styles */
+    .search-box {
+        padding: 10px;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        width: 100%;
+        margin-bottom: 10px;
+        background-color: white;
+        color: #1a1a1a;
+    }
+    
+    /* Keyboard Shortcut Hints */
+    .shortcut-hint {{
+        font-size: 11px;
+        color: #888;
+        font-style: italic;
+        margin-left: 8px;
+    }}
+    
+    /* Auto-save Indicator */
+    .autosave-indicator {{
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #4caf50;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }}
+    
+    .autosave-indicator.show {{
+        opacity: 1;
+    }}
+    
+    /* Modern Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        background-color: #f9fafb;
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: white;
+        color: #3b82f6;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Modern Divider */
+    hr {
+        border: none;
+        border-top: 1px solid #e5e7eb;
+        margin: 2rem 0;
+    }
+    
+    /* Smooth Transitions */
+    * {
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    /* Modern Code Blocks */
+    .stCodeBlock {
+        border-radius: 6px !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    
+    /* Spacing Improvements */
+    .element-container {
+        margin-bottom: 1rem;
+    }
+    
+    /* Modern Container for Tools */
+    .streamlit-expanderHeader[aria-expanded="true"] {
+        background-color: #eff6ff !important;
+        border-color: #3b82f6 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- Helpers ---
 def _notify(msg: str) -> None:
     st.toast(msg)
+
+# --- UX Feature Helpers ---
+def inject_ux_javascript():
+    """Inject JavaScript for keyboard shortcuts, drag-drop, and other interactive features."""
+    st.markdown("""
+    <script>
+    (function() {
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Tab navigation (Ctrl/Cmd + Arrow keys)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
+                e.preventDefault();
+                const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+                const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+                if (activeTab && tabs.length > 0) {
+                    const currentIndex = Array.from(tabs).indexOf(activeTab);
+                    if (currentIndex < tabs.length - 1) {
+                        tabs[currentIndex + 1].click();
+                    }
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+                const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+                if (activeTab && tabs.length > 0) {
+                    const currentIndex = Array.from(tabs).indexOf(activeTab);
+                    if (currentIndex > 0) {
+                        tabs[currentIndex - 1].click();
+                    }
+                }
+            }
+            // Search (Ctrl/Cmd + F)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                const searchInput = document.querySelector('input[placeholder*="Search"]');
+                if (searchInput) searchInput.focus();
+            }
+        });
+        
+        // Drag and Drop Enhancement
+        setTimeout(function() {
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                const parent = input.closest('.stFileUploader');
+                if (parent) {
+                    parent.addEventListener('dragover', function(e) {
+                        e.preventDefault();
+                        parent.style.border = '2px dashed #4caf50';
+                        parent.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                    });
+                    parent.addEventListener('dragleave', function(e) {
+                        e.preventDefault();
+                        parent.style.border = '';
+                        parent.style.backgroundColor = '';
+                    });
+                    parent.addEventListener('drop', function(e) {
+                        e.preventDefault();
+                        parent.style.border = '';
+                        parent.style.backgroundColor = '';
+                    });
+                }
+            });
+        }, 500);
+    })();
+    </script>
+    """, unsafe_allow_html=True)
+
+def render_tooltip(text: str, help_text: str) -> str:
+    """Generate HTML for tooltip."""
+    return f'<span class="tooltip-wrapper" title="{help_text}">{text}</span>'
+
+def render_status_indicator(status: str) -> str:
+    """Generate HTML for status indicator."""
+    status_class = {
+        "mapped": "status-mapped",
+        "unmapped": "status-unmapped",
+        "suggested": "status-suggested"
+    }.get(status, "status-unmapped")
+    return f'<span class="status-indicator {status_class}"></span>'
+
+def render_progress_bar(percent: int, label: str = "") -> str:
+    """Generate HTML for animated progress bar."""
+    return f'<div class="progress-container" style="margin-top: 0.75rem; margin-bottom: 0.5rem; background-color: rgba(255,255,255,0.2); border-radius: 4px; height: 8px; overflow: hidden;"><div style="width: {percent}%; background: transparent !important; height: 100%; border-radius: 4px; transition: width 0.5s ease;"></div></div><small style="color: rgba(255,255,255,0.9); font-size: 0.9rem; display: block; margin-top: 0.5rem;">{label}</small>'
+
+def save_mapping_template(final_mapping: Dict[str, Dict[str, Any]], filename: str = "mapping_template.json") -> str:
+    """Export mapping as JSON template."""
+    import json
+    return json.dumps(final_mapping, indent=2)
+
+def load_mapping_template(template_json: str) -> Dict[str, Dict[str, Any]]:
+    """Load mapping from JSON template."""
+    import json
+    return json.loads(template_json)
+
+def initialize_undo_redo():
+    """Initialize undo/redo history for mappings."""
+    if "mapping_history" not in st.session_state:
+        st.session_state.mapping_history = []
+    if "history_index" not in st.session_state:
+        st.session_state.history_index = -1
+
+def save_to_history(final_mapping: Dict[str, Dict[str, Any]]):
+    """Save current mapping state to history."""
+    initialize_undo_redo()
+    # Remove any future history if we're not at the end
+    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
+        st.session_state.mapping_history = st.session_state.mapping_history[:st.session_state.history_index + 1]
+    # Add new state
+    import copy
+    st.session_state.mapping_history.append(copy.deepcopy(final_mapping))
+    st.session_state.history_index = len(st.session_state.mapping_history) - 1
+    # Limit history size
+    if len(st.session_state.mapping_history) > 50:
+        st.session_state.mapping_history.pop(0)
+        st.session_state.history_index -= 1
+
+def undo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
+    """Undo last mapping change."""
+    initialize_undo_redo()
+    if st.session_state.history_index > 0:
+        st.session_state.history_index -= 1
+        return st.session_state.mapping_history[st.session_state.history_index]
+    return None
+
+def redo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
+    """Redo last undone mapping change."""
+    initialize_undo_redo()
+    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
+        st.session_state.history_index += 1
+        return st.session_state.mapping_history[st.session_state.history_index]
+    return None
 
 # --- Utility Functions ---
 def custom_file_uploader(label_text: str, key: str, types: List[str]) -> Optional[Any]:
@@ -79,24 +609,37 @@ def load_lookups_cached(file: Any):
     return load_msk_bar_lookups(file)
 
 def render_lookup_summary_section():
-    """Preview summary for MSK and BAR diagnosis lookup codes.
+    """Preview summary for diagnosis lookup codes.
 
-    Reads code sets from session state and displays small samples and counts.
+    Dynamically reads all code sets from session state and displays counts.
+    Automatically detects all code categories (MSK, BAR, and any future categories).
     """
-    if "msk_codes" in st.session_state and "bar_codes" in st.session_state:
-        msk_codes = st.session_state.msk_codes
-        bar_codes = st.session_state.bar_codes
-
+    # Dynamically find all code categories in session_state (anything ending with "_codes")
+    code_categories = {}
+    for key in st.session_state.keys():
+        if key.endswith("_codes") and isinstance(st.session_state[key], (set, list)):
+            category_name = key.replace("_codes", "").upper()
+            code_categories[category_name] = st.session_state[key]
+    
+    if code_categories:
         st.markdown("#### Diagnosis Lookup Summary")
-        st.write(f"**MSK Codes Loaded:** {len(msk_codes)}")  # type: ignore[no-untyped-call]
-        st.write(f"**BAR Codes Loaded:** {len(bar_codes)}")  # type: ignore[no-untyped-call]
+        
+        # Display total code categories count
+        total_categories = len(code_categories)
+        st.write(f"**Total Code Categories:** {total_categories}")  # type: ignore[no-untyped-call]
+        
+        # Display counts for each category dynamically
+        for category_name, codes in sorted(code_categories.items()):
+            st.write(f"**{category_name} Codes Loaded:** {len(codes)}")  # type: ignore[no-untyped-call]
 
-        with st.expander("View Sample MSK Codes"):
-            st.write(list(msk_codes)[:10])  # type: ignore[no-untyped-call]
-        with st.expander("View Sample BAR Codes"):
-            st.write(list(bar_codes)[:10])  # type: ignore[no-untyped-call]
-    else:
-        st.info("Upload a valid diagnosis lookup file to preview MSK/BAR codes.")
+        # Create expanders for each category dynamically
+        for category_name, codes in sorted(code_categories.items()):
+            with st.expander(f"View Sample {category_name} Codes"):
+                code_list = list(codes) if isinstance(codes, set) else codes
+                st.write(code_list[:10])  # type: ignore[no-untyped-call]
+    elif st.session_state.get("lookup_upload_attempted", False):
+        # Only show info if user has attempted to upload a file
+        st.info("Upload a valid diagnosis lookup file to preview codes.")
 
 @st.cache_data(show_spinner=False)
 def generate_mapping_table(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]], claims_df: Any) -> Any:
@@ -163,30 +706,39 @@ def render_upload_and_claims_preview():
     # --- Top Row (Layout + Lookup) ---
     top1, top2 = st.columns(2)
     with top1:
-        layout_file = st.file_uploader("Upload Layout File (.xlsx)", type=["xlsx"], key="layout_file")
+        layout_file = st.file_uploader("📄 Upload Layout File (.xlsx)", type=["xlsx"], key="layout_file", help="Excel file containing internal field definitions and requirements. Drag and drop or click to upload.")
         if layout_file:
+            st.session_state.layout_upload_attempted = True
             layout_df = load_layout_cached(layout_file)
             st.session_state.layout_df = layout_df
             st.session_state.layout_file_obj = layout_file
+        elif layout_file is None and "layout_upload_attempted" not in st.session_state:
+            # Track that user has interacted with uploader (even if no file selected)
+            pass
 
     with top2:
-        lookup_file = st.file_uploader("Upload Diagnosis Lookup (.xlsx)", type=["xlsx"], key="lookup_file")
+        lookup_file = st.file_uploader("📋 Upload Diagnosis Lookup (.xlsx)", type=["xlsx"], key="lookup_file", help="Excel file containing MSK and BAR diagnosis codes. Drag and drop or click to upload.")
         if lookup_file:
+            st.session_state.lookup_upload_attempted = True
             msk_codes, bar_codes = load_lookups_cached(lookup_file)
             st.session_state.msk_codes = msk_codes
             st.session_state.bar_codes = bar_codes
             st.session_state.lookup_file_obj = lookup_file
+        elif lookup_file is None and "lookup_upload_attempted" not in st.session_state:
+            # Track that user has interacted with uploader (even if no file selected)
+            pass
 
     # --- Bottom Row (Header + Claims File) ---
     bottom1, bottom2 = st.columns(2)
     with bottom1:
-        header_file = st.file_uploader("Upload Header File (optional)", type=["csv", "txt", "xlsx", "xls"], key="external_header_upload")
+        header_file = st.file_uploader("📝 Upload Header File (optional)", type=["csv", "txt", "xlsx", "xls"], key="external_header_upload", help="Optional: External header file if claims file has no headers. Drag and drop or click to upload.")
         st.session_state.header_file_obj = header_file if header_file else None
 
     with bottom2:
-        claims_file = st.file_uploader("Upload Claims File (.csv, .txt, .tsv, .xlsx)", 
-                                       type=["csv", "txt", "tsv", "xlsx", "xls"], key="claims_file")
+        claims_file = st.file_uploader("📊 Upload Claims File (.csv, .txt, .tsv, .xlsx)", 
+                                       type=["csv", "txt", "tsv", "xlsx", "xls"], key="claims_file", help="Main claims data file to be mapped and validated. Drag and drop or click to upload.")
         if claims_file:
+            st.session_state.claims_upload_attempted = True
             # Reset session if file changed
             if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
                 st.session_state.pop("claims_df", None)
@@ -194,6 +746,9 @@ def render_upload_and_claims_preview():
                 st.session_state.pop("auto_mapping", None)
                 st.session_state.pop("auto_mapped_fields", None)
             st.session_state.claims_file_obj = claims_file
+        elif claims_file is None and "claims_upload_attempted" not in st.session_state:
+            # Track that user has interacted with uploader (even if no file selected)
+            pass
 
     # --- Proceed Button ---
     if st.button("➡️ Proceed with File Loading"):
@@ -281,12 +836,31 @@ def render_field_mapping_tab():
         st.info("Please upload both layout and claims files to begin mapping.")
         return
 
+    # Initialize undo/redo
+    initialize_undo_redo()
+
     # Initialize widget counter for unique keys (reset each time function is called)
     widget_counter = 0
 
-    # --- Claims File Preview ---
+    # --- Claims File Preview with Real-time Updates ---
     st.markdown("#### Claims File Preview (First 5 Rows)")
-    st.dataframe(claims_df.head(), use_container_width=True)  # type: ignore[no-untyped-call]
+    preview_df = claims_df.head()
+    
+    # Apply search filter if active
+    search_query = st.session_state.get("field_search", "")
+    if search_query and search_query.strip():
+        preview_df = preview_df.filter(regex=search_query, axis=1)  # type: ignore[no-untyped-call]
+    
+    st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
+    
+    # Real-time preview of mapped data
+    if st.session_state.get("final_mapping"):
+        with st.expander("🔍 Real-time Mapping Preview", expanded=False):
+            try:
+                preview_mapped = transform_claims_data(claims_df.head(10), st.session_state.final_mapping)
+                st.dataframe(preview_mapped, use_container_width=True)  # type: ignore[no-untyped-call]
+            except Exception as e:
+                st.warning(f"Preview unavailable: {e}")
 
     required_fields = get_required_fields(layout_df)
 
@@ -332,11 +906,21 @@ def render_field_mapping_tab():
     st.markdown("### Mandatory Fields Mapping")
             
     # --- Required Fields Mapping ---
+    # Get search query from session state
+    search_query = st.session_state.get("field_search", "")
+    
     for group in field_groups:
         group_fields = required_fields[required_fields["Category"] == group]
         
         # Deduplicate fields within the group - keep first occurrence of each field
         group_fields = group_fields.drop_duplicates(subset=["Internal Field"], keep="first")  # type: ignore[no-untyped-call]
+
+        # Apply search filter
+        if search_query and search_query.strip():
+            search_lower = search_query.lower()
+            group_fields = group_fields[
+                group_fields["Internal Field"].str.lower().str.contains(search_lower, na=False)  # type: ignore[no-untyped-call]
+            ]
 
         group_field_names = group_fields["Internal Field"].tolist()
         mapped_count = sum(
@@ -344,11 +928,20 @@ def render_field_mapping_tab():
             if f in final_mapping and final_mapping[f].get("value")
         )
         total_in_group = len(group_field_names)
+        
         group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
 
         with st.expander(group_label, expanded=False):
             for row_idx, (original_idx, row) in enumerate(group_fields.iterrows()):
                 field_name = row["Internal Field"]
+                
+                # Show AI suggestion if available
+                has_suggestion = field_name in ai_suggestions
+                if has_suggestion:
+                    suggestion_score = ai_suggestions[field_name].get("score", 0)
+                    st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"**{field_name}**")
                 raw_columns = claims_df.columns.tolist()
 
                 # --- AI suggestion if available ---
@@ -397,18 +990,22 @@ def render_field_mapping_tab():
                 else:
                     select_idx = col_options.index(default_label) + 1 if (default_label is not None and default_label in col_options) else 0
                     selected = st.selectbox(
-                        f"{field_name}",
+                        "Select column:",
                         options=[""] + col_options,
                         index=select_idx,
-                        key=unique_key
+                        key=unique_key,
+                        help=f"Map {field_name} to a claims file column"
                     )
                     selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
 
                 if selected_clean:
-                        final_mapping[field_name] = {
-                            "mode": "manual" if selected_clean != suggested_column else "auto",
-                            "value": selected_clean
-                        }
+                    old_mapping = final_mapping.get(field_name)
+                    new_mapping = {
+                        "mode": "manual" if selected_clean != suggested_column else "auto",
+                        "value": selected_clean
+                    }
+                    final_mapping[field_name] = new_mapping
+                    # Don't save to history here - wait for form submission
 
     # --- Show Unmapped Required Fields ---
     unmapped = [
@@ -632,14 +1229,27 @@ def render_claims_file_deep_dive():
     )
 
 # --- App Layout ---
+# Inject UX JavaScript and CSS
+inject_ux_javascript()
 render_title()
 tab1, tab2, tab3, tab4 = st.tabs(["Setup", "Field Mapping", "Preview & Validate", "Downloads Tab"])
 
 with tab1:
     render_upload_and_claims_preview()
-    render_layout_summary_section()
-    render_lookup_summary_section()
-    render_claims_file_summary()
+    
+    # Inject CSS for modern cards
+    inject_summary_card_css()
+    
+    # All three summaries side by side in modern cards
+    st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3, gap="large")
+    with col1:
+        render_layout_summary_section()
+    with col2:
+        render_lookup_summary_section()
+    with col3:
+        render_claims_file_summary()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
     layout_df = st.session_state.get("layout_df")
@@ -653,21 +1263,93 @@ with tab2:
     # --- Sticky Mapping Progress Bar ---
     # Guard layout_df and string operations
     required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
+    total_required = len(required_fields) if required_fields else 0
     mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
-    percent_complete = int((len(mapped_required) / len(required_fields)) * 100) if required_fields else 0
+    mapped_count = len(mapped_required)
+    percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
 
+    progress_html = render_progress_bar(percent_complete, f"{mapped_count} / {total_required} fields mapped ({percent_complete}%)")
     st.markdown(
-        f"""
-        <div style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 999; padding: 10px 16px; border-bottom: 1px solid #ddd;">
-            <b>📌 Required Field Mapping Progress:</b>
-            <div style="height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 4px;">
-                <div style="width: {percent_complete}%; background: #4caf50; height: 100%; border-radius: 4px;"></div>
-            </div>
-            <small>{len(mapped_required)} / {len(required_fields)} fields mapped ({percent_complete}%)</small>
-        </div>
-        """,
+        f'<div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; z-index: 999; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><b style="font-size: 1.1rem;">📌 Required Field Mapping Progress</b>{progress_html}</div>',
         unsafe_allow_html=True
     )
+
+    # --- UX Tools (Collapsible Container) ---
+    with st.expander("⚙️ Tools & Actions", expanded=False):
+        # Search field at the top of the container
+        search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**History**")
+            # Initialize undo/redo
+            initialize_undo_redo()
+            final_mapping = st.session_state.get("final_mapping", {})
+            
+            # Initialize history with current state if empty
+            if len(st.session_state.mapping_history) == 0:
+                if final_mapping:
+                    save_to_history(final_mapping)
+                else:
+                    # Save empty state as initial state
+                    save_to_history({})
+            
+            # Check if undo/redo is possible
+            can_undo = st.session_state.history_index > 0
+            can_redo = st.session_state.history_index < len(st.session_state.mapping_history) - 1
+            
+            if st.button("↶ Undo", key="undo_btn", use_container_width=True, disabled=not can_undo, help="Undo last mapping change (Ctrl+Z)"):
+                undone = undo_mapping()
+                if undone is not None:
+                    import copy
+                    st.session_state.final_mapping = copy.deepcopy(undone)
+                    # Clear auto_mapping to force refresh
+                    if "auto_mapping" in st.session_state:
+                        del st.session_state.auto_mapping
+                    st.rerun()
+            
+            if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
+                redone = redo_mapping()
+                if redone is not None:
+                    import copy
+                    st.session_state.final_mapping = copy.deepcopy(redone)
+                    # Clear auto_mapping to force refresh
+                    if "auto_mapping" in st.session_state:
+                        del st.session_state.auto_mapping
+                    st.rerun()
+        
+        with col2:
+            st.markdown("**Bulk Actions**")
+            ai_suggestions = st.session_state.get("auto_mapping", {})
+            final_mapping = st.session_state.get("final_mapping", {})
+            if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
+                accepted = 0
+                for field, info in ai_suggestions.items():
+                    score = info.get("score", 0)
+                    if score >= 80 and (field not in final_mapping or not final_mapping[field].get("value")):
+                        final_mapping[field] = {"mode": "auto", "value": info["value"]}
+                        accepted += 1
+                if accepted > 0:
+                    st.session_state.final_mapping = final_mapping
+                    save_to_history(final_mapping)
+                    st.success(f"Accepted {accepted} AI suggestions!")
+                    st.rerun()
+            if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
+                if st.checkbox("Confirm: Clear all mappings?", key="confirm_clear"):
+                    st.session_state.final_mapping = {}
+                    save_to_history({})
+                    st.success("All mappings cleared!")
+                    st.rerun()
+        
+        with col3:
+            st.markdown("**Utilities**")
+            if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
+                import json
+                mapping_str = json.dumps(final_mapping, indent=2)
+                st.code(mapping_str, language="json")
+                st.info("Right-click and copy the JSON above")
 
     # --- Main Mapping Section ---
     st.markdown("## Manual Field Mapping")
@@ -677,6 +1359,10 @@ with tab2:
         apply_mappings = st.form_submit_button("Apply Mappings")
         if apply_mappings:
             st.session_state["mappings_ready"] = True
+            # Save to history when form is submitted
+            final_mapping = st.session_state.get("final_mapping", {})
+            if final_mapping:
+                save_to_history(final_mapping)
 
     st.divider()
 

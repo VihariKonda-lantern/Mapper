@@ -63,80 +63,93 @@ def infer_date_format(sample: str) -> str:
 def render_claims_file_summary() -> None:
     """Render a detailed summary for the uploaded claims file.
 
-    Shows file metadata, row/column counts, date fields and ranges, data types
-    overview, and potential encoding issues.
+    Shows file metadata, row/column counts, date fields, and data types
+    in a compact card format matching other summaries.
     """
     claims_df = st.session_state.get("claims_df")
     metadata = st.session_state.get("claims_file_metadata", {})
     claims_file = st.session_state.get("claims_file_obj")
 
     if claims_df is not None:
-        st.subheader("🔎 Claims File Summary")
+        st.markdown("#### Claims File Summary")
 
-        if claims_file:
-            st.write(f"**File Name:** {claims_file.name}")  # type: ignore[no-untyped-call]
-        
-        if metadata:
-            st.write(f"**Format Detected:** {metadata.get('format', 'Unknown')}")  # type: ignore[no-untyped-call]
-            if metadata.get("sep"):
-                st.write(f"**Delimiter:** `{metadata.get('sep')}`")  # type: ignore[no-untyped-call]
-            st.write(f"**Header Present:** {'Yes' if metadata.get('header') else 'No'}")  # type: ignore[no-untyped-call]
-
-        st.write(f"**Total Rows:** {len(claims_df)}")  # type: ignore[no-untyped-call]
-        st.write(f"**Total Columns:** {len(claims_df.columns)}")  # type: ignore[no-untyped-call]
-
-        st.divider()
-
-        # --- Date Fields Summary ---
+        # File info in intelligent single line (compact, outside collapsible)
         date_cols = [col for col in claims_df.columns if "date" in col.lower()]
-        if date_cols:
-            st.markdown("**Date Fields Detected**")
+        type_counts = claims_df.dtypes.value_counts()
+        type_summary_text = ", ".join([f"{str(dtype)}: {count}" for dtype, count in type_counts.items()])
+        
+        # Build intelligent file description in consistent format (compact spacing)
+        if metadata:
+            format_type = metadata.get('format', 'unknown format')
+            
+            # Format delimiter for display
+            delim_display = ""
+            if metadata.get("sep"):
+                delim = metadata.get('sep')
+                if delim == ',':
+                    delim_display = ','
+                elif delim == '\t':
+                    delim_display = 'tab'
+                elif delim == '|':
+                    delim_display = '|'
+                elif delim == ';':
+                    delim_display = ';'
+                else:
+                    delim_display = delim
+            
+            # Build description: "file is a csv with , delimiter, file has headers in it."
+            header_text = "file has headers in it" if metadata.get('header') else "file has no headers"
+            
+            if delim_display:
+                file_description = f"file is a **{format_type}** with **{delim_display}** delimiter, {header_text}."
+            else:
+                file_description = f"file is a **{format_type}**, {header_text}."
+            
+            st.markdown(f"<p style='margin-bottom: 0.25rem;'>{file_description}</p>", unsafe_allow_html=True)
+        
+        # Summary metrics in collapsible section (matching structure of other cards)
+        with st.expander("📄 File Information", expanded=True):
+            st.write(f"**Total Rows:** {len(claims_df):,}")  # type: ignore[no-untyped-call]
+            st.write(f"**Total Columns:** {len(claims_df.columns)}")  # type: ignore[no-untyped-call]
 
-            date_format_rows: List[Dict[str, Any]] = []
+            if date_cols:
+                st.write(f"**Date Fields:** {len(date_cols)}")  # type: ignore[no-untyped-call]
+            st.write(f"**Data Types:** {type_summary_text}")  # type: ignore[no-untyped-call]
+        
+        # Two expandable sections (matching other cards)
+        with st.expander("Date Fields Details"):
+            if date_cols:
+                date_format_rows: List[Dict[str, Any]] = []
+                for col in date_cols:
+                    sample_value = claims_df[col].dropna().astype(str).iloc[0] if not claims_df[col].dropna().empty else ""  # type: ignore[no-untyped-call]
+                    detected_format = infer_date_format(sample_value) if sample_value else "Unknown"
+                    date_format_rows.append({
+                        "Column Name": col,
+                        "Example Value": sample_value,
+                        "Detected Format": detected_format
+                    })
+                if date_format_rows:
+                    date_formats_df = pd.DataFrame(date_format_rows)
+                    st.dataframe(date_formats_df, use_container_width=True)  # type: ignore[no-untyped-call]
+            else:
+                st.write("No date fields detected.")  # type: ignore[no-untyped-call]
 
-            for col in date_cols:
-                sample_value = claims_df[col].dropna().astype(str).iloc[0] if not claims_df[col].dropna().empty else ""  # type: ignore[no-untyped-call]
-                detected_format = infer_date_format(sample_value) if sample_value else "Unknown"
+        with st.expander("Text Columns & Data Types"):
+            object_cols = claims_df.select_dtypes(include="object").columns.tolist()
+            if object_cols:
+                st.write(f"**Text Columns ({len(object_cols)}):**")  # type: ignore[no-untyped-call]
+                st.write(", ".join(object_cols[:20]))  # type: ignore[no-untyped-call]
+                if len(object_cols) > 20:
+                    st.write(f"... and {len(object_cols) - 20} more")  # type: ignore[no-untyped-call]
+            else:
+                st.write("No text columns found.")  # type: ignore[no-untyped-call]
+            
+            st.markdown("---")
+            type_summary = claims_df.dtypes.value_counts().to_frame(name="Count")
+            st.dataframe(type_summary, use_container_width=True)  # type: ignore[no-untyped-call]
 
-                date_format_rows.append({
-                    "Column Name": col,
-                    "Example Value": sample_value,
-                    "Detected Format": detected_format
-                })
-
-            date_formats_df = pd.DataFrame(date_format_rows)
-            st.dataframe(date_formats_df, use_container_width=True)  # type: ignore[no-untyped-call]
-
-        st.divider()
-
-        # --- Begin_Date Range ---
-        if "Begin_Date" in claims_df.columns:
-            try:
-                begin_dates = pd.to_datetime(claims_df["Begin_Date"], errors="coerce")  # type: ignore[no-untyped-call]
-                st.write(f"**Begin_Date Range:** {begin_dates.min().date()} ➔ {begin_dates.max().date()}")  # type: ignore[no-untyped-call]
-            except Exception:
-                st.warning("⚠️ Could not parse Begin_Date column properly.")
-
-        st.divider()
-
-        # --- Unusual Data Types ---
-        st.markdown("**Data Types Overview**")
-        type_summary = claims_df.dtypes.value_counts().to_frame(name="Count")
-        st.dataframe(type_summary, use_container_width=True)  # type: ignore[no-untyped-call]
-
-        object_cols = claims_df.select_dtypes(include="object").columns.tolist()
-        if object_cols:
-            st.info(f"🔎 {len(object_cols)} columns are text (object type): {', '.join(object_cols[:10])}")
-
-        st.divider()
-
-        # --- Encoding Issues (Optional) ---
-        try:
-            detect_encoding_issues(claims_df)
-        except Exception as e:
-            st.warning(f"Encoding check skipped: {e}")
-
-    else:
+    elif st.session_state.get("claims_upload_attempted", False):
+        # Only show info if user has attempted to upload a file
         st.info("Upload claims file to view summary.")
 
 
