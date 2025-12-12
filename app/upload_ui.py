@@ -20,6 +20,38 @@ from file_handler import (
 )
 from upload_handlers import capture_claims_file_metadata
 
+# Import improvement utilities
+try:
+    from improvements_utils import (
+        validate_file_upload,
+        get_user_friendly_error,
+        show_progress_with_callback,
+        render_empty_state,
+        compress_dataframe,
+        MAX_FILE_SIZE_MB,
+    )
+    from ui_improvements import (
+        render_file_preview,
+        show_toast,
+    )
+except ImportError:
+    # Fallback if modules not available
+    def validate_file_upload(file_obj: Any, max_size_mb: int = 500) -> tuple[bool, Any]:
+        return True, None
+    def get_user_friendly_error(error: Exception) -> str:
+        return str(error)
+    def show_progress_with_callback(total: int, callback: Any, *args: Any, **kwargs: Any) -> Any:
+        return callback(*args, **kwargs)
+    def render_empty_state(*args: Any, **kwargs: Any) -> None:
+        pass
+    def compress_dataframe(df: Any) -> Any:
+        return df
+    def render_file_preview(*args: Any, **kwargs: Any) -> None:
+        pass
+    def show_toast(message: str, icon: str = "✅") -> None:
+        st.success(message)
+    MAX_FILE_SIZE_MB = 500
+
 
 def render_lookup_summary_section():
     """Preview summary for diagnosis lookup codes.
@@ -50,7 +82,7 @@ def render_lookup_summary_section():
 
         # Create expanders for each category dynamically
         for category_name, codes in sorted(code_categories.items()):
-            with st.expander(f"View Sample {category_name} Codes"):
+            with st.expander(f"View Sample {category_name} Codes", expanded=False):
                 code_list = list(codes) if isinstance(codes, set) else codes
                 st.write(code_list[:10])  # type: ignore[no-untyped-call]
     elif st.session_state.get("lookup_upload_attempted", False):
@@ -98,17 +130,29 @@ def render_upload_and_claims_preview():
     with col1:
         layout_file = st.file_uploader("📄 Upload CDM Layout File", type=["xlsx"], key="layout_file", help="Excel file (.xlsx) containing internal field definitions and requirements. Drag and drop or click to upload.")
         if layout_file:
-            st.session_state.layout_upload_attempted = True
-            layout_df = load_layout_cached(layout_file)
-            st.session_state.layout_df = layout_df
-            # Track upload order if this is a new file
-            if "layout_file_obj" not in st.session_state or st.session_state.layout_file_obj.name != layout_file.name:
-                if "upload_order" not in st.session_state:
-                    st.session_state.upload_order = []
-                upload_order_list = cast(List[str], st.session_state.upload_order)
-                if "layout" not in upload_order_list:
-                    upload_order_list.append("layout")
-            st.session_state.layout_file_obj = layout_file
+            # Validate file
+            is_valid, error_msg = validate_file_upload(layout_file, MAX_FILE_SIZE_MB)
+            if not is_valid:
+                st.error(error_msg)
+            else:
+                try:
+                    st.session_state.layout_upload_attempted = True
+                    with st.spinner("Loading layout file..."):
+                        layout_df = load_layout_cached(layout_file)
+                        st.session_state.layout_df = layout_df
+                    st.success("✅ **Layout file loaded successfully!**")
+                    # Track upload order if this is a new file
+                    if "layout_file_obj" not in st.session_state or st.session_state.layout_file_obj.name != layout_file.name:
+                        if "upload_order" not in st.session_state:
+                            st.session_state.upload_order = []
+                        upload_order_list = cast(List[str], st.session_state.upload_order)
+                        if "layout" not in upload_order_list:
+                            upload_order_list.append("layout")
+                    st.session_state.layout_file_obj = layout_file
+                except Exception as e:
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error loading layout file: {error_msg}")
+                    st.session_state.layout_df = None
         elif layout_file is None and "layout_upload_attempted" not in st.session_state:
             # Track that user has interacted with uploader (even if no file selected)
             pass
@@ -123,18 +167,31 @@ def render_upload_and_claims_preview():
     with col2:
         lookup_file = st.file_uploader("📋 Upload Lookup File", type=["xlsx"], key="lookup_file", help="Excel file (.xlsx) containing MSK and BAR diagnosis codes. Drag and drop or click to upload.")
         if lookup_file:
-            st.session_state.lookup_upload_attempted = True
-            msk_codes, bar_codes = load_lookups_cached(lookup_file)
-            st.session_state.msk_codes = msk_codes
-            st.session_state.bar_codes = bar_codes
-            # Track upload order if this is a new file
-            if "lookup_file_obj" not in st.session_state or st.session_state.lookup_file_obj.name != lookup_file.name:
-                if "upload_order" not in st.session_state:
-                    st.session_state.upload_order = []
-                upload_order_list = cast(List[str], st.session_state.upload_order)
-                if "lookup" not in upload_order_list:
-                    upload_order_list.append("lookup")
-            st.session_state.lookup_file_obj = lookup_file
+            # Validate file
+            is_valid, error_msg = validate_file_upload(lookup_file, MAX_FILE_SIZE_MB)
+            if not is_valid:
+                st.error(error_msg)
+            else:
+                try:
+                    st.session_state.lookup_upload_attempted = True
+                    with st.spinner("Loading lookup file..."):
+                        msk_codes, bar_codes = load_lookups_cached(lookup_file)
+                        st.session_state.msk_codes = msk_codes
+                        st.session_state.bar_codes = bar_codes
+                    st.success("✅ **Lookup file loaded successfully!**")
+                    # Track upload order if this is a new file
+                    if "lookup_file_obj" not in st.session_state or st.session_state.lookup_file_obj.name != lookup_file.name:
+                        if "upload_order" not in st.session_state:
+                            st.session_state.upload_order = []
+                        upload_order_list = cast(List[str], st.session_state.upload_order)
+                        if "lookup" not in upload_order_list:
+                            upload_order_list.append("lookup")
+                    st.session_state.lookup_file_obj = lookup_file
+                except Exception as e:
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error loading lookup file: {error_msg}")
+                    st.session_state.msk_codes = set()
+                    st.session_state.bar_codes = set()
         elif lookup_file is None and "lookup_upload_attempted" not in st.session_state:
             # Track that user has interacted with uploader (even if no file selected)
             pass
@@ -162,6 +219,46 @@ def render_upload_and_claims_preview():
                                               type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
                                               key="claims_file_upload",
                                               help="Main claims data file (.csv, .txt, .tsv, .xlsx, .xls, .json, .parquet) to be mapped and validated. Drag and drop or click to upload.")
+                # Handle claims file upload (inside column context)
+                if claims_file:
+                    # Validate file
+                    is_valid, error_msg = validate_file_upload(claims_file, MAX_FILE_SIZE_MB)
+                    if not is_valid:
+                        st.error(error_msg)
+                    else:
+                        st.session_state.claims_upload_attempted = True
+                        # Reset session if file changed
+                        if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
+                            st.session_state.pop("claims_df", None)
+                            st.session_state.pop("final_mapping", None)
+                            st.session_state.pop("auto_mapping", None)
+                            st.session_state.pop("auto_mapped_fields", None)
+                        # Track upload order if this is a new file
+                        if "claims_file_obj" not in st.session_state or st.session_state.claims_file_obj.name != claims_file.name:
+                            if "upload_order" not in st.session_state:
+                                st.session_state.upload_order = []
+                            upload_order_list = cast(List[str], st.session_state.upload_order)
+                            if "claims" not in upload_order_list:
+                                upload_order_list.append("claims")
+                        st.session_state.claims_file_obj = claims_file
+                        # Show success message - check if file is already loaded or just uploaded
+                        claims_df_loaded = st.session_state.get("claims_df")
+                        last_loaded = st.session_state.get("last_loaded_file")
+                        if claims_df_loaded is not None and last_loaded == claims_file.name:
+                            # File is already loaded
+                            st.success("✅ **Claims file loaded successfully!**")
+                        else:
+                            # File just uploaded, processing will happen
+                            st.success("✅ **Claims file uploaded successfully!** Processing...")
+                elif claims_file is None and "claims_upload_attempted" not in st.session_state:
+                    # Track that user has interacted with uploader (even if no file selected)
+                    pass
+                elif claims_file is None and "claims" in st.session_state.get("upload_order", []):
+                    # File was removed, remove from order
+                    if "upload_order" in st.session_state:
+                        upload_order_list = cast(List[str], st.session_state.upload_order)
+                        if "claims" in upload_order_list:
+                            upload_order_list.remove("claims")
         else:
             claims_file = None
     else:
@@ -171,33 +268,46 @@ def render_upload_and_claims_preview():
                                           type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
                                           key="claims_file_upload",
                                           help="Main claims data file (.csv, .txt, .tsv, .xlsx, .xls, .json, .parquet) to be mapped and validated. Drag and drop or click to upload.")
-    
-    # Handle claims file upload (common logic for both cases)
-    if claims_file:
-        st.session_state.claims_upload_attempted = True
-        # Reset session if file changed
-        if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
-            st.session_state.pop("claims_df", None)
-            st.session_state.pop("final_mapping", None)
-            st.session_state.pop("auto_mapping", None)
-            st.session_state.pop("auto_mapped_fields", None)
-        # Track upload order if this is a new file
-        if "claims_file_obj" not in st.session_state or st.session_state.claims_file_obj.name != claims_file.name:
-            if "upload_order" not in st.session_state:
-                st.session_state.upload_order = []
-            upload_order_list = cast(List[str], st.session_state.upload_order)
-            if "claims" not in upload_order_list:
-                upload_order_list.append("claims")
-            st.session_state.claims_file_obj = claims_file
-    elif claims_file is None and "claims_upload_attempted" not in st.session_state:
-        # Track that user has interacted with uploader (even if no file selected)
-        pass
-    elif claims_file is None and "claims" in st.session_state.get("upload_order", []):
-        # File was removed, remove from order
-        if "upload_order" in st.session_state:
-            upload_order_list = cast(List[str], st.session_state.upload_order)
-            if "claims" in upload_order_list:
-                upload_order_list.remove("claims")
+            # Handle claims file upload (inside column context)
+            if claims_file:
+                # Validate file
+                is_valid, error_msg = validate_file_upload(claims_file, MAX_FILE_SIZE_MB)
+                if not is_valid:
+                    st.error(error_msg)
+                else:
+                    st.session_state.claims_upload_attempted = True
+                    # Reset session if file changed
+                    if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
+                        st.session_state.pop("claims_df", None)
+                        st.session_state.pop("final_mapping", None)
+                        st.session_state.pop("auto_mapping", None)
+                        st.session_state.pop("auto_mapped_fields", None)
+                    # Track upload order if this is a new file
+                    if "claims_file_obj" not in st.session_state or st.session_state.claims_file_obj.name != claims_file.name:
+                        if "upload_order" not in st.session_state:
+                            st.session_state.upload_order = []
+                        upload_order_list = cast(List[str], st.session_state.upload_order)
+                        if "claims" not in upload_order_list:
+                            upload_order_list.append("claims")
+                    st.session_state.claims_file_obj = claims_file
+                    # Show success message - check if file is already loaded or just uploaded
+                    claims_df_loaded = st.session_state.get("claims_df")
+                    last_loaded = st.session_state.get("last_loaded_file")
+                    if claims_df_loaded is not None and last_loaded == claims_file.name:
+                        # File is already loaded
+                        st.success("✅ **Claims file loaded successfully!**")
+                    else:
+                        # File just uploaded, processing will happen
+                        st.success("✅ **Claims file uploaded successfully!** Processing...")
+            elif claims_file is None and "claims_upload_attempted" not in st.session_state:
+                # Track that user has interacted with uploader (even if no file selected)
+                pass
+            elif claims_file is None and "claims" in st.session_state.get("upload_order", []):
+                # File was removed, remove from order
+                if "upload_order" in st.session_state:
+                    upload_order_list = cast(List[str], st.session_state.upload_order)
+                    if "claims" in upload_order_list:
+                        upload_order_list.remove("claims")
     
     # Close the centered container
     st.markdown("</div>", unsafe_allow_html=True)
@@ -213,18 +323,37 @@ def render_upload_and_claims_preview():
     # Check if we need to load (either not loaded yet, or file changed)
     claims_file = st.session_state.get("claims_file_obj")
     last_loaded = st.session_state.get("last_loaded_file")
+    claims_df_loaded = st.session_state.get("claims_df")
     needs_loading = (
         all_files_uploaded and 
         claims_file is not None and
-        (st.session_state.get("claims_df") is None or 
+        (claims_df_loaded is None or 
          last_loaded != claims_file.name)
     )
     
     if needs_loading:
         try:
+            # Validate file before processing
+            claims_file = st.session_state.get("claims_file_obj")
+            if claims_file:
+                is_valid, error_msg = validate_file_upload(claims_file, MAX_FILE_SIZE_MB)
+                if not is_valid:
+                    st.error(error_msg)
+                    st.stop()
+            
+            # Show progress indicator
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            status_text.text("Detecting file format...")
+            progress_bar.progress(0.1)
+            
             # --- Intelligent File Format Detection ---
             claims_file.seek(0)
             ext = claims_file.name.lower()
+            
+            progress_bar.progress(0.2)
+            status_text.text("Analyzing file structure...")
             
             # Detect if file is fixed-width
             is_fw = False
@@ -326,72 +455,38 @@ def render_upload_and_claims_preview():
                 detected_has_header = True
                 st.session_state.detected_has_header = True
             
-            # --- Preview first 3 rows
-            with st.spinner("Preparing preview..."):
-                claims_file.seek(0)
-                if is_fw and colspecs:
-                    # Preview fixed-width file
-                    try:
-                        file_content = claims_file.read()
-                        claims_file.seek(0)
-                        from file_handler import detect_encoding
-                        encoding = detect_encoding(file_content)
-                        file_like = io.BytesIO(file_content)
-                        preview_df = pd.read_fwf(file_like, colspecs=colspecs, nrows=3, header=None, encoding=encoding, dtype=str)  # type: ignore[no-untyped-call]
-                    except Exception as e:
-                        st.warning(f"Could not preview fixed-width file: {e}")
-                        # Fallback: show raw lines
-                        claims_file.seek(0)
-                        file_content = claims_file.read()
-                        claims_file.seek(0)
-                        from file_handler import detect_encoding
-                        encoding = detect_encoding(file_content)
-                        lines: List[Dict[str, Any]] = []
-                        for i, line_bytes in enumerate(file_content.split(b'\n')):
-                            if i >= 3:
-                                break
-                            try:
-                                line_text = line_bytes.decode(encoding or 'utf-8', errors='ignore')[:100]
-                                lines.append({"Line": i+1, "Content": line_text})
-                            except:
-                                pass
-                        preview_df = pd.DataFrame(lines)  # type: ignore[no-untyped-call]
-                elif ext.endswith((".csv", ".txt", ".tsv")):
-                    preview_df = pd.read_csv(claims_file, nrows=3, header=None, delimiter=delimiter, on_bad_lines="skip")  # type: ignore[no-untyped-call]
+            # Skip preview since we're auto-detecting - preview will be shown after loading
+            
+            # Show fixed-width column positions if detected
+            if is_fw and colspecs:
+                with st.expander("📏 View Detected Column Positions", expanded=False):
+                    st.markdown("**Column Positions (start, end):**")
+                    for i, (start, end) in enumerate(colspecs):
+                        st.write(f"Column {i+1}: Positions {start}-{end} (width: {end-start})")
+            
+            # Show header detection result
+            header_file = st.session_state.get("header_file_obj")
+            if detected_has_header is not None:  # type: ignore[comparison-overlap]
+                if detected_has_header:  # type: ignore[comparison-overlap]
+                    st.info("✅ **Auto-detected:** File appears to have headers. Using first row as column names.")
                 else:
-                    preview_df = pd.read_excel(claims_file, nrows=3, header=None)  # type: ignore[no-untyped-call]
-
-                st.markdown("**Preview of Claims File (First 3 Rows):**")
-                st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
-                
-                # Show fixed-width column positions if detected
-                if is_fw and colspecs:
-                    with st.expander("📏 View Detected Column Positions"):
-                        st.markdown("**Column Positions (start, end):**")
-                        for i, (start, end) in enumerate(colspecs):
-                            st.write(f"Column {i+1}: Positions {start}-{end} (width: {end-start})")
-                
-                # Show header detection result
-                if detected_has_header is not None:  # type: ignore[comparison-overlap]
-                    if detected_has_header:  # type: ignore[comparison-overlap]
-                        st.info("✅ **Auto-detected:** File appears to have headers. Using first row as column names.")
-                    else:
-                        st.error("❌ **Auto-detected:** File appears to have no headers. **Header file is required.**")
-                        st.markdown("""
-                        **Please upload a header file in one of these formats:**
-                        - **One row format:** All field names in a single row (e.g., `claim_id,patient_name,date_of_service`)
-                        - **One column format:** All field names in a single column (one per row)
-                        """)
-                        # Check if header file is provided
-                        if not header_file:
-                            st.warning("⚠️ **Please upload a header file to continue.**")
-                            # Trigger rerun to show header uploader
-                            if "header_uploader_shown" not in st.session_state:
-                                st.session_state.header_uploader_shown = True
-                                st.rerun()
-                            st.stop()  # Stop processing until header file is uploaded
+                    st.error("❌ **Auto-detected:** File appears to have no headers. **Header file is required.**")
+                    st.markdown("""
+                    **Please upload a header file in one of these formats:**
+                    - **One row format:** All field names in a single row (e.g., `claim_id,patient_name,date_of_service`)
+                    - **One column format:** All field names in a single column (one per row)
+                    """)
+                    # Check if header file is provided
+                    if not header_file:
+                        st.warning("⚠️ **Please upload a header file to continue.**")
+                        # Show header uploader without rerun
+                        st.session_state.header_uploader_shown = True
+                        st.stop()  # Stop processing until header file is uploaded
 
             # --- Read full claims file
+            progress_bar.progress(0.7)
+            status_text.text("Loading claims data...")
+            
             with st.spinner("Loading claims file..."):
                 claims_file.seek(0)
                 header_file = st.session_state.get("header_file_obj")
@@ -414,6 +509,9 @@ def render_upload_and_claims_preview():
                 if claims_df.columns.isnull().any():
                     claims_df.columns = [f"col_{i}" if not col or pd.isna(col) else str(col) for i, col in enumerate(claims_df.columns)]
 
+                # Compress dataframe to save memory
+                claims_df = compress_dataframe(claims_df)
+
                 # Save to session
                 st.session_state.claims_df = claims_df
                 st.session_state.last_loaded_file = claims_file.name
@@ -421,12 +519,28 @@ def render_upload_and_claims_preview():
                 final_has_header = detected_has_header if detected_has_header is not None else (header_file is None)  # type: ignore[comparison-overlap]
                 capture_claims_file_metadata(claims_file, has_header=bool(final_has_header))
 
-                st.success("✅ Claims file loaded successfully using " +
-                           ("embedded headers." if header_file is None else "external header file."))
-                st.rerun()  # Rerun to update UI
+                progress_bar.progress(1.0)
+                status_text.empty()
+                progress_bar.empty()
+                
+                # Mark that processing is complete - success message will show above after refresh
+                st.session_state.claims_processing_complete = True
+                
+                # Show preview after successful load
+                st.markdown("**Preview of Claims File (First 5 Rows):**")
+                st.dataframe(claims_df.head(5), use_container_width=True)  # type: ignore[no-untyped-call]
+                
+                st.session_state.needs_refresh = True
 
         except Exception as e:
-            st.error(f"Error processing claims file: {e}")
+            error_msg = get_user_friendly_error(e)
+            st.error(f"Error processing claims file: {error_msg}")
+            st.session_state.claims_df = None
+            # Show retry option
+            if st.button("🔄 Retry Loading File", key="retry_claims_load"):
+                st.session_state.pop("claims_df", None)
+                st.session_state.pop("last_loaded_file", None)
+                st.session_state.needs_refresh = True
 
 
 def render_claims_file_deep_dive():

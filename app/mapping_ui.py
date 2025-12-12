@@ -11,6 +11,7 @@ from layout_loader import get_field_groups, get_required_fields, get_optional_fi
 from mapping_engine import get_enhanced_automap
 from transformer import transform_claims_data
 from session_state import initialize_undo_redo
+from anonymizer import anonymize_claims_data
 
 
 def dual_input_field(field_label: str, options: List[str], key_prefix: str) -> Optional[str]:
@@ -123,25 +124,27 @@ def render_field_mapping_tab():
     # Initialize widget counter for unique keys (reset each time function is called)
     widget_counter = 0
 
-    # --- Claims File Preview with Real-time Updates ---
-    st.markdown("#### Claims File Preview (First 5 Rows)")
-    preview_df = claims_df.head()
+    # --- Real-time Mapping Preview (shows as soon as any field is mapped) ---
+    final_mapping = st.session_state.get("final_mapping", {})
+    has_any_mapping = any(info.get("value") for info in final_mapping.values())
     
-    # Apply search filter if active
-    search_query = st.session_state.get("field_search_input", "")
-    if search_query and search_query.strip():
-        preview_df = preview_df.filter(regex=search_query, axis=1)  # type: ignore[no-untyped-call]
-    
-    st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
-    
-    # Real-time preview of mapped data
-    if st.session_state.get("final_mapping"):
-        with st.expander("🔍 Real-time Mapping Preview", expanded=False):
-            try:
-                preview_mapped = transform_claims_data(claims_df.head(10), st.session_state.final_mapping)
+    if has_any_mapping:
+        st.markdown("#### 🔍 Real-time Mapping Preview")
+        try:
+            # Show max 5 rows (4 data rows + 1 header = 5 total)
+            # First anonymize the original claims data, then transform it
+            claims_preview = claims_df.head(4)
+            anonymized_preview = anonymize_claims_data(claims_preview, final_mapping)
+            preview_mapped = transform_claims_data(anonymized_preview, final_mapping)
+            if preview_mapped is not None and not preview_mapped.empty:
                 st.dataframe(preview_mapped, use_container_width=True)  # type: ignore[no-untyped-call]
-            except Exception as e:
-                st.warning(f"Preview unavailable: {e}")
+                st.caption(f"Showing first 4 rows of anonymized mapped data ({len(preview_mapped.columns)} mapped fields)")
+            else:
+                st.info("No mapped data to preview yet. Start mapping fields to see the preview.")
+        except Exception as e:
+            st.warning(f"Preview unavailable: {e}")
+    else:
+        st.info("💡 **Tip:** Start mapping fields to see a real-time preview of your mapped data here.")
 
     required_fields = get_required_fields(layout_df)
 
@@ -382,18 +385,18 @@ def render_field_mapping_tab():
                             
                             st.markdown(f"""
                                 <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #667eea; font-size: 0.85rem;'>
-                                    <div style='font-weight: 600; margin-bottom: 0.25rem; color: #495057;'>Sample & Stats</div>
-                                    <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
-                                    <div style='color: #6c757d; font-size: 0.8rem;'>
+                                    <div style='font-weight: 600; margin-bottom: 0.25rem; color: #000000;'>Sample & Stats</div>
+                                    <div style='color: #000000; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                    <div style='color: #000000; font-size: 0.8rem;'>
                                         <span>Type: <code>{dtype}</code></span><br>
                                         <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
                         except Exception:
-                            st.markdown("<div style='color: #6c757d; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='color: #000000; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown("<div style='color: #adb5bd; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='color: #000000; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
 
                 if selected_clean:
                     final_mapping[field_name] = {
@@ -576,9 +579,9 @@ def render_field_mapping_tab():
                                     </div>
                                 """, unsafe_allow_html=True)
                             except Exception:
-                                st.markdown("<div style='color: #6c757d; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
+                                st.markdown("<div style='color: #000000; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
                         else:
-                            st.markdown("<div style='color: #adb5bd; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='color: #000000; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
 
                     if field_selected_clean:
                         final_mapping[field_name] = {

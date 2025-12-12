@@ -132,11 +132,11 @@ def render_layout_summary_section() -> None:
         st.markdown(f"**Required Fields:** {required_fields}", unsafe_allow_html=True)
         st.markdown(f"**Optional Fields:** {optional_fields}", unsafe_allow_html=True)
 
-        with st.expander("Field Categories"):
+        with st.expander("Field Categories", expanded=False):
             for cat, count in category_counts.items():
                 st.write(f"- {cat}: {count}")  # type: ignore[no-untyped-call]
 
-        with st.expander("View Layout Table"):
+        with st.expander("View Layout Table", expanded=False):
             st.dataframe(layout_df[["Internal Field", "Usage", "Category"]], use_container_width=True)  # type: ignore[no-untyped-call]
     elif st.session_state.get("layout_upload_attempted", False):
         # Only show info if user has attempted to upload a file

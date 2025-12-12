@@ -11,6 +11,7 @@ def detect_encoding_issues(claims_df: Any) -> None:
 
     Attempts to encode non-null values in object-typed columns; if any
     exception occurs, the column is flagged and a warning is shown.
+    Optimized to use vectorized operations where possible.
 
     Args:
         claims_df: Claims DataFrame-like object.
@@ -19,10 +20,19 @@ def detect_encoding_issues(claims_df: Any) -> None:
         Emits a Streamlit warning when suspect columns are found.
     """
     issue_columns: List[str] = []
-    for col in claims_df.select_dtypes(include="object").columns:
+    object_cols = claims_df.select_dtypes(include="object").columns
+    for col in object_cols:
         try:
-            _ = claims_df[col].dropna().apply(lambda x: str(x).encode('utf-8')).tolist()  # type: ignore[no-untyped-call]
+            # Use vectorized string operations instead of apply
+            non_null_series = claims_df[col].dropna().astype(str)
+            if len(non_null_series) > 0:
+                # Sample first 1000 values for performance
+                sample = non_null_series.head(1000)
+                _ = sample.str.encode('utf-8', errors='strict').tolist()  # type: ignore[no-untyped-call]
+        except (UnicodeEncodeError, UnicodeError):
+            issue_columns.append(col)
         except Exception:
+            # Other exceptions might indicate encoding issues too
             issue_columns.append(col)
     if issue_columns:
         st.warning(f"⚠️ Possible encoding issues detected in: {', '.join(issue_columns)}")
@@ -83,13 +93,13 @@ def render_claims_file_summary() -> None:
             
             st.markdown(f"<p style='margin-bottom: 0.25rem;'>File: **{file_name}** ({file_size:.2f} MB, {file_ext} format)</p>", unsafe_allow_html=True)
             
-            with st.expander("📄 File Information", expanded=True):
+            with st.expander("📄 File Information", expanded=False):
                 st.write(f"**File Name:** {file_name}")  # type: ignore[no-untyped-call]
                 st.write(f"**File Size:** {file_size:.2f} MB")  # type: ignore[no-untyped-call]
                 st.write(f"**File Format:** {file_ext}")  # type: ignore[no-untyped-call]
                 st.info("⏳ File will be processed automatically when all required files (Layout, Lookup, Claims) are uploaded.")
             return
-    
+
     if claims_df is not None:
         # Header already shown above, don't repeat it
 
@@ -128,16 +138,16 @@ def render_claims_file_summary() -> None:
             st.markdown(f"<p style='margin-bottom: 0.25rem;'>{file_description}</p>", unsafe_allow_html=True)
         
         # Summary metrics in collapsible section (matching structure of other cards)
-        with st.expander("📄 File Information", expanded=True):
+        with st.expander("📄 File Information", expanded=False):
             st.write(f"**Total Rows:** {len(claims_df):,}")  # type: ignore[no-untyped-call]
             st.write(f"**Total Columns:** {len(claims_df.columns)}")  # type: ignore[no-untyped-call]
 
             if date_cols:
                 st.write(f"**Date Fields:** {len(date_cols)}")  # type: ignore[no-untyped-call]
             st.write(f"**Data Types:** {type_summary_text}")  # type: ignore[no-untyped-call]
-        
+
         # Two expandable sections (matching other cards)
-        with st.expander("Date Fields Details"):
+        with st.expander("Date Fields Details", expanded=False):
             if date_cols:
                 date_format_rows: List[Dict[str, Any]] = []
                 for col in date_cols:
@@ -151,10 +161,12 @@ def render_claims_file_summary() -> None:
                 if date_format_rows:
                     date_formats_df = pd.DataFrame(date_format_rows)
                     st.dataframe(date_formats_df, use_container_width=True)  # type: ignore[no-untyped-call]
+                else:
+                    st.write("No date fields detected.")  # type: ignore[no-untyped-call]
             else:
                 st.write("No date fields detected.")  # type: ignore[no-untyped-call]
 
-        with st.expander("Text Columns & Data Types"):
+        with st.expander("Text Columns & Data Types", expanded=False):
             object_cols = claims_df.select_dtypes(include="object").columns.tolist()
             if object_cols:
                 st.write(f"**Text Columns ({len(object_cols)}):**")  # type: ignore[no-untyped-call]

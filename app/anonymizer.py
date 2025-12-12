@@ -70,24 +70,74 @@ def anonymize_claims_data(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> 
             continue
 
         if field in NAME_FIELDS:
-            def fake_name(row: Dict[str, Any]) -> str:
-                base = _safe_row_get(row, insured_id_col) or _safe_row_get(row, patient_id_col) or _safe_row_get(row, source_col) or ""
-                seed_val = hash_seed(str(base))
-                if "First" in field:
+            # Vectorized approach: create base values using pandas operations
+            # Get base column (prefer insured_id, then patient_id, then source_col itself)
+            base_series = pd.Series("", index=df_copy.index, dtype=str)
+            if insured_id_col and insured_id_col in df_copy.columns:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[insured_id_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            elif patient_id_col and patient_id_col in df_copy.columns:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[patient_id_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            else:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[source_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            
+            # Vectorized hash calculation and fake name generation
+            def generate_names_vectorized(base_str: str, field_name: str) -> str:
+                if not base_str:
+                    return ""
+                seed_val = hash_seed(base_str)
+                if "First" in field_name:
                     return generate_fake_first_name(seed_val)
-                elif "Last" in field:
+                elif "Last" in field_name:
                     return generate_fake_last_name(seed_val)
-                elif "Middle" in field:
+                elif "Middle" in field_name:
                     return generate_fake_middle_initial(seed_val)
                 else:
                     return "X"
-            df_copy[source_col] = df_copy.apply(fake_name, axis=1)  # type: ignore[no-untyped-call]
+            
+            # Apply vectorized function (still uses apply but on Series, which is faster)
+            df_copy[source_col] = base_series.apply(lambda x: generate_names_vectorized(x, field))  # type: ignore[no-untyped-call]
 
         elif field in SSN_FIELDS:
-            def fake_ssn(row: Dict[str, Any]) -> str:
-                base = _safe_row_get(row, insured_id_col) or _safe_row_get(row, patient_id_col) or _safe_row_get(row, source_col) or ""
-                seed_val = hash_seed(str(base))
-                return generate_fake_ssn(seed_val)
-            df_copy[source_col] = df_copy.apply(fake_ssn, axis=1)  # type: ignore[no-untyped-call]
+            # Vectorized approach for SSN
+            base_series = pd.Series("", index=df_copy.index, dtype=str)
+            if insured_id_col and insured_id_col in df_copy.columns:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[insured_id_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            elif patient_id_col and patient_id_col in df_copy.columns:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[patient_id_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            else:
+                # Handle categorical columns by converting to string first
+                col_data = df_copy[source_col]
+                if pd.api.types.is_categorical_dtype(col_data):
+                    base_series = col_data.astype(str).fillna("")
+                else:
+                    base_series = col_data.fillna("").astype(str)
+            
+            # Vectorized SSN generation
+            df_copy[source_col] = base_series.apply(lambda x: generate_fake_ssn(hash_seed(x)) if x else "")  # type: ignore[no-untyped-call]
 
     return df_copy

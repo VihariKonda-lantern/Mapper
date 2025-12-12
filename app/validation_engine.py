@@ -201,8 +201,9 @@ class NullCheckRule(BaseValidationRule):
             (df[column].astype(str).str.strip() == "nan")
         )
         
-        failed_records_df = df[null_mask].copy()
-        failed_count = len(failed_records_df)
+        # Only create copy if we need the actual records, otherwise just count
+        failed_count = null_mask.sum()
+        failed_records_df = df[null_mask] if failed_count > 0 else df.iloc[0:0]
         
         return failed_records_df, failed_count
 
@@ -214,7 +215,7 @@ class DatatypeCheckRule(BaseValidationRule):
         column = self.config.get("column_name")
         if not column or column not in df.columns:
             return df.iloc[0:0], 0
-        
+
         # For date fields, try to parse
         if "date" in column.lower():
             parsed_dates = pd.to_datetime(df[column], errors='coerce')
@@ -223,8 +224,9 @@ class DatatypeCheckRule(BaseValidationRule):
             # For other types, just check if null (basic check)
             invalid_mask = df[column].isnull()
         
-        failed_records_df = df[invalid_mask].copy()
-        failed_count = len(failed_records_df)
+        # Only create copy if we need the actual records, otherwise just count
+        failed_count = invalid_mask.sum()
+        failed_records_df = df[invalid_mask] if failed_count > 0 else df.iloc[0:0]
         
         return failed_records_df, failed_count
 
@@ -242,8 +244,9 @@ class AgeValidationRule(BaseValidationRule):
         age = (today - dob).dt.days // 365
         
         underage_mask = age < 18
-        failed_records_df = df[underage_mask].copy()
-        failed_count = len(failed_records_df)
+        # Only create copy if we need the actual records, otherwise just count
+        failed_count = underage_mask.sum()
+        failed_records_df = df[underage_mask] if failed_count > 0 else df.iloc[0:0]
         
         return failed_records_df, failed_count
 
@@ -262,8 +265,8 @@ class FillRateCheckRule(BaseValidationRule):
         # If fill rate is below threshold, consider all nulls as "failed" for reporting
         if fill_rate < threshold:
             null_mask = df[column].isnull()
-            failed_records_df = df[null_mask].copy()
-            failed_count = len(failed_records_df)
+            failed_count = null_mask.sum()
+            failed_records_df = df[null_mask] if failed_count > 0 else df.iloc[0:0]
         else:
             failed_records_df = df.iloc[0:0]
             failed_count = 0
@@ -456,12 +459,12 @@ def run_validations(transformed_df: Any, required_fields: List[str], all_mapped_
     - Date validity checks (for all date fields)
     - Age validation (18+) (for DOB fields)
     - Fill rate checks (for all mapped fields)
-    
+
     Args:
         transformed_df: Transformed claims data (pandas DataFrame)
         required_fields: Required internal fields to validate
         all_mapped_fields: All mapped internal fields (both required and optional)
-        
+
     Returns:
         List of validation result dicts compatible with existing UI
     """
@@ -531,7 +534,7 @@ def run_validations(transformed_df: Any, required_fields: List[str], all_mapped_
             result = rule.validate(transformed_df)
             # Add all results (both warnings and passes for completeness)
             results.append(result.to_dict())
-    
+
     return results
 
 
@@ -613,7 +616,7 @@ def dynamic_run_validations(transformed_df: Any, final_mapping: Dict[str, Dict[s
         if result.severity:
             file_result["severity"] = result.severity
         results.append(file_result)
-    
+
     # 4. Diagnosis Code Summary
     dx_fields = [col for col in transformed_df.columns if col.lower().startswith("dx_code")]
     if dx_fields:

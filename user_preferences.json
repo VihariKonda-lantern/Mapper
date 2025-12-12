@@ -1,0 +1,8 @@
+{
+  "default_page_size": 100,
+  "auto_save_mappings": true,
+  "show_tooltips": true,
+  "theme": "auto",
+  "notifications_enabled": false,
+  "recent_files_limit": 10
+}

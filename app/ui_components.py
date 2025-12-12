@@ -22,9 +22,9 @@ def render_status_indicator(status: str) -> str:
     return f'<span class="status-indicator {status_class}"></span>'
 
 
-def render_progress_bar(percent: int, label: str = "") -> str:
+def render_progress_bar(percent: int, label: str = "", text_color: str = "#000000") -> str:
     """Generate HTML for animated progress bar."""
-    return f'<div class="progress-container" style="margin-top: 0.75rem; margin-bottom: 0.5rem; background-color: rgba(255,255,255,0.2); border-radius: 4px; height: 8px; overflow: hidden;"><div style="width: {percent}%; background: transparent !important; height: 100%; border-radius: 4px; transition: width 0.5s ease;"></div></div><small style="color: rgba(255,255,255,0.9); font-size: 0.9rem; display: block; margin-top: 0.5rem;">{label}</small>'
+    return f'<div class="progress-container" style="margin-top: 0.75rem; margin-bottom: 0.5rem; background-color: rgba(0,0,0,0.1); border-radius: 4px; height: 8px; overflow: hidden;"><div style="width: {percent}%; background: #007bff !important; height: 100%; border-radius: 4px; transition: width 0.5s ease;"></div></div><small style="color: {text_color}; font-size: 0.9rem; display: block; margin-top: 0.5rem;">{label}</small>'
 
 
 def render_title():

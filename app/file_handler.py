@@ -496,7 +496,7 @@ def load_claims_file(file: Any) -> Tuple[Any, bool]:
     """Load an uploaded claims file and return parsed data plus header flag.
 
     Detects delimiter and header when applicable, then delegates to a cached
-    loader to parse the content.
+    loader to parse the content. Optimized to read file only once.
 
     Args:
         file: Streamlit-uploaded file-like object.
@@ -512,14 +512,19 @@ def load_claims_file(file: Any) -> Tuple[Any, bool]:
     if ext not in SUPPORTED_FORMATS:
         raise ValueError(f"Unsupported file type: {ext}")
 
+    # Read file content once and reuse
     file.seek(0)
     content = file.read()
-    file.seek(0)
+    file.seek(0)  # Reset for potential future use
+    
     delimiter = None
     has_hdr = None
     if ext in ['.csv', '.tsv', '.txt']:
-        delimiter = detect_delimiter(io.BytesIO(content))
-        has_hdr = has_header(io.BytesIO(content), delimiter)
+        # Create BytesIO from content to avoid re-reading file
+        content_io = io.BytesIO(content)
+        delimiter = detect_delimiter(content_io)
+        content_io.seek(0)  # Reset for header detection
+        has_hdr = has_header(content_io, delimiter)
     return _load_claims_df_cached(ext, content, delimiter, has_hdr)
 
 @st.cache_data(show_spinner=False)
@@ -1012,13 +1017,7 @@ def read_claims_with_header_option(file: Any, headerless: bool = False, header_f
     """Read claims file, optionally applying an external header.
 
     Convenience wrapper that reads the file and forwards to the cached parser.
-
-    Args:
-        file: Streamlit-uploaded claims file.
-        headerless: If True, treat the claims file as having no header row.
-        header_file: Optional external header file (CSV, TXT, TSV, or Excel).
-        delimiter: Optional delimiter override for text formats.
-        colspecs: Optional list of (start, end) tuples for fixed-width files.
+    Optimized to read files only once.
 
     Args:
         file: Streamlit-uploaded claims file.
@@ -1034,16 +1033,19 @@ def read_claims_with_header_option(file: Any, headerless: bool = False, header_f
     if not file:
         return pd.DataFrame()
     ext = file.name.lower()
+    # Read file content once
     file.seek(0)
     content = file.read()
-    file.seek(0)
+    file.seek(0)  # Reset for potential future use
+    
     header_bytes = None
     header_ext = None
     if header_file is not None:
+        # Read header file once
         header_file.seek(0)
         header_bytes = header_file.read()
         header_ext = os.path.splitext(header_file.name)[-1].lower()
-        header_file.seek(0)
+        header_file.seek(0)  # Reset for potential future use
     return _read_claims_with_header_option_cached(ext, content, headerless, header_bytes, delimiter, header_ext, colspecs, header_names)
 
 
