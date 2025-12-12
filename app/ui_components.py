@@ -1,7 +1,8 @@
 # --- ui_components.py ---
 """Reusable UI components."""
 import streamlit as st
-from typing import Any
+from typing import Any, Optional, Callable
+import time
 
 st: Any = st
 
@@ -34,4 +35,49 @@ def render_title():
 def _notify(msg: str) -> None:
     """Show a toast notification."""
     st.toast(msg)
+
+
+def show_progress_with_status(message: str, total_steps: int = 100):
+    """Context manager for showing progress with status updates."""
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    class ProgressContext:
+        def __init__(self, pb: Any, st: Any, total: int):
+            self.progress_bar = pb
+            self.status_text = st
+            self.total = total
+            self.current = 0
+        
+        def update(self, step: int, status: str = ""):
+            self.current = step
+            progress = min(100, int((step / self.total) * 100))
+            self.progress_bar.progress(progress)
+            if status:
+                self.status_text.text(status)
+        
+        def complete(self, message: str = "Complete!"):
+            self.progress_bar.progress(100)
+            self.status_text.text(message)
+            time.sleep(0.5)
+            self.progress_bar.empty()
+            self.status_text.empty()
+    
+    return ProgressContext(progress_bar, status_text, total_steps)
+
+
+def confirm_action(message: str, key: str) -> bool:
+    """Show a confirmation dialog for destructive actions."""
+    if st.session_state.get(f"confirm_{key}", False):
+        return True
+    st.warning(message)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Confirm", key=f"confirm_yes_{key}"):
+            st.session_state[f"confirm_{key}"] = True
+            st.rerun()
+    with col2:
+        if st.button("Cancel", key=f"confirm_no_{key}"):
+            st.session_state[f"confirm_{key}"] = False
+    return False
 

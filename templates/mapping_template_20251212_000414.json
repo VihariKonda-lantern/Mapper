@@ -1,0 +1,278 @@
+{
+  "version": "1.0",
+  "created_at": "2025-12-12T00:04:14.847521",
+  "mapping": {
+    "Claim_ID": {
+      "mode": "auto",
+      "value": "\u00ef\u00bb\u00bfclaim_id"
+    },
+    "Claim_Type": {
+      "mode": "auto",
+      "value": "claim_type"
+    },
+    "Claim_TOB": {
+      "mode": "auto",
+      "value": "claim_tob"
+    },
+    "Plan_Sponsor_Name": {
+      "mode": "auto",
+      "value": "plan_sponsor_name"
+    },
+    "Insurance_Plan_Name": {
+      "mode": "auto",
+      "value": "insurance_plan_name"
+    },
+    "Insured_ID": {
+      "mode": "auto",
+      "value": "insured_id"
+    },
+    "Insured_Group_Number": {
+      "mode": "auto",
+      "value": "insured_group_number"
+    },
+    "Insured_First_Name": {
+      "mode": "auto",
+      "value": "insured_first_name"
+    },
+    "Insured_Last_Name": {
+      "mode": "auto",
+      "value": "insured_last_name"
+    },
+    "Insured_Middle_Initial": {
+      "mode": "auto",
+      "value": "insured_middle_initial"
+    },
+    "Insured_SSN": {
+      "mode": "auto",
+      "value": "insured_ssn"
+    },
+    "Insured_DOB": {
+      "mode": "auto",
+      "value": "insured_dob"
+    },
+    "Insured_Sex": {
+      "mode": "auto",
+      "value": "insured_sex"
+    },
+    "Insured_Address": {
+      "mode": "auto",
+      "value": "insured_address"
+    },
+    "Insured_Address_2": {
+      "mode": "auto",
+      "value": "insured_address_2"
+    },
+    "Insured_City": {
+      "mode": "auto",
+      "value": "insured_city"
+    },
+    "Insured_State": {
+      "mode": "auto",
+      "value": "insured_state"
+    },
+    "Insured_Zip": {
+      "mode": "auto",
+      "value": "insured_city"
+    },
+    "Insured_Phone": {
+      "mode": "auto",
+      "value": "insured_phone"
+    },
+    "Insured_Email": {
+      "mode": "auto",
+      "value": "insured_email"
+    },
+    "Patient_First_Name": {
+      "mode": "auto",
+      "value": "patient_first_name"
+    },
+    "Patient_Last_Name": {
+      "mode": "auto",
+      "value": "patient_last_name"
+    },
+    "Patient_Middle_Initial": {
+      "mode": "auto",
+      "value": "patient_middle_initial"
+    },
+    "Patient_SSN": {
+      "mode": "auto",
+      "value": "patient_ssn"
+    },
+    "Patient_DOB": {
+      "mode": "auto",
+      "value": "patient_dob"
+    },
+    "Patient_Sex": {
+      "mode": "auto",
+      "value": "patient_sex"
+    },
+    "Patient_Address": {
+      "mode": "auto",
+      "value": "patient_address"
+    },
+    "Patient_Address_2": {
+      "mode": "auto",
+      "value": "patient_address_2"
+    },
+    "Patient_City": {
+      "mode": "auto",
+      "value": "patient_city"
+    },
+    "Patient_State": {
+      "mode": "auto",
+      "value": "patient_state"
+    },
+    "Patient_Zip": {
+      "mode": "auto",
+      "value": "patient_zip"
+    },
+    "Patient_Phone": {
+      "mode": "auto",
+      "value": "patient_phone"
+    },
+    "Patient_Email": {
+      "mode": "auto",
+      "value": "patient_email"
+    },
+    "Patient_Relationship": {
+      "mode": "auto",
+      "value": "patient_relationship"
+    },
+    "Dx_Code_1": {
+      "mode": "auto",
+      "value": "dx_code_1"
+    },
+    "Dx_Code_2": {
+      "mode": "auto",
+      "value": "dx_code_2"
+    },
+    "Dx_Code_3": {
+      "mode": "auto",
+      "value": "dx_code_3"
+    },
+    "Dx_Code_4": {
+      "mode": "auto",
+      "value": "dx_code_4"
+    },
+    "Dx_Code_5": {
+      "mode": "auto",
+      "value": "dx_code_5"
+    },
+    "Dx_Code_6": {
+      "mode": "auto",
+      "value": "dx_code_6"
+    },
+    "Dx_Code_7": {
+      "mode": "auto",
+      "value": "dx_code_7"
+    },
+    "Dx_Code_8": {
+      "mode": "auto",
+      "value": "dx_code_8"
+    },
+    "Dx_Code_9": {
+      "mode": "auto",
+      "value": "dx_code_9"
+    },
+    "Dx_Code_10": {
+      "mode": "auto",
+      "value": "dx_code_10"
+    },
+    "Dx_Code_11": {
+      "mode": "auto",
+      "value": "dx_code_11"
+    },
+    "Dx_Code_12": {
+      "mode": "auto",
+      "value": "dx_code_12"
+    },
+    "DRG_Code": {
+      "mode": "auto",
+      "value": "drg_code"
+    },
+    "Begin_Date": {
+      "mode": "auto",
+      "value": "begin_date"
+    },
+    "End_Date": {
+      "mode": "auto",
+      "value": "end_date"
+    },
+    "POS_Code": {
+      "mode": "auto",
+      "value": "pos_code"
+    },
+    "Procedure_Code": {
+      "mode": "auto",
+      "value": "procedure_code"
+    },
+    "Revenue_Code": {
+      "mode": "auto",
+      "value": "revenue_code"
+    },
+    "Revenue_Code_Description": {
+      "mode": "auto",
+      "value": "revenue_code_description"
+    },
+    "NDC": {
+      "mode": "auto",
+      "value": "ndc"
+    },
+    "Mod_1": {
+      "mode": "auto",
+      "value": "mod_1"
+    },
+    "Rendering_Provider_Name": {
+      "mode": "auto",
+      "value": "rendering_provider_name"
+    },
+    "Rendering_Provider_NPI": {
+      "mode": "auto",
+      "value": "rendering_provider_npi"
+    },
+    "Billing_Provider_Name": {
+      "mode": "auto",
+      "value": "billing_provider_name"
+    },
+    "Billing_Provider_NPI": {
+      "mode": "auto",
+      "value": "billing_provider_npi"
+    },
+    "Attending_Provider_Name": {
+      "mode": "auto",
+      "value": "attending_provider_name"
+    },
+    "Attending_Provider_NPI": {
+      "mode": "auto",
+      "value": "rendering_provider_npi"
+    },
+    "Facility_Name": {
+      "mode": "auto",
+      "value": "facility_name"
+    },
+    "Facility_NPI": {
+      "mode": "auto",
+      "value": "facility_npi"
+    },
+    "Facility_Address": {
+      "mode": "auto",
+      "value": "facility_address"
+    },
+    "Facility_Address_2": {
+      "mode": "auto",
+      "value": "facility_address_2"
+    },
+    "Facility_City": {
+      "mode": "auto",
+      "value": "facility_city"
+    },
+    "Facility_State": {
+      "mode": "auto",
+      "value": "facility_state"
+    },
+    "Facility_Zip": {
+      "mode": "auto",
+      "value": "facility_npi"
+    }
+  }
+}
