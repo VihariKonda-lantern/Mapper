@@ -5,6 +5,7 @@ pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUn
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
 from typing import Any, List, Dict, Callable, cast
+from datetime import datetime
 
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
@@ -52,6 +53,28 @@ from file_handler import (  # type: ignore[import-untyped]
 )
 from upload_handlers import capture_claims_file_metadata  # type: ignore[import-untyped]
 
+# --- Audit Log Helper Function (defined early to ensure availability) ---
+def log_event(event_type: str, message: str) -> None:
+    """Log an event to the in-memory audit log.
+    
+    Args:
+        event_type: Type of event (e.g., "file_upload", "mapping", "validation", "output")
+        message: Descriptive message about the event
+    """
+    try:
+        audit_log = st.session_state.setdefault("audit_log", [])
+        audit_log.append({
+            "event_type": event_type,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        })
+        # Keep only last 100 events to prevent memory bloat
+        if len(audit_log) > 100:
+            audit_log[:] = audit_log[-100:]
+    except Exception:
+        # Silently fail if logging is not available
+        pass
+
 # --- Streamlit Setup ---
 st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
 
@@ -95,11 +118,163 @@ st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
 # --- App Layout ---
 # Inject UX JavaScript and CSS
 inject_ux_javascript()
-render_title()
-tab1, tab2, tab3, tab4 = st.tabs(["Setup", "Field Mapping", "Preview & Validate", "Downloads Tab"])
+
+# --- Sticky Top Bar with Title and Breadcrumb ---
+st.markdown("""
+    <div style='
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        margin: -1rem -1rem 1rem -1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    '>
+        <div style='display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto;'>
+            <div style='font-size: 18px; font-weight: 600;'>Claims Mapper & Validator</div>
+            <div style='font-size: 13px; opacity: 0.95;'>
+                <span>1) Setup</span> <span style='margin: 0 6px;'>→</span>
+                <span>2) Mapping</span> <span style='margin: 0 6px;'>→</span>
+                <span>3) Preview & Validate</span> <span style='margin: 0 6px;'>→</span>
+                <span>4) Outputs</span>
+            </div>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# --- Main Content Container with Optimized Layout ---
+st.markdown("""
+    <style>
+        /* Maximize horizontal space and reduce margins */
+        .main .block-container {
+            padding-top: 0.5rem;
+            padding-bottom: 1rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            max-width: 1400px;
+        }
+        /* Reduce excessive vertical spacing */
+        h1, h2, h3, h4 {
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        /* Tighter spacing for tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        /* Reduce spacing for dividers */
+        hr {
+            margin: 0.75rem 0 !important;
+        }
+        /* Tighter spacing between elements */
+        .element-container {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Sidebar: Activity Log Panel ---
+with st.sidebar:
+    st.markdown("### 📋 Activity Log")
+    audit_log = st.session_state.setdefault("audit_log", [])
+    
+    if audit_log:
+        # Show last 10 events in reverse chronological order
+        recent_events = audit_log[-10:][::-1]
+        for event in recent_events:
+            event_type = event.get("event_type", "unknown")
+            message = event.get("message", "")
+            timestamp = event.get("timestamp", "")
+            
+            # Format timestamp for display
+            try:
+                dt = datetime.fromisoformat(timestamp)
+                time_str = dt.strftime("%H:%M:%S")
+            except Exception:
+                time_str = timestamp[:8] if len(timestamp) >= 8 else timestamp
+            
+            # Color code by event type
+            color_map = {
+                "file_upload": "#4CAF50",
+                "mapping": "#2196F3",
+                "validation": "#FF9800",
+                "output": "#9C27B0"
+            }
+            color = color_map.get(event_type, "#757575")
+            
+            st.markdown(f"""
+                <div style="
+                    background-color: #f5f5f5;
+                    padding: 0.5rem;
+                    border-radius: 4px;
+                    margin-bottom: 0.5rem;
+                    border-left: 3px solid {color};
+                    font-size: 0.85rem;
+                ">
+                    <div style="color: {color}; font-weight: 600; font-size: 0.75rem;">{event_type.upper()}</div>
+                    <div style="color: #333; margin-top: 0.25rem;">{message}</div>
+                    <div style="color: #999; font-size: 0.7rem; margin-top: 0.25rem;">{time_str}</div>
+                </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.caption("No activity yet. Events will appear here as you use the app.")
+    
+    # Clear log button
+    if st.button("Clear Log", key="clear_audit_log", use_container_width=True):
+        st.session_state.audit_log = []
+        st.rerun()
+
+# Wrap tabs in container for better layout control
+main_container = st.container()
+with main_container:
+    tab1, tab2, tab3, tab4 = st.tabs(["Setup", "Field Mapping", "Preview & Validate", "Downloads Tab"])
 
 with tab1:
     render_upload_and_claims_preview()
+    
+    # Log file upload events if files were just loaded
+    if "layout_df" in st.session_state and st.session_state.get("layout_df") is not None:
+        layout_file_name = st.session_state.get("layout_file_obj")
+        if layout_file_name and hasattr(layout_file_name, "name"):
+            # Check if we should log (only once per file)
+            last_logged_layout = st.session_state.get("last_logged_layout_file")
+            if last_logged_layout != layout_file_name.name:
+                try:
+                    log_event("file_upload", f"Layout file loaded: {layout_file_name.name}")
+                except NameError:
+                    pass  # Function not available yet
+                st.session_state.last_logged_layout_file = layout_file_name.name
+    
+    if "claims_df" in st.session_state and st.session_state.get("claims_df") is not None:
+        claims_file_name = st.session_state.get("claims_file_obj")
+        if claims_file_name and hasattr(claims_file_name, "name"):
+            # Check if we should log (only once per file)
+            last_logged_claims = st.session_state.get("last_logged_claims_file")
+            if last_logged_claims != claims_file_name.name:
+                claims_df = st.session_state.get("claims_df")
+                row_count = len(claims_df) if claims_df is not None else 0
+                col_count = len(claims_df.columns) if claims_df is not None else 0
+                try:
+                    log_event("file_upload", f"Claims file loaded: {claims_file_name.name} ({row_count:,} rows, {col_count} columns)")
+                except NameError:
+                    pass  # Function not available yet
+                st.session_state.last_logged_claims_file = claims_file_name.name
+    
+    if "msk_codes" in st.session_state or "bar_codes" in st.session_state:
+        lookup_file_name = st.session_state.get("lookup_file_obj")
+        if lookup_file_name and hasattr(lookup_file_name, "name"):
+            # Check if we should log (only once per file)
+            last_logged_lookup = st.session_state.get("last_logged_lookup_file")
+            if last_logged_lookup != lookup_file_name.name:
+                msk_count = len(st.session_state.get("msk_codes", set()))
+                bar_count = len(st.session_state.get("bar_codes", set()))
+                try:
+                    log_event("file_upload", f"Lookup file loaded: {lookup_file_name.name} (MSK: {msk_count}, BAR: {bar_count})")
+                except NameError:
+                    pass  # Function not available yet
+                st.session_state.last_logged_lookup_file = lookup_file_name.name
     
     # Inject CSS for modern cards
     inject_summary_card_css()
@@ -115,7 +290,7 @@ with tab1:
         "claims": render_claims_file_summary
     }
     
-    # Add summaries in upload order
+    # Add summaries in upload order if available
     for file_type in upload_order:
         if file_type in summary_map_tab1:
             # Verify file is still uploaded
@@ -126,7 +301,35 @@ with tab1:
             elif file_type == "claims" and "claims_file_obj" in st.session_state:
                 summary_functions_tab1.append(summary_map_tab1[file_type])
     
-    # Render summaries dynamically
+    # Also add summaries for files that exist but might not be in upload_order
+    # (fallback to ensure stats are always shown when files are uploaded)
+    if "layout_file_obj" in st.session_state and "layout" not in upload_order:
+        if "layout" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions_tab1]:
+            summary_functions_tab1.append(summary_map_tab1["layout"])
+    if "lookup_file_obj" in st.session_state and "lookup" not in upload_order:
+        if "lookup" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions_tab1]:
+            summary_functions_tab1.append(summary_map_tab1["lookup"])
+    if "claims_file_obj" in st.session_state and "claims" not in upload_order:
+        if "claims" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions_tab1]:
+            summary_functions_tab1.append(summary_map_tab1["claims"])
+    
+    # Render summaries dynamically - always show if files are uploaded
+    # Check if we have any uploaded files
+    has_uploaded_files = (
+        "layout_file_obj" in st.session_state or 
+        "lookup_file_obj" in st.session_state or 
+        "claims_file_obj" in st.session_state
+    )
+    
+    # If we have files but no summaries in list, add them
+    if not summary_functions_tab1 and has_uploaded_files:
+        if "layout_file_obj" in st.session_state:
+            summary_functions_tab1.append(summary_map_tab1["layout"])
+        if "lookup_file_obj" in st.session_state:
+            summary_functions_tab1.append(summary_map_tab1["lookup"])
+        if "claims_file_obj" in st.session_state:
+            summary_functions_tab1.append(summary_map_tab1["claims"])
+    
     if summary_functions_tab1:
         st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
         num_summaries = len(summary_functions_tab1)
@@ -145,68 +348,6 @@ with tab1:
                 summary_func()
         
         st.markdown('</div>', unsafe_allow_html=True)
-    
-    # --- Ready to Process Card ---
-    # Show this card when all files are uploaded and claims file is processed
-    all_files_ready = (
-        "layout_file_obj" in st.session_state and 
-        "lookup_file_obj" in st.session_state and 
-        "claims_file_obj" in st.session_state and
-        "claims_df" in st.session_state and
-        st.session_state.get("claims_df") is not None
-    )
-    
-    if all_files_ready:
-        st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-top: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            color: white;
-        ">
-            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <div style="
-                    width: 48px;
-                    height: 48px;
-                    background: rgba(255,255,255,0.2);
-                    border-radius: 8px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-right: 1rem;
-                ">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4L4 8L12 12L20 8L12 4Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M4 12L12 16L20 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M4 16L12 20L20 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <h3 style="margin: 0; color: white; font-size: 1.5rem; font-weight: 600;">Ready to Process</h3>
-            </div>
-            <p style="margin: 0 0 1.5rem 0; color: rgba(255,255,255,0.9); font-size: 1rem; line-height: 1.5;">
-                File structure confirmed. Proceed to map your source columns to the internal schema.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Button to navigate to Field Mapping tab
-        col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-            if st.button("Go to Mapping →", key="go_to_mapping_btn", use_container_width=True, type="primary"):
-                # Use JavaScript to switch to Field Mapping tab
-                st.markdown("""
-                <script>
-                setTimeout(function() {
-                    const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-                    if (tabs.length > 1) {
-                        tabs[1].click();
-                    }
-                }, 100);
-                </script>
-                """, unsafe_allow_html=True)
-                st.rerun()
 
 with tab2:
     layout_df = st.session_state.get("layout_df")
@@ -309,7 +450,7 @@ with tab2:
                     st.info("Right-click and copy the JSON above")
 
     # --- Main Mapping Section ---
-    st.markdown("## Manual Field Mapping")
+    st.markdown("#### Manual Field Mapping")
     # Gate heavy mapping updates behind a form submit to avoid recomputation on every rerun
     with st.form("mapping_form"):
         render_field_mapping_tab()
@@ -320,11 +461,134 @@ with tab2:
             final_mapping = st.session_state.get("final_mapping", {})
             if final_mapping:
                 save_to_history(final_mapping)
+                # Only log manual mappings (exclude AI auto-mapped fields)
+                manual_mapped_count = len([f for f in final_mapping.keys() 
+                                         if final_mapping[f].get("value") and final_mapping[f].get("mode") == "manual"])
+                if manual_mapped_count > 0:
+                    try:
+                        log_event("mapping", f"Manual field mappings committed via form ({manual_mapped_count} fields mapped)")
+                    except NameError:
+                        pass
 
     st.divider()
 
+    # --- Review & Adjust Mappings Section ---
+    if st.session_state.get("mappings_ready") and final_mapping:
+        st.markdown("#### Review & Adjust Mappings")
+        st.caption("Review and edit your mappings in the table below. Click 'Apply Edited Mappings' to save changes.")
+        
+        # Get all internal fields from layout
+        all_internal_fields = layout_df["Internal Field"].dropna().unique().tolist()  # type: ignore[no-untyped-call]
+        
+        # Get required fields to mark which are required
+        required_fields_df = get_required_fields(layout_df)
+        required_fields_list = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
+        required_fields_set = set(required_fields_list)
+        
+        # Get available source columns for validation
+        available_source_columns = claims_df.columns.tolist()
+        
+        # Build review table data
+        review_data: List[Dict[str, Any]] = []
+        for field in all_internal_fields:
+            mapping_info = final_mapping.get(field, {})
+            source_col = mapping_info.get("value", "")
+            is_required = "Yes" if field in required_fields_set else "No"
+            
+            review_data.append({
+                "Internal Field": field,
+                "Source Column": source_col,
+                "Is Required": is_required
+            })
+        
+        # Create DataFrame for data editor
+        review_df = pd.DataFrame(review_data)
+        
+        # Sort: Required fields first, then alphabetically by Internal Field
+        review_df["_sort_key"] = review_df["Is Required"].apply(lambda x: 0 if x == "Yes" else 1)  # type: ignore[no-untyped-call]
+        review_df = review_df.sort_values(by=["_sort_key", "Internal Field"]).drop(columns=["_sort_key"])  # type: ignore[no-untyped-call]
+        
+        # Configure column editing - only Source Column should be editable
+        column_config = {
+            "Internal Field": st.column_config.TextColumn(
+                "Internal Field",
+                disabled=True,
+                help="Internal field name (cannot be edited)"
+            ),
+            "Source Column": st.column_config.TextColumn(
+                "Source Column",
+                help="Type or edit the source column name. Available columns: " + ", ".join(available_source_columns[:10]) + ("..." if len(available_source_columns) > 10 else ""),
+                required=False
+            ),
+            "Is Required": st.column_config.TextColumn(
+                "Is Required",
+                disabled=True,
+                help="Whether this field is mandatory"
+            )
+        }
+        
+        # Display data editor
+        edited_df = st.data_editor(
+            review_df,
+            column_config=column_config,
+            use_container_width=True,
+            num_rows="fixed",
+            key="mapping_review_editor",
+            hide_index=True
+        )
+        
+        # Apply Edited Mappings button
+        if st.button("Apply Edited Mappings", key="apply_edited_mappings", use_container_width=True, type="primary"):
+            # Read edited table and update final_mapping
+            updated_mapping: Dict[str, Dict[str, Any]] = {}
+            
+            for _, row in edited_df.iterrows():
+                internal_field = str(row["Internal Field"])
+                source_col = str(row["Source Column"]).strip()
+                
+                # Only add to mapping if source column is provided
+                if source_col and source_col != "":
+                    # Preserve existing mode if field was already mapped, otherwise set to manual
+                    existing_mapping = final_mapping.get(internal_field, {})
+                    mode = existing_mapping.get("mode", "manual")
+                    
+                    # If source column changed, mark as manual
+                    if existing_mapping.get("value") != source_col:
+                        mode = "manual"
+                    
+                    updated_mapping[internal_field] = {
+                        "mode": mode,
+                        "value": source_col
+                    }
+            
+            # Update session state
+            st.session_state.final_mapping = updated_mapping
+            
+            # Save to history
+            if updated_mapping:
+                save_to_history(updated_mapping)
+            
+            # Regenerate outputs
+            if claims_df is not None and updated_mapping:
+                from transformer import transform_claims_data
+                st.session_state.transformed_df = transform_claims_data(claims_df, updated_mapping)
+                generate_all_outputs()
+            
+            st.success("✅ Mappings updated successfully!")
+            # Only log manual mappings (exclude AI auto-mapped fields)
+            manual_mapped_count = len([f for f in updated_mapping.keys() 
+                                     if updated_mapping[f].get("value") and updated_mapping[f].get("mode") == "manual"])
+            if manual_mapped_count > 0:
+                try:
+                    log_event("mapping", f"Manual mappings updated via review table ({manual_mapped_count} fields mapped)")
+                except NameError:
+                    pass
+            st.rerun()
+        
+        st.divider()
+
     # --- AI Suggestions Section ---
-    st.markdown("## AI Auto-Mapping Suggestions")
+    st.markdown("#### AI Auto-Mapping Suggestions")
 
     # Compute AI suggestions only when needed
     if "auto_mapping" not in st.session_state and st.session_state.get("mappings_ready"):
@@ -366,6 +630,7 @@ with tab2:
                     with st.spinner("Applying selected suggestions..."):
                         st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
                         generate_all_outputs()
+                        # Note: Not logging AI suggestions - only manual changes are logged
 
                         # --- Refresh transformed dataframe ---
                         claims_df = st.session_state.get("claims_df")
@@ -423,9 +688,18 @@ with tab3:
                 validation_results = field_level_results + file_level_results
                 st.session_state.validation_results = validation_results
                 st.session_state.validation_data_hash = data_hash
+                
+                # Log validation completion
+                fail_count = len([r for r in validation_results if r.get("status") == "Fail"])
+                warning_count = len([r for r in validation_results if r.get("status") == "Warning"])
+                pass_count = len([r for r in validation_results if r.get("status") == "Pass"])
+                try:
+                    log_event("validation", f"Validation completed: {pass_count} passed, {warning_count} warnings, {fail_count} failed")
+                except NameError:
+                    pass
 
     # --- Validation Metrics Summary ---
-    st.markdown("### Validation Summary")
+    st.markdown("#### Validation Summary")
 
     fails = [r for r in validation_results if r["status"] == "Fail"]
     warnings = [r for r in validation_results if r["status"] == "Warning"]
@@ -443,7 +717,7 @@ with tab3:
     st.divider()
 
     # --- Detailed Validation Table ---
-    st.markdown("### Detailed Validation Results")
+    st.markdown("#### Detailed Validation Results")
     if validation_results:
         validation_df = pd.DataFrame(validation_results)
         st.dataframe(validation_df, use_container_width=True)  # type: ignore[no-untyped-call]
@@ -463,7 +737,7 @@ with tab3:
     st.divider()
 
     # --- Final Verdict Block with Threshold Analysis ---
-    st.markdown("### File Status & Validation Summary")
+    st.markdown("#### File Status & Validation Summary")
 
     if not validation_results:
         st.info("No validations have been run yet.")
@@ -781,7 +1055,47 @@ with tab3:
                         """, unsafe_allow_html=True)
 
 with tab4:
-    st.markdown("## Final Outputs and Downloads")
+    st.markdown("#### Final Outputs and Downloads")
+
+    # --- Activity Log Section ---
+    st.markdown("### 📋 Activity Log")
+    audit_log = st.session_state.setdefault("audit_log", [])
+    
+    if audit_log:
+        # Show last 20 events in reverse chronological order
+        recent_events = audit_log[-20:][::-1]
+        
+        # Create DataFrame for display
+        log_data = []
+        for event in recent_events:
+            event_type = event.get("event_type", "unknown")
+            message = event.get("message", "")
+            timestamp = event.get("timestamp", "")
+            
+            # Format timestamp for display
+            try:
+                dt = datetime.fromisoformat(timestamp)
+                time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                time_str = timestamp
+            
+            log_data.append({
+                "Time": time_str,
+                "Type": event_type.upper(),
+                "Message": message
+            })
+        
+        log_df = pd.DataFrame(log_data)
+        st.dataframe(log_df, use_container_width=True, hide_index=True)
+        
+        # Clear log button
+        if st.button("Clear Activity Log", key="clear_activity_log_tab4"):
+            st.session_state.audit_log = []
+            st.rerun()
+    else:
+        st.info("No activity logged yet. Events will appear here as you use the app.")
+    
+    st.divider()
 
     if "final_mapping" not in st.session_state or not st.session_state.final_mapping:
         st.info("Complete required field mappings to generate outputs.")
@@ -918,12 +1232,20 @@ with tab4:
 
             col1, col2 = st.columns(2)
             with col1:
+                def on_zip_download():
+                    try:
+                        log_event("output", "ZIP file generated and downloaded (all_outputs.zip)")
+                    except NameError:
+                        pass
+                    _notify("✅ ZIP file ready!")
+                
                 st.download_button(
                     label="Download All Files (ZIP)",
                     data=buffer,
                     file_name="all_outputs.zip",
                     mime="application/zip",
-                    key="download_zip"
+                    key="download_zip",
+                    on_click=on_zip_download
                 )
             with col2:
                 if st.button("Regenerate All Outputs"):

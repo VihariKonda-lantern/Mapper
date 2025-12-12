@@ -174,13 +174,26 @@ def inject_summary_card_css():
         display: flex !important;
         flex-direction: column !important;
         padding: 0.5rem !important;
-        min-height: 200px !important;
+        min-height: 120px !important;
+    }
+    
+    /* Center and constrain upload columns container */
+    .upload-columns-container {
+        max-width: 70% !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    
+    .upload-columns-container [data-testid="column"] {
+        flex: 1 1 0 !important;
+        max-width: 100% !important;
     }
     
     /* Make all file uploaders the same size */
     [data-testid="column"] .stFileUploader {
         flex: 1 !important;
-        min-height: 200px !important;
+        min-height: 120px !important;
         height: 100% !important;
         display: flex !important;
         flex-direction: column !important;
@@ -191,13 +204,13 @@ def inject_summary_card_css():
     .stFileUploader {
         border: 2px dashed #d1d5db !important;
         border-radius: 8px !important;
-        padding: 1.5rem !important;
+        padding: 0.75rem !important;
         background-color: #f9fafb !important;
         transition: all 0.2s ease !important;
         width: 100% !important;
         box-sizing: border-box !important;
         min-width: 0 !important;
-        min-height: 200px !important;
+        min-height: 120px !important;
     }
     
     .stFileUploader:hover {
@@ -211,7 +224,7 @@ def inject_summary_card_css():
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
-        min-height: 150px !important;
+        min-height: 80px !important;
         height: 100% !important;
     }
     
@@ -268,7 +281,7 @@ def inject_summary_card_css():
     /* Make file uploader drag area consistent */
     .stFileUploader [data-baseweb="file-uploader"] {
         width: 100% !important;
-        min-height: 150px !important;
+        min-height: 80px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;

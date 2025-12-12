@@ -215,14 +215,6 @@ def render_field_mapping_tab():
         with st.expander(group_label, expanded=False):
             for _, (_, row) in enumerate(group_fields.iterrows()):
                 field_name = row["Internal Field"]
-                
-                # Show AI suggestion if available
-                has_suggestion = field_name in ai_suggestions
-                if has_suggestion:
-                    suggestion_score = ai_suggestions[field_name].get("score", 0)
-                    st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"**{field_name}**")
                 raw_columns = claims_df.columns.tolist()
 
                 # --- AI suggestion if available ---
@@ -255,29 +247,92 @@ def render_field_mapping_tab():
                 # Sanitize key to remove special characters that might cause issues
                 unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
 
-                selected_clean: Optional[str] = None
-                if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                    widget_counter += 1
-                    key_prefix = f"req_{group}_{field_name}_{widget_counter}"
-                    key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                    selected = dual_input_field(field_name, field_col_options, key_prefix=key_prefix)
-                    manual_key = f"{key_prefix}_manual"
-                    manual_value = st.session_state.get(manual_key)
-
-                    if manual_value:
-                        selected_clean = manual_value.strip()
+                # --- New Visual Layout: 3-column row ---
+                col1, col2, col3 = st.columns([2, 3, 3])
+                
+                with col1:
+                    # Internal field name with AI suggestion indicator
+                    has_suggestion = field_name in ai_suggestions
+                    if has_suggestion:
+                        st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
                     else:
+                        st.markdown(f"**{field_name}**")
+                
+                with col2:
+                    selected_clean: Optional[str] = None
+                    if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
+                        widget_counter += 1
+                        key_prefix = f"req_{group}_{field_name}_{widget_counter}"
+                        key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+                        selected = dual_input_field(field_name, field_col_options, key_prefix=key_prefix)
+                        manual_key = f"{key_prefix}_manual"
+                        manual_value = st.session_state.get(manual_key)
+
+                        if manual_value:
+                            selected_clean = manual_value.strip()
+                        else:
+                            selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
+                    else:
+                        select_idx = field_col_options.index(req_default_label) + 1 if (req_default_label is not None and req_default_label in field_col_options) else 0
+                        selected = st.selectbox(
+                            "Select column:",
+                            options=[""] + field_col_options,
+                            index=select_idx,
+                            key=unique_key,
+                            help=f"Map {field_name} to a claims file column",
+                            label_visibility="collapsed"
+                        )
                         selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
-                else:
-                    select_idx = field_col_options.index(req_default_label) + 1 if (req_default_label is not None and req_default_label in field_col_options) else 0
-                    selected = st.selectbox(
-                        "Select column:",
-                        options=[""] + field_col_options,
-                        index=select_idx,
-                        key=unique_key,
-                        help=f"Map {field_name} to a claims file column"
-                    )
-                    selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
+                    
+                    # --- Mapped Chip ---
+                    if selected_clean:
+                        st.markdown(f"""
+                            <div style='margin-top: 0.25rem;'>
+                                <span style='background-color: #e7f3ff; color: #0066cc; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
+                                    Mapped to: <strong>{selected_clean}</strong>
+                                </span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                
+                with col3:
+                    # --- Sample & Stats Panel ---
+                    if selected_clean and selected_clean in claims_df.columns:
+                        try:
+                            col_data = claims_df[selected_clean]
+                            # Get 3 sample values
+                            samples = col_data.dropna().head(3).tolist()
+                            # Get dtype
+                            dtype = str(col_data.dtype)
+                            # Calculate fill rate
+                            total_count = len(col_data)
+                            non_null_count = col_data.notna().sum()
+                            fill_rate = (non_null_count / total_count * 100) if total_count > 0 else 0.0
+                            
+                            # Format samples for display
+                            sample_display = []
+                            for i, sample in enumerate(samples[:3]):
+                                sample_str = str(sample)
+                                if len(sample_str) > 30:
+                                    sample_str = sample_str[:27] + "..."
+                                sample_display.append(f"• {sample_str}")
+                            
+                            if not sample_display:
+                                sample_display = ["• (no data)"]
+                            
+                            st.markdown(f"""
+                                <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #667eea; font-size: 0.85rem;'>
+                                    <div style='font-weight: 600; margin-bottom: 0.25rem; color: #495057;'>Sample & Stats</div>
+                                    <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                    <div style='color: #6c757d; font-size: 0.8rem;'>
+                                        <span>Type: <code>{dtype}</code></span><br>
+                                        <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        except Exception:
+                            st.markdown("<div style='color: #6c757d; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='color: #adb5bd; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
 
                 if selected_clean:
                     final_mapping[field_name] = {
@@ -378,21 +433,91 @@ def render_field_mapping_tab():
                     # Sanitize key to remove special characters that might cause issues
                     unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
 
-                    field_selected_clean: Optional[str] = None
-                    if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                        widget_counter += 1
-                        key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
-                        key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                        selected = dual_input_field(field_name, opt_col_options, key_prefix=key_prefix)
-                    else:
-                        select_idx = opt_col_options.index(default_label) + 1 if (default_label is not None and default_label in opt_col_options) else 0
-                        selected = st.selectbox(
-                            f"{field_name}",
-                            options=[""] + opt_col_options,
-                            index=select_idx,
-                            key=unique_key
-                        )
-                        field_selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
+                    # --- New Visual Layout: 3-column row ---
+                    col1, col2, col3 = st.columns([2, 3, 3])
+                    
+                    with col1:
+                        # Internal field name with AI suggestion indicator
+                        has_suggestion = field_name in ai_suggestions
+                        if has_suggestion:
+                            st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"**{field_name}**")
+                    
+                    with col2:
+                        field_selected_clean: Optional[str] = None
+                        if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
+                            widget_counter += 1
+                            key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
+                            key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
+                            selected = dual_input_field(field_name, opt_col_options, key_prefix=key_prefix)
+                            manual_key = f"{key_prefix}_manual"
+                            manual_value = st.session_state.get(manual_key)
+
+                            if manual_value:
+                                field_selected_clean = manual_value.strip()
+                            else:
+                                field_selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
+                        else:
+                            select_idx = opt_col_options.index(default_label) + 1 if (default_label is not None and default_label in opt_col_options) else 0
+                            selected = st.selectbox(
+                                f"{field_name}",
+                                options=[""] + opt_col_options,
+                                index=select_idx,
+                                key=unique_key,
+                                label_visibility="collapsed"
+                            )
+                            field_selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
+                        
+                        # --- Mapped Chip ---
+                        if field_selected_clean:
+                            st.markdown(f"""
+                                <div style='margin-top: 0.25rem;'>
+                                    <span style='background-color: #e7f3ff; color: #0066cc; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
+                                        Mapped to: <strong>{field_selected_clean}</strong>
+                                    </span>
+                                </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        # --- Sample & Stats Panel ---
+                        if field_selected_clean and field_selected_clean in claims_df.columns:
+                            try:
+                                col_data = claims_df[field_selected_clean]
+                                # Get 3 sample values
+                                samples = col_data.dropna().head(3).tolist()
+                                # Get dtype
+                                dtype = str(col_data.dtype)
+                                # Calculate fill rate
+                                total_count = len(col_data)
+                                non_null_count = col_data.notna().sum()
+                                fill_rate = (non_null_count / total_count * 100) if total_count > 0 else 0.0
+                                
+                                # Format samples for display
+                                sample_display = []
+                                for i, sample in enumerate(samples[:3]):
+                                    sample_str = str(sample)
+                                    if len(sample_str) > 30:
+                                        sample_str = sample_str[:27] + "..."
+                                    sample_display.append(f"• {sample_str}")
+                                
+                                if not sample_display:
+                                    sample_display = ["• (no data)"]
+                                
+                                st.markdown(f"""
+                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #667eea; font-size: 0.85rem;'>
+                                        <div style='font-weight: 600; margin-bottom: 0.25rem; color: #495057;'>Sample & Stats</div>
+                                        <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                        <div style='color: #6c757d; font-size: 0.8rem;'>
+                                            <span>Type: <code>{dtype}</code></span><br>
+                                            <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            except Exception:
+                                st.markdown("<div style='color: #6c757d; font-size: 0.85rem;'>No data available</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div style='color: #adb5bd; font-size: 0.85rem; font-style: italic;'>Select a column to preview</div>", unsafe_allow_html=True)
 
                     if field_selected_clean:
                         final_mapping[field_name] = {

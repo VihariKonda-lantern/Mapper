@@ -75,7 +75,10 @@ def render_upload_and_claims_preview():
         if st.session_state.get("header_file_obj") is not None:
             show_header_uploader = True
     
-    # --- All Upload Blocks Side by Side ---
+    # --- All Upload Blocks Side by Side (Centered and Reduced Width) ---
+    # Wrap in a centered container with reduced width (70% of original)
+    st.markdown('<div class="upload-columns-container">', unsafe_allow_html=True)
+    
     # Always create columns based on whether header uploader is needed
     col4 = None  # Initialize to avoid unbound error
     if show_header_uploader:
@@ -195,6 +198,9 @@ def render_upload_and_claims_preview():
             upload_order_list = cast(List[str], st.session_state.upload_order)
             if "claims" in upload_order_list:
                 upload_order_list.remove("claims")
+    
+    # Close the centered container
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # --- Automatic File Loading ---
     # Check if all files are uploaded and claims_df hasn't been loaded yet
