@@ -128,7 +128,7 @@ def render_field_mapping_tab():
     preview_df = claims_df.head()
     
     # Apply search filter if active
-    search_query = st.session_state.get("field_search", "")
+    search_query = st.session_state.get("field_search_input", "")
     if search_query and search_query.strip():
         preview_df = preview_df.filter(regex=search_query, axis=1)  # type: ignore[no-untyped-call]
     
@@ -185,10 +185,37 @@ def render_field_mapping_tab():
     # --- Required Fields Heading ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### Mandatory Fields Mapping")
+    
+    # --- Enhanced Search and Filter ---
+    search_col1, search_col2, search_col3 = st.columns([3, 2, 2])
+    with search_col1:
+        search_query = st.text_input(
+            "🔍 Search fields:",
+            value=st.session_state.get("field_search_input", ""),
+            key="field_search_input",
+            placeholder="Type to search field names...",
+            help="Search for fields by name"
+        )
+    
+    with search_col2:
+        filter_status = st.selectbox(
+            "Filter by status:",
+            options=["All", "Mapped", "Unmapped", "AI Suggested"],
+            key="filter_status",
+            help="Filter fields by mapping status"
+        )
+    
+    with search_col3:
+        filter_required = st.selectbox(
+            "Filter by type:",
+            options=["All", "Required", "Optional"],
+            key="filter_required",
+            help="Filter by field requirement"
+        )
             
     # --- Required Fields Mapping ---
     # Get search query from session state
-    search_query = st.session_state.get("field_search", "")
+    search_query = st.session_state.get("field_search_input", "")
     
     for group in field_groups:
         group_fields = required_fields[required_fields["Category"] == group]
@@ -204,6 +231,18 @@ def render_field_mapping_tab():
             ]
 
         group_field_names = group_fields["Internal Field"].tolist()
+        
+        # Apply status filter
+        if filter_status == "Mapped":
+            group_field_names = [f for f in group_field_names if f in final_mapping and final_mapping[f].get("value")]
+        elif filter_status == "Unmapped":
+            group_field_names = [f for f in group_field_names if f not in final_mapping or not final_mapping[f].get("value")]
+        elif filter_status == "AI Suggested":
+            group_field_names = [f for f in group_field_names if f in ai_suggestions]
+        
+        if not group_field_names:
+            continue
+        
         mapped_count = sum(
             1 for f in group_field_names
             if f in final_mapping and final_mapping[f].get("value")
@@ -251,12 +290,34 @@ def render_field_mapping_tab():
                 col1, col2, col3 = st.columns([2, 3, 3])
                 
                 with col1:
-                    # Internal field name with AI suggestion indicator
+                    # Internal field name with AI suggestion indicator and search highlighting
                     has_suggestion = field_name in ai_suggestions
+                    display_name = field_name
+                    
+                    # Highlight search query in field name
+                    if search_query and search_query.strip():
+                        import re
+                        pattern = re.compile(re.escape(search_query), re.IGNORECASE)
+                        display_name = pattern.sub(lambda m: f"<mark style='background-color: #ffeb3b; padding: 2px 4px;'>{m.group()}</mark>", field_name)
+                    
                     if has_suggestion:
-                        st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
+                        st.markdown(f"**{display_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"**{field_name}**")
+                        st.markdown(f"**{display_name}**", unsafe_allow_html=True)
+                    
+                    # Real-time validation status indicator
+                    if field_name in final_mapping and final_mapping[field_name].get("value"):
+                        mapped_col = final_mapping[field_name].get("value")
+                        if mapped_col and mapped_col in claims_df.columns:
+                            # Quick validation check
+                            col_data = claims_df[mapped_col]
+                            null_pct = (col_data.isna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0
+                            if null_pct > 50:
+                                st.markdown("<span style='color: #f44336; font-size: 0.75em;'>⚠️ High null rate</span>", unsafe_allow_html=True)
+                            elif null_pct > 20:
+                                st.markdown("<span style='color: #ff9800; font-size: 0.75em;'>⚠️ Moderate null rate</span>", unsafe_allow_html=True)
+                            else:
+                                st.markdown("<span style='color: #4caf50; font-size: 0.75em;'>✓ Good</span>", unsafe_allow_html=True)
                 
                 with col2:
                     selected_clean: Optional[str] = None

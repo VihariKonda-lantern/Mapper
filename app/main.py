@@ -13,6 +13,7 @@ import zipfile
 import io
 import hashlib
 import os
+import json
 # Removed unused matplotlib import
 
 # --- App Modules ---
@@ -31,7 +32,7 @@ from anonymizer import anonymize_claims_data
 
 # --- UI Modules ---
 from ui_styling import inject_summary_card_css, inject_ux_javascript  # type: ignore[import-untyped]
-from ui_components import render_progress_bar, render_title, _notify  # type: ignore[import-untyped]
+from ui_components import render_progress_bar, render_title, _notify, show_progress_with_status, confirm_action  # type: ignore[import-untyped]
 from upload_ui import (  # type: ignore[import-untyped]
     render_upload_and_claims_preview,
     render_lookup_summary_section,
@@ -52,11 +53,31 @@ from file_handler import (  # type: ignore[import-untyped]
     read_claims_with_header_option,
 )
 from upload_handlers import capture_claims_file_metadata  # type: ignore[import-untyped]
+from advanced_features import (  # type: ignore[import-untyped]
+    init_dark_mode,
+    toggle_dark_mode,
+    get_dark_mode_css,
+    inject_keyboard_shortcuts,
+    save_mapping_template,
+    load_mapping_template,
+    list_saved_templates,
+    export_validation_results_csv,
+    export_validation_results_excel,
+    bulk_map_similar_fields,
+)
+from performance_utils import paginate_dataframe, get_data_hash  # type: ignore[import-untyped]
+from batch_processor import compare_mappings, generate_mapping_diff_view  # type: ignore[import-untyped]
+from validation_builder import (  # type: ignore[import-untyped]
+    CustomValidationRule,
+    save_custom_rule,
+    load_custom_rules,
+    run_custom_validations,
+)
 
 # --- Audit Log Helper Function (defined early to ensure availability) ---
 def log_event(event_type: str, message: str) -> None:
     """Log an event to the in-memory audit log.
-    
+
     Args:
         event_type: Type of event (e.g., "file_upload", "mapping", "validation", "output")
         message: Descriptive message about the event
@@ -77,6 +98,15 @@ def log_event(event_type: str, message: str) -> None:
 
 # --- Streamlit Setup ---
 st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
+
+# Initialize dark mode
+init_dark_mode()
+
+# Inject dark mode CSS
+st.markdown(get_dark_mode_css(), unsafe_allow_html=True)
+
+# Inject keyboard shortcuts
+inject_keyboard_shortcuts()
 
 # --- Removed: Functions moved to ui_styling.py ---
 # inject_summary_card_css() - now in ui_styling.py
@@ -154,20 +184,24 @@ st.markdown("""
             padding-right: 2rem;
             max-width: 1400px;
         }
+        
         /* Reduce excessive vertical spacing */
         h1, h2, h3, h4 {
             margin-top: 0.75rem !important;
             margin-bottom: 0.5rem !important;
         }
+        
         /* Tighter spacing for tabs */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.5rem;
             margin-bottom: 0.5rem;
         }
+        
         /* Reduce spacing for dividers */
         hr {
             margin: 0.75rem 0 !important;
         }
+        
         /* Tighter spacing between elements */
         .element-container {
             margin-bottom: 0.5rem;
@@ -176,7 +210,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Sidebar: Activity Log Panel ---
+# --- Sidebar with Settings ---
 with st.sidebar:
+    # Dark Mode Toggle
+    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state.get("dark_mode", False), key="dark_mode_toggle")
+    if dark_mode != st.session_state.get("dark_mode", False):
+        toggle_dark_mode()
+        st.rerun()
+    
+    st.divider()
     st.markdown("### 📋 Activity Log")
     audit_log = st.session_state.setdefault("audit_log", [])
     
@@ -357,30 +399,30 @@ with tab2:
     if layout_df is None or claims_df is None:
         st.info("Upload both layout and claims files to begin mapping.")
         st.stop()
-    else:
-        # --- Sticky Mapping Progress Bar ---
-        # Guard layout_df and string operations
-        required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
-        total_required = len(required_fields) if required_fields else 0
-        mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
-        mapped_count = len(mapped_required)
-        percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
+    
+    # --- Sticky Mapping Progress Bar ---
+    # Guard layout_df and string operations
+    required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
+    total_required = len(required_fields) if required_fields else 0
+    mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
+    mapped_count = len(mapped_required)
+    percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
 
-        progress_html = render_progress_bar(percent_complete, f"{mapped_count} / {total_required} fields mapped ({percent_complete}%)")
-        st.markdown(
-            f'<div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; z-index: 999; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><b style="font-size: 1.1rem;">📌 Required Field Mapping Progress</b>{progress_html}</div>',
-            unsafe_allow_html=True
-        )
+    progress_html = render_progress_bar(percent_complete, f"{mapped_count} / {total_required} fields mapped ({percent_complete}%)")
+    st.markdown(
+        f'<div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; z-index: 999; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><b style="font-size: 1.1rem;">📌 Required Field Mapping Progress</b>{progress_html}</div>',
+        unsafe_allow_html=True
+    )
 
-        # --- UX Tools (Collapsible Container) ---
-        with st.expander("⚙️ Tools & Actions", expanded=False):
-            # Search field at the top of the container
-            search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
+    # --- UX Tools (Collapsible Container) ---
+    with st.expander("⚙️ Tools & Actions", expanded=False):
+        # Search field at the top of the container
+        search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search_tools")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
                 st.markdown("**History**")
                 # Initialize undo/redo
                 initialize_undo_redo()
@@ -418,36 +460,86 @@ with tab2:
                             del st.session_state.auto_mapping
                         st.rerun()
             
-            with col2:
-                st.markdown("**Bulk Actions**")
-                ai_suggestions = st.session_state.get("auto_mapping", {})
-                final_mapping = st.session_state.get("final_mapping", {})
-                if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
-                    accepted = 0
-                    for field, info in ai_suggestions.items():
-                        score = info.get("score", 0)
-                        if score >= 80 and (field not in final_mapping or not final_mapping[field].get("value")):
-                            final_mapping[field] = {"mode": "auto", "value": info["value"]}
-                            accepted += 1
-                    if accepted > 0:
-                        st.session_state.final_mapping = final_mapping
-                        save_to_history(final_mapping)
-                        st.success(f"Accepted {accepted} AI suggestions!")
-                        st.rerun()
-                if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
-                    if st.checkbox("Confirm: Clear all mappings?", key="confirm_clear"):
-                        st.session_state.final_mapping = {}
-                        save_to_history({})
-                        st.success("All mappings cleared!")
-                        st.rerun()
+        with col2:
+            st.markdown("**Bulk Actions**")
+            ai_suggestions = st.session_state.get("auto_mapping", {})
+            final_mapping = st.session_state.get("final_mapping", {})
+            if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
+                accepted = 0
+                for field, info in ai_suggestions.items():
+                    score = info.get("score", 0)
+                    if score >= 80 and (field not in final_mapping or not final_mapping[field].get("value")):
+                        final_mapping[field] = {"mode": "auto", "value": info["value"]}
+                        accepted += 1
+                if accepted > 0:
+                    st.session_state.final_mapping = final_mapping
+                    save_to_history(final_mapping)
+                    st.success(f"Accepted {accepted} AI suggestions!")
+                    st.rerun()
+            if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
+                if confirm_action("⚠️ Are you sure you want to clear all mappings? This action cannot be undone.", "clear_all_mappings"):
+                    st.session_state.final_mapping = {}
+                    save_to_history({})
+                    if "confirm_clear_all_mappings" in st.session_state:
+                        del st.session_state["confirm_clear_all_mappings"]
+                    st.success("All mappings cleared!")
+                    log_event("mapping", "Cleared all mappings")
+                    st.rerun()
+        
+        with col3:
+            st.markdown("**Utilities**")
+            if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
+                import json
+                mapping_str = json.dumps(final_mapping, indent=2)
+                st.code(mapping_str, language="json")
+                st.info("Right-click and copy the JSON above")
             
-            with col3:
-                st.markdown("**Utilities**")
-                if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
-                    import json
-                    mapping_str = json.dumps(final_mapping, indent=2)
-                    st.code(mapping_str, language="json")
-                    st.info("Right-click and copy the JSON above")
+            # Export mapping as JSON file
+            if final_mapping:
+                mapping_json = json.dumps(final_mapping, indent=2).encode('utf-8')
+                st.download_button(
+                    label="💾 Export Mapping (JSON)",
+                    data=mapping_json,
+                    file_name="mapping_template.json",
+                    mime="application/json",
+                    key="export_mapping_json",
+                    use_container_width=True,
+                    help="Download current mapping as JSON template"
+                )
+            
+            # Save/Load Mapping Templates
+            st.markdown("**Mapping Templates**")
+            template_col1, template_col2 = st.columns(2)
+            with template_col1:
+                if st.button("💾 Save Template", key="save_template", use_container_width=True):
+                    if final_mapping:
+                        filename = save_mapping_template(final_mapping)
+                        st.success(f"Template saved: {os.path.basename(filename)}")
+                        log_event("template", f"Saved mapping template: {os.path.basename(filename)}")
+                    else:
+                        st.warning("No mapping to save")
+                
+                with template_col2:
+                    saved_templates = list_saved_templates()
+                    if saved_templates:
+                        template_names = [os.path.basename(t) for t in saved_templates]
+                        selected_template = st.selectbox(
+                            "Load Template",
+                            options=[""] + template_names,
+                            key="load_template_select",
+                            help="Select a saved template to load"
+                        )
+                        if selected_template and selected_template != "":
+                            template_path = os.path.join("templates", selected_template)
+                            loaded_mapping = load_mapping_template(template_path)
+                            if loaded_mapping:
+                                st.session_state.final_mapping = loaded_mapping
+                                save_to_history(loaded_mapping)
+                                st.success(f"Template loaded: {selected_template}")
+                                log_event("template", f"Loaded mapping template: {selected_template}")
+                                st.rerun()
+                    else:
+                        st.info("No saved templates")
 
     # --- Main Mapping Section ---
     st.markdown("#### Manual Field Mapping")
@@ -584,8 +676,8 @@ with tab2:
                 except NameError:
                     pass
             st.rerun()
-        
-        st.divider()
+
+    st.divider()
 
     # --- AI Suggestions Section ---
     st.markdown("#### AI Auto-Mapping Suggestions")
@@ -599,7 +691,34 @@ with tab2:
     auto_mapped_fields = st.session_state.get("auto_mapped_fields", [])
 
     if ai_suggestions:
-        st.info("Fields with AI confidence ≥ 80% have already been auto-mapped. You can override them manually below.")
+        # Show auto-mapped fields (≥80% confidence) so users can override them
+        auto_mapped_high_confidence = [
+            (field, info) for field, info in ai_suggestions.items()
+            if field in auto_mapped_fields and info.get("score", 0) >= 80
+        ]
+        
+        if auto_mapped_high_confidence:
+            st.info("Fields with AI confidence ≥ 80% have already been auto-mapped. You can override them manually below.")
+            
+            with st.expander("📋 Auto-Mapped Fields (≥80% confidence) - Click to Override", expanded=True):
+                st.caption("These fields were automatically mapped. You can change them in the mapping form below.")
+                for field, info in auto_mapped_high_confidence:
+                    col1, col2, col3 = st.columns([3, 3, 2])
+                    with col1:
+                        st.markdown(f"**{field}**")
+                    with col2:
+                        mapped_value = final_mapping.get(field, {}).get("value", "")
+                        st.code(mapped_value if mapped_value else "Not mapped", language="plaintext")
+                        if "score" in info:
+                            st.caption(f"AI Confidence: {info['score']}%")
+                    with col3:
+                        if st.button("Override", key=f"override_{field}", use_container_width=True):
+                            # Clear the auto-mapping so user can manually select
+                            if field in final_mapping:
+                                final_mapping[field] = {"mode": "manual", "value": ""}
+                                st.session_state.final_mapping = final_mapping
+                                st.rerun()
+                st.divider()
 
         with st.expander("🔍 View and Commit Additional Suggestions", expanded=False):
             selected_fields_tab2: List[str] = []
@@ -626,9 +745,9 @@ with tab2:
                                 "mode": "auto",
                                 "value": ai_suggestions[field]["value"]
                             }
-
-                    with st.spinner("Applying selected suggestions..."):
-                        st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
+                        
+                        with st.spinner("Applying selected suggestions..."):
+                            st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
                         generate_all_outputs()
                         # Note: Not logging AI suggestions - only manual changes are logged
 
@@ -700,6 +819,8 @@ with tab3:
 
     # --- Validation Metrics Summary ---
     st.markdown("#### Validation Summary")
+    
+    validation_results: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
 
     fails = [r for r in validation_results if r["status"] == "Fail"]
     warnings = [r for r in validation_results if r["status"] == "Warning"]
@@ -716,10 +837,94 @@ with tab3:
 
     st.divider()
 
+    # --- Custom Validation Rules Builder ---
+    with st.expander("🔧 Custom Validation Rules Builder", expanded=False):
+        st.markdown("Create custom validation rules for your data")
+        
+        rule_name = st.text_input("Rule Name:", key="custom_rule_name", placeholder="e.g., 'Email Format Check'")
+        rule_field = st.selectbox(
+            "Field to Validate:",
+            options=[""] + (transformed_df.columns.tolist() if transformed_df is not None else []),
+            key="custom_rule_field"
+        )
+        rule_type = st.selectbox(
+            "Rule Type:",
+            options=["null_check", "min_value", "max_value", "pattern_match"],
+            key="custom_rule_type",
+            help="null_check: Check null percentage\nmin_value: Minimum value threshold\nmax_value: Maximum value threshold\npattern_match: Pattern matching (coming soon)"
+        )
+        
+        if rule_type in ["null_check", "min_value", "max_value"]:
+            rule_threshold = st.number_input(
+                "Threshold:",
+                min_value=0.0,
+                max_value=100.0 if rule_type == "null_check" else float('inf'),
+                value=10.0,
+                key="custom_rule_threshold"
+            )
+        else:
+            rule_threshold = 0.0
+        
+        if st.button("Add Custom Rule", key="add_custom_rule"):
+            if rule_name and rule_field:
+                rule = CustomValidationRule(rule_name, rule_field, rule_type, rule_threshold)
+                save_custom_rule(rule)
+                st.success(f"Custom rule '{rule_name}' added!")
+                st.rerun()
+            else:
+                st.warning("Please provide both rule name and field")
+        
+        # Show existing custom rules
+        custom_rules = load_custom_rules()
+        if custom_rules:
+            st.markdown("**Existing Custom Rules:**")
+            for i, rule in enumerate(custom_rules):
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.markdown(f"- **{rule['name']}**: {rule['field']} ({rule['rule_type']}, threshold: {rule['threshold']})")
+                with col2:
+                    if st.button("Remove", key=f"remove_rule_{i}"):
+                        st.session_state.custom_validation_rules.pop(i)
+                        st.rerun()
+            
+            # Run custom validations
+            if st.button("Run Custom Validations", key="run_custom_validations"):
+                if transformed_df is not None:
+                    custom_results = run_custom_validations(transformed_df, custom_rules)
+                    # Add to validation results
+                    validation_results.extend(custom_results)
+                    st.session_state.validation_results = validation_results
+                    st.success(f"Ran {len(custom_results)} custom validation(s)")
+                    st.rerun()
+
+    st.divider()
+
     # --- Detailed Validation Table ---
     st.markdown("#### Detailed Validation Results")
     if validation_results:
-        validation_df = pd.DataFrame(validation_results)
+        # Add pagination for large result sets
+        if len(validation_results) > 50:
+            page_size = st.selectbox("Results per page:", [25, 50, 100, 200], index=1, key="validation_page_size")
+            paginated_results, page_num, total_pages = paginate_dataframe(
+                pd.DataFrame(validation_results),
+                page_size=page_size
+            )
+            st.caption(f"Page {page_num} of {total_pages} ({len(validation_results)} total results)")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("← Previous", key="prev_validation_page", disabled=page_num == 1):
+                    st.session_state.prev_page = True
+                    st.rerun()
+            with col2:
+                if st.button("Next →", key="next_validation_page", disabled=page_num == total_pages):
+                    st.session_state.next_page = True
+                    st.rerun()
+            
+            validation_df = paginated_results
+        else:
+            validation_df = pd.DataFrame(validation_results)
+        
         st.dataframe(validation_df, use_container_width=True)  # type: ignore[no-untyped-call]
 
         val_csv = validation_df.to_csv(index=False).encode('utf-8')
@@ -835,14 +1040,14 @@ with tab3:
             # --- Status Display ---
             if is_rejected:
                 st.markdown(
-                    """
+                """
                     <div style='background-color:#fdecea; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
                     <strong style='color: #b02a37; font-size: 1.2rem;'>❌ File Status: Rejected</strong>
                     <p style='color: #721c24; margin-top: 0.5rem; margin-bottom: 0;'>Mandatory fields are missing from the file.</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
             elif has_critical_issues:
                 st.markdown(
                     """
@@ -859,9 +1064,9 @@ with tab3:
                     <div style='background-color:#d1ecf1; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
                     <strong style='color: #0c5460; font-size: 1.2rem;'>ℹ️ File Status: Approved with Warnings</strong>
                     <p style='color: #0c5460; margin-top: 0.5rem; margin-bottom: 0;'>File meets requirements but has some data quality issues to review.</p>
-                </div>
-                """,
-                unsafe_allow_html=True
+                    </div>
+                    """,
+                    unsafe_allow_html=True
                 )
             else:
                 st.markdown(
@@ -1056,6 +1261,36 @@ with tab3:
 
 with tab4:
     st.markdown("#### Final Outputs and Downloads")
+    
+    # --- Batch Processing Section ---
+    with st.expander("📦 Batch Processing (Multiple Files)", expanded=False):
+        st.markdown("Process multiple claims files with the same mapping configuration")
+        batch_files = st.file_uploader(
+            "Upload multiple claims files:",
+            accept_multiple_files=True,
+            key="batch_files",
+            help="Select multiple files to process with the current mapping"
+        )
+        
+        if batch_files and final_mapping:
+            if st.button("Process Batch Files", key="process_batch"):
+                with st.spinner("Processing batch files..."):
+                    from batch_processor import process_multiple_claims_files
+                    results = process_multiple_claims_files(
+                        batch_files,
+                        layout_df,
+                        final_mapping,
+                        st.session_state.get("lookup_df")
+                    )
+                    
+                    st.success(f"Processed {len(batch_files)} file(s)")
+                    for file_name, result in results.items():
+                        if result.get("status") == "processed":
+                            st.info(f"✅ {file_name}: {result.get('rows', 0)} rows processed")
+                        else:
+                            st.error(f"❌ {file_name}: {result.get('error', 'Unknown error')}")
+        elif batch_files and not final_mapping:
+            st.warning("Please complete field mappings first before batch processing")
 
     # --- Activity Log Section ---
     st.markdown("### 📋 Activity Log")
@@ -1172,7 +1407,31 @@ with tab4:
             # --- Field Mapping Table Section ---
             with st.expander("Field Mapping Table Preview", expanded=True):
                 mapping_table = st.session_state.get("mapping_table")
-                st.dataframe(mapping_table, use_container_width=True)  # type: ignore[no-untyped-call]
+                
+                # Add pagination for large tables
+                if mapping_table is not None and len(mapping_table) > 100:
+                    table_page_size = st.slider("Rows per page:", 25, min(500, len(mapping_table)), 100, key="mapping_table_page_size")
+                    page_num = st.session_state.get("mapping_table_page", 1)
+                    
+                    start_idx = (page_num - 1) * table_page_size
+                    end_idx = start_idx + table_page_size
+                    paginated_table = mapping_table.iloc[start_idx:end_idx]
+                    
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col1:
+                        if st.button("← Previous", key="prev_mapping_table", disabled=page_num == 1):
+                            st.session_state.mapping_table_page = max(1, page_num - 1)
+                            st.rerun()
+                    with col2:
+                        st.caption(f"Page {page_num} of {(len(mapping_table) + table_page_size - 1) // table_page_size} ({len(mapping_table)} total rows)")
+                    with col3:
+                        if st.button("Next →", key="next_mapping_table", disabled=page_num * table_page_size >= len(mapping_table)):
+                            st.session_state.mapping_table_page = page_num + 1
+                            st.rerun()
+                    
+                    st.dataframe(paginated_table, use_container_width=True)  # type: ignore[no-untyped-call]
+                else:
+                    st.dataframe(mapping_table, use_container_width=True)  # type: ignore[no-untyped-call]
                 mapping_csv = mapping_table.to_csv(index=False).encode('utf-8')  # type: ignore[no-untyped-call]
                 col1, col2 = st.columns(2)
                 with col1:
