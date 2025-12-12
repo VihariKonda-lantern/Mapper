@@ -128,9 +128,9 @@ def render_layout_summary_section() -> None:
         optional_fields = layout_df[layout_df["Usage"].str.lower() == "optional"].shape[0]
         category_counts = layout_df["Category"].value_counts().to_dict()
 
-        st.write(f"**Total Fields:** {total_fields}")  # type: ignore[no-untyped-call]
-        st.write(f"**Required Fields:** {required_fields}")  # type: ignore[no-untyped-call]
-        st.write(f"**Optional Fields:** {optional_fields}")  # type: ignore[no-untyped-call]
+        st.markdown(f"**Total Fields:** {total_fields}", unsafe_allow_html=True)
+        st.markdown(f"**Required Fields:** {required_fields}", unsafe_allow_html=True)
+        st.markdown(f"**Optional Fields:** {optional_fields}", unsafe_allow_html=True)
 
         with st.expander("Field Categories"):
             for cat, count in category_counts.items():

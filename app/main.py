@@ -4,30 +4,21 @@ pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUn
 """
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any
+from typing import Any, List, Dict, Callable, cast
 
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
 import zipfile
 import io
 import hashlib
-from typing import Tuple, Optional, List, Dict, Any, Set
+import os
 # Removed unused matplotlib import
 
 # --- App Modules ---
-from upload_handlers import capture_claims_file_metadata
-from file_handler import (
-    read_claims_with_header_option,
-    detect_delimiter,
-)
 from layout_loader import (
-    load_internal_layout,
-    get_field_groups,
     get_required_fields,
-    get_optional_fields,
     render_layout_summary_section
 )
-from diagnosis_loader import load_msk_bar_lookups
 from mapping_engine import get_enhanced_automap
 from utils import render_claims_file_summary
 from transformer import transform_claims_data
@@ -37,1196 +28,69 @@ from validation_engine import (
 )
 from anonymizer import anonymize_claims_data
 
+# --- UI Modules ---
+from ui_styling import inject_summary_card_css, inject_ux_javascript  # type: ignore[import-untyped]
+from ui_components import render_progress_bar, render_title, _notify  # type: ignore[import-untyped]
+from upload_ui import (  # type: ignore[import-untyped]
+    render_upload_and_claims_preview,
+    render_lookup_summary_section,
+)
+from mapping_ui import (  # type: ignore[import-untyped]
+    render_field_mapping_tab,
+    generate_mapping_table
+)
+from output_generator import generate_all_outputs  # type: ignore[import-untyped]
+from session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping  # type: ignore[import-untyped]
+from cache_utils import load_layout_cached, load_lookups_cached  # type: ignore[import-untyped]
+from file_handler import (  # type: ignore[import-untyped]
+    is_fixed_width,
+    infer_fixed_width_positions,
+    parse_header_specification_file,
+    detect_delimiter,
+    has_header,
+    read_claims_with_header_option,
+)
+from upload_handlers import capture_claims_file_metadata  # type: ignore[import-untyped]
+
 # --- Streamlit Setup ---
 st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
 
-# --- Custom CSS for Modern Summary Cards and UX Features ---
-def inject_summary_card_css():
-    """Inject CSS for modern, symmetrical summary cards and all UX enhancements."""
-    st.markdown("""
-    <style>
-    /* Modern Page Styling */
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
-    }
-    
-    /* Modern Headings */
-    h1, h2, h3 {
-        color: #1f2937 !important;
-        font-weight: 600 !important;
-        letter-spacing: -0.02em;
-    }
-    
-    h2 {
-        font-size: 1.75rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
-        border-bottom: 2px solid #e5e7eb;
-        padding-bottom: 0.5rem;
-    }
-    
-    h3 {
-        font-size: 1.5rem !important;
-        margin-top: 1.5rem !important;
-        margin-bottom: 0.75rem !important;
-    }
-    
-    /* Modern Expanders */
-    .streamlit-expanderHeader {
-        background-color: #f9fafb !important;
-        border-radius: 8px !important;
-        padding: 0.75rem 1rem !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-        border: 1px solid #e5e7eb !important;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background-color: #f3f4f6 !important;
-        border-color: #d1d5db !important;
-    }
-    
-    .streamlit-expanderContent {
-        padding: 1rem !important;
-        background-color: #ffffff !important;
-        border-radius: 0 0 8px 8px !important;
-        border: 1px solid #e5e7eb !important;
-        border-top: none !important;
-    }
-    
-    /* Modern Buttons - All Blue with White Text */
-    .stButton > button,
-    button[data-baseweb="button"],
-    .stDownloadButton > button {
-        background-color: #3b82f6 !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 1rem !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-    }
-    
-    .stButton > button:hover,
-    button[data-baseweb="button"]:hover,
-    .stDownloadButton > button:hover {
-        background-color: #2563eb !important;
-        color: white !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-        transform: translateY(-1px);
-    }
-    
-    .stButton > button:disabled,
-    button[data-baseweb="button"]:disabled,
-    .stDownloadButton > button:disabled {
-        background-color: #9ca3af !important;
-        color: white !important;
-        cursor: not-allowed !important;
-    }
-    
-    /* Form Submit Buttons */
-    .stForm > div > button {
-        background-color: #3b82f6 !important;
-        color: white !important;
-    }
-    
-    .stForm > div > button:hover {
-        background-color: #2563eb !important;
-        color: white !important;
-    }
-    
-    /* Modern Input Fields */
-    .stTextInput > div > div > input {
-        border-radius: 6px !important;
-        border: 1px solid #d1d5db !important;
-        padding: 0.5rem 0.75rem !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-        outline: none !important;
-    }
-    
-    /* Modern Selectbox */
-    .stSelectbox > div > div {
-        border-radius: 6px !important;
-        border: 1px solid #d1d5db !important;
-    }
-    
-    /* Modern Progress Bar Container */
-    div[style*="position: sticky"] {
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-    }
-    
-    /* Modern Dataframes */
-    .stDataFrame {
-        border-radius: 8px !important;
-        overflow: hidden !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-    }
-    
-    /* Modern Forms */
-    .stForm {
-        border: 1px solid #e5e7eb !important;
-        border-radius: 8px !important;
-        padding: 1.5rem !important;
-        background-color: #f9fafb !important;
-    }
-    
-    /* Modern File Uploader */
-    .stFileUploader {
-        border: 2px dashed #d1d5db !important;
-        border-radius: 8px !important;
-        padding: 1.5rem !important;
-        background-color: #f9fafb !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    .stFileUploader:hover {
-        border-color: #3b82f6 !important;
-        background-color: #eff6ff !important;
-    }
-    
-    /* Modern Alerts/Info Boxes */
-    .stAlert {
-        border-radius: 8px !important;
-        border-left: 4px solid !important;
-        padding: 1rem !important;
-    }
-    
-    /* Style summary cards wrapper - target all columns */
-    .summary-cards-wrapper [data-testid="column"] {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border: 1px solid #e8e8e8;
-        min-height: 450px;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.3s ease;
-    }
-    
-    /* Ensure equal heights using flexbox */
-    .summary-cards-wrapper [data-testid="column"] > div {{
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-    }}
-    
-    /* Style headings within cards */
-    .summary-cards-wrapper h4 {
-        margin-top: 0 !important;
-        margin-bottom: 1rem !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        color: #1a1a1a !important;
-    }
-    
-    /* Consistent spacing for text in cards */
-    .summary-cards-wrapper .stMarkdown p {
-        margin-bottom: 0.5rem !important;
-        line-height: 1.6 !important;
-        color: #1a1a1a !important;
-    }
-    
-    /* Style expanders in cards - ensure consistent spacing */
-    .summary-cards-wrapper .streamlit-expanderHeader {
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        margin-top: 0.75rem !important;
-        color: #1a1a1a !important;
-    }
-    
-    .summary-cards-wrapper .streamlit-expander {{
-        margin-top: 0.5rem !important;
-    }}
-    
-    /* Add bottom margin to last expander to balance spacing */
-    .summary-cards-wrapper [data-testid="column"] .streamlit-expander:last-child {{
-        margin-bottom: 0.5rem !important;
-    }}
-    
-    /* Style info boxes */
-    .summary-cards-wrapper .stAlert {{
-        margin-top: 1rem !important;
-    }}
-    
-    /* Compact spacing for file description line */
-    .summary-cards-wrapper [data-testid="column"] .stMarkdown:first-of-type p {{
-        margin-bottom: 0.5rem !important;
-    }}
-    
-    /* Reduce spacing between title and first content */
-    .summary-cards-wrapper h4 + .stMarkdown {{
-        margin-top: -0.5rem !important;
-    }}
-    
-    /* Tooltip Styles */
-    .tooltip-wrapper {{
-        position: relative;
-        display: inline-block;
-        cursor: help;
-    }}
-    
-    .tooltip-text {{
-        visibility: hidden;
-        width: 200px;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        border-radius: 6px;
-        padding: 8px;
-        position: absolute;
-        z-index: 1000;
-        bottom: 125%;
-        left: 50%;
-        margin-left: -100px;
-        opacity: 0;
-        transition: opacity 0.3s;
-        font-size: 12px;
-    }}
-    
-    .tooltip-wrapper:hover .tooltip-text {{
-        visibility: visible;
-        opacity: 1;
-    }}
-    
-    /* Visual Indicators */
-    .status-indicator {{
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 6px;
-        animation: pulse 2s infinite;
-    }}
-    
-    .status-mapped {{ background-color: #4caf50; }}
-    .status-unmapped {{ background-color: #f44336; }}
-    .status-suggested {{ background-color: #ff9800; }}
-    
-    @keyframes pulse {{
-        0%, 100% {{ opacity: 1; }}
-        50% {{ opacity: 0.5; }}
-    }}
-    
-    /* Progress Indicators */
-    .progress-container {{
-        position: relative;
-        width: 100%;
-        height: 20px;
-        background-color: #e0e0e0;
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 10px 0;
-    }}
-    
-    .progress-bar {{
-        height: 100%;
-        border-radius: 10px;
-        transition: width 0.5s ease;
-    }}
-    
-    /* Drag and Drop Styles */
-    .drag-drop-zone {{
-        border: 2px dashed #4caf50;
-        border-radius: 8px;
-        padding: 40px;
-        text-align: center;
-        background-color: rgba(76, 175, 80, 0.05);
-        transition: all 0.3s ease;
-    }}
-    
-    .drag-drop-zone.dragover {{
-        border-color: #2e7d32;
-        background-color: rgba(76, 175, 80, 0.1);
-    }}
-    
-    /* Search/Filter Styles */
-    .search-box {
-        padding: 10px;
-        border: 1px solid #e8e8e8;
-        border-radius: 6px;
-        width: 100%;
-        margin-bottom: 10px;
-        background-color: white;
-        color: #1a1a1a;
-    }
-    
-    /* Keyboard Shortcut Hints */
-    .shortcut-hint {{
-        font-size: 11px;
-        color: #888;
-        font-style: italic;
-        margin-left: 8px;
-    }}
-    
-    /* Auto-save Indicator */
-    .autosave-indicator {{
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #4caf50;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 12px;
-        z-index: 1000;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }}
-    
-    .autosave-indicator.show {{
-        opacity: 1;
-    }}
-    
-    /* Modern Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-        background-color: #f9fafb;
-        padding: 0.5rem;
-        border-radius: 8px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 6px;
-        padding: 0.75rem 1.5rem;
-        transition: all 0.2s ease;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: white;
-        color: #3b82f6;
-        font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    /* Modern Divider */
-    hr {
-        border: none;
-        border-top: 1px solid #e5e7eb;
-        margin: 2rem 0;
-    }
-    
-    /* Smooth Transitions */
-    * {
-        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    }
-    
-    /* Modern Code Blocks */
-    .stCodeBlock {
-        border-radius: 6px !important;
-        border: 1px solid #e5e7eb !important;
-    }
-    
-    /* Spacing Improvements */
-    .element-container {
-        margin-bottom: 1rem;
-    }
-    
-    /* Modern Container for Tools */
-    .streamlit-expanderHeader[aria-expanded="true"] {
-        background-color: #eff6ff !important;
-        border-color: #3b82f6 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- Helpers ---
-def _notify(msg: str) -> None:
-    st.toast(msg)
-
-# --- UX Feature Helpers ---
-def inject_ux_javascript():
-    """Inject JavaScript for keyboard shortcuts, drag-drop, and other interactive features."""
-    st.markdown("""
-    <script>
-    (function() {
-        // Keyboard Shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Tab navigation (Ctrl/Cmd + Arrow keys)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
-                e.preventDefault();
-                const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-                const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
-                if (activeTab && tabs.length > 0) {
-                    const currentIndex = Array.from(tabs).indexOf(activeTab);
-                    if (currentIndex < tabs.length - 1) {
-                        tabs[currentIndex + 1].click();
-                    }
-                }
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
-                e.preventDefault();
-                const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-                const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
-                if (activeTab && tabs.length > 0) {
-                    const currentIndex = Array.from(tabs).indexOf(activeTab);
-                    if (currentIndex > 0) {
-                        tabs[currentIndex - 1].click();
-                    }
-                }
-            }
-            // Search (Ctrl/Cmd + F)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                e.preventDefault();
-                const searchInput = document.querySelector('input[placeholder*="Search"]');
-                if (searchInput) searchInput.focus();
-            }
-        });
-        
-        // Drag and Drop Enhancement
-        setTimeout(function() {
-            document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                const parent = input.closest('.stFileUploader');
-                if (parent) {
-                    parent.addEventListener('dragover', function(e) {
-                        e.preventDefault();
-                        parent.style.border = '2px dashed #4caf50';
-                        parent.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
-                    });
-                    parent.addEventListener('dragleave', function(e) {
-                        e.preventDefault();
-                        parent.style.border = '';
-                        parent.style.backgroundColor = '';
-                    });
-                    parent.addEventListener('drop', function(e) {
-                        e.preventDefault();
-                        parent.style.border = '';
-                        parent.style.backgroundColor = '';
-                    });
-                }
-            });
-        }, 500);
-    })();
-    </script>
-    """, unsafe_allow_html=True)
-
-def render_tooltip(text: str, help_text: str) -> str:
-    """Generate HTML for tooltip."""
-    return f'<span class="tooltip-wrapper" title="{help_text}">{text}</span>'
-
-def render_status_indicator(status: str) -> str:
-    """Generate HTML for status indicator."""
-    status_class = {
-        "mapped": "status-mapped",
-        "unmapped": "status-unmapped",
-        "suggested": "status-suggested"
-    }.get(status, "status-unmapped")
-    return f'<span class="status-indicator {status_class}"></span>'
-
-def render_progress_bar(percent: int, label: str = "") -> str:
-    """Generate HTML for animated progress bar."""
-    return f'<div class="progress-container" style="margin-top: 0.75rem; margin-bottom: 0.5rem; background-color: rgba(255,255,255,0.2); border-radius: 4px; height: 8px; overflow: hidden;"><div style="width: {percent}%; background: transparent !important; height: 100%; border-radius: 4px; transition: width 0.5s ease;"></div></div><small style="color: rgba(255,255,255,0.9); font-size: 0.9rem; display: block; margin-top: 0.5rem;">{label}</small>'
-
-def save_mapping_template(final_mapping: Dict[str, Dict[str, Any]], filename: str = "mapping_template.json") -> str:
-    """Export mapping as JSON template."""
-    import json
-    return json.dumps(final_mapping, indent=2)
-
-def load_mapping_template(template_json: str) -> Dict[str, Dict[str, Any]]:
-    """Load mapping from JSON template."""
-    import json
-    return json.loads(template_json)
-
-def initialize_undo_redo():
-    """Initialize undo/redo history for mappings."""
-    if "mapping_history" not in st.session_state:
-        st.session_state.mapping_history = []
-    if "history_index" not in st.session_state:
-        st.session_state.history_index = -1
-
-def save_to_history(final_mapping: Dict[str, Dict[str, Any]]):
-    """Save current mapping state to history."""
-    initialize_undo_redo()
-    # Remove any future history if we're not at the end
-    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
-        st.session_state.mapping_history = st.session_state.mapping_history[:st.session_state.history_index + 1]
-    # Add new state
-    import copy
-    st.session_state.mapping_history.append(copy.deepcopy(final_mapping))
-    st.session_state.history_index = len(st.session_state.mapping_history) - 1
-    # Limit history size
-    if len(st.session_state.mapping_history) > 50:
-        st.session_state.mapping_history.pop(0)
-        st.session_state.history_index -= 1
-
-def undo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
-    """Undo last mapping change."""
-    initialize_undo_redo()
-    if st.session_state.history_index > 0:
-        st.session_state.history_index -= 1
-        return st.session_state.mapping_history[st.session_state.history_index]
-    return None
-
-def redo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
-    """Redo last undone mapping change."""
-    initialize_undo_redo()
-    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
-        st.session_state.history_index += 1
-        return st.session_state.mapping_history[st.session_state.history_index]
-    return None
-
-# --- Utility Functions ---
-def custom_file_uploader(label_text: str, key: str, types: List[str]) -> Optional[Any]:
-    """Custom wrapper for st.file_uploader with a clean label and minimal visual noise."""
-    st.markdown(f"<div style='margin-bottom: 4px; font-weight: 500;'>{label_text}</div>", unsafe_allow_html=True)
-    return st.file_uploader(label="", type=types, key=key, label_visibility="collapsed")
-
-def render_file_upload_button(label: str, key: str, types: List[str]) -> Optional[Any]:
-    """Custom button-driven file uploader."""
-    container = st.empty()
-
-    if f"{key}_clicked" not in st.session_state:
-        st.session_state[f"{key}_clicked"] = False
-
-    if not st.session_state[f"{key}_clicked"]:
-        if container.button(f"📁 {label}", key=f"btn_{key}"):
-            st.session_state[f"{key}_clicked"] = True
-
-    if st.session_state[f"{key}_clicked"]:
-        return container.file_uploader("", type=types, key=key, label_visibility="collapsed")
-    
-    return None
-
-def render_title():
-    """Renders the app title."""
-    st.markdown("<div style='font-size: 22px; font-weight: 600; margin-bottom: 10px;'>Claims File Mapper and Validator</div>", unsafe_allow_html=True)
-
-@st.cache_data(show_spinner=False)
-def load_layout_cached(file: Any) -> Any:
-    return load_internal_layout(file)
-
-@st.cache_data(show_spinner=False)
-def load_lookups_cached(file: Any):
-    return load_msk_bar_lookups(file)
-
-def render_lookup_summary_section():
-    """Preview summary for diagnosis lookup codes.
-
-    Dynamically reads all code sets from session state and displays counts.
-    Automatically detects all code categories (MSK, BAR, and any future categories).
-    """
-    # Dynamically find all code categories in session_state (anything ending with "_codes")
-    code_categories = {}
-    for key in st.session_state.keys():
-        if key.endswith("_codes") and isinstance(st.session_state[key], (set, list)):
-            category_name = key.replace("_codes", "").upper()
-            code_categories[category_name] = st.session_state[key]
-    
-    if code_categories:
-        st.markdown("#### Diagnosis Lookup Summary")
-        
-        # Display total code categories count
-        total_categories = len(code_categories)
-        st.write(f"**Total Code Categories:** {total_categories}")  # type: ignore[no-untyped-call]
-        
-        # Display counts for each category dynamically
-        for category_name, codes in sorted(code_categories.items()):
-            st.write(f"**{category_name} Codes Loaded:** {len(codes)}")  # type: ignore[no-untyped-call]
-
-        # Create expanders for each category dynamically
-        for category_name, codes in sorted(code_categories.items()):
-            with st.expander(f"View Sample {category_name} Codes"):
-                code_list = list(codes) if isinstance(codes, set) else codes
-                st.write(code_list[:10])  # type: ignore[no-untyped-call]
-    elif st.session_state.get("lookup_upload_attempted", False):
-        # Only show info if user has attempted to upload a file
-        st.info("Upload a valid diagnosis lookup file to preview codes.")
-
-@st.cache_data(show_spinner=False)
-def generate_mapping_table(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]], claims_df: Any) -> Any:
-    """Build a comprehensive mapping table across internal and claims fields.
-
-    Includes internal fields with mapped claims columns, data types, and
-    required/optional flag, plus a section for unmapped claims columns.
-
-    Args:
-        layout_df: Internal layout DataFrame-like.
-        final_mapping: Final field mappings `{internal: {"value": col}}`.
-        claims_df: Uploaded claims DataFrame-like.
-
-    Returns:
-        DataFrame-like representing the full mapping table.
-    """
-    records: List[Dict[str, Any]] = []
-
-    # --- 1. Internal Layout Side ---
-    for _, row in layout_df.iterrows():
-        internal_field = row["Internal Field"]
-        usage = row["Usage"].strip().lower()
-        required_status = "Required" if usage == "mandatory" else "Optional"
-
-        mapped_column = final_mapping.get(internal_field, {}).get("value", "")
-        data_type = ""
-
-        if mapped_column and mapped_column in claims_df.columns:
-            data_type = str(claims_df[mapped_column].dtype)  # type: ignore[no-untyped-call]
-
-        records.append({
-            "Internal Field": internal_field,
-            "Claims File Column": mapped_column,
-            "Data Type": data_type,
-            "Required/Optional": required_status
-        })
-
-    # --- 2. Unmapped Claims Columns Side ---
-    mapped_claims_cols: Set[str] = {str(info.get("value", "")) for info in final_mapping.values()}
-    all_claims_cols = set(claims_df.columns)
-
-    unmapped_claims_cols = all_claims_cols - mapped_claims_cols
-
-    for col in sorted(unmapped_claims_cols):
-        data_type = str(claims_df[col].dtype)  # type: ignore[no-untyped-call]
-        records.append({
-            "Internal Field": "",
-            "Claims File Column": col,
-            "Data Type": data_type,
-            "Required/Optional": "Unmapped Claim Column"
-        })
-
-    # --- Final Mapping Table ---
-    mapping_table = pd.DataFrame(records)
-    return mapping_table
-
-def render_upload_and_claims_preview():
-    """
-    Upload Section for Layout, Lookup, Claims, and Headerless detection.
-    Allows proper external header upload if needed.
-    """
-    st.markdown("### Step 1: Upload Files and Confirm Claims File Headers")
-
-    # --- Top Row (Layout + Lookup) ---
-    top1, top2 = st.columns(2)
-    with top1:
-        layout_file = st.file_uploader("📄 Upload Layout File (.xlsx)", type=["xlsx"], key="layout_file", help="Excel file containing internal field definitions and requirements. Drag and drop or click to upload.")
-        if layout_file:
-            st.session_state.layout_upload_attempted = True
-            layout_df = load_layout_cached(layout_file)
-            st.session_state.layout_df = layout_df
-            st.session_state.layout_file_obj = layout_file
-        elif layout_file is None and "layout_upload_attempted" not in st.session_state:
-            # Track that user has interacted with uploader (even if no file selected)
-            pass
-
-    with top2:
-        lookup_file = st.file_uploader("📋 Upload Diagnosis Lookup (.xlsx)", type=["xlsx"], key="lookup_file", help="Excel file containing MSK and BAR diagnosis codes. Drag and drop or click to upload.")
-        if lookup_file:
-            st.session_state.lookup_upload_attempted = True
-            msk_codes, bar_codes = load_lookups_cached(lookup_file)
-            st.session_state.msk_codes = msk_codes
-            st.session_state.bar_codes = bar_codes
-            st.session_state.lookup_file_obj = lookup_file
-        elif lookup_file is None and "lookup_upload_attempted" not in st.session_state:
-            # Track that user has interacted with uploader (even if no file selected)
-            pass
-
-    # --- Bottom Row (Header + Claims File) ---
-    bottom1, bottom2 = st.columns(2)
-    with bottom1:
-        header_file = st.file_uploader("📝 Upload Header File (optional)", type=["csv", "txt", "xlsx", "xls"], key="external_header_upload", help="Optional: External header file if claims file has no headers. Drag and drop or click to upload.")
-        st.session_state.header_file_obj = header_file if header_file else None
-
-    with bottom2:
-        claims_file = st.file_uploader("📊 Upload Claims File (.csv, .txt, .tsv, .xlsx)", 
-                                       type=["csv", "txt", "tsv", "xlsx", "xls"], key="claims_file", help="Main claims data file to be mapped and validated. Drag and drop or click to upload.")
-        if claims_file:
-            st.session_state.claims_upload_attempted = True
-            # Reset session if file changed
-            if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
-                st.session_state.pop("claims_df", None)
-                st.session_state.pop("final_mapping", None)
-                st.session_state.pop("auto_mapping", None)
-                st.session_state.pop("auto_mapped_fields", None)
-            st.session_state.claims_file_obj = claims_file
-        elif claims_file is None and "claims_upload_attempted" not in st.session_state:
-            # Track that user has interacted with uploader (even if no file selected)
-            pass
-
-    # --- Proceed Button ---
-    if st.button("➡️ Proceed with File Loading"):
-        # --- Guard Clause ---
-        if not ("layout_file_obj" in st.session_state and "lookup_file_obj" in st.session_state and "claims_file_obj" in st.session_state):
-            st.warning("⬆️ Please upload Layout, Lookup, and Claims files to continue.")
-            st.stop()
-
-        claims_file = st.session_state.claims_file_obj
-        header_file = st.session_state.get("header_file_obj")
-        ext = claims_file.name.lower()
-        delimiter = detect_delimiter(claims_file) if ext.endswith((".csv", ".txt", ".tsv")) else None
-
-        try:
-            # --- Preview first 3 rows
-            with st.spinner("Preparing preview..."):
-                claims_file.seek(0)
-                preview_df = (
-                    pd.read_csv(claims_file, nrows=3, header=None, delimiter=delimiter, on_bad_lines="skip")  # type: ignore[no-untyped-call]
-                    if ext.endswith((".csv", ".txt", ".tsv")) else
-                    pd.read_excel(claims_file, nrows=3, header=None)  # type: ignore[no-untyped-call]
-                )
-
-                st.markdown("**Preview of Claims File (First 3 Rows):**")
-                st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
-
-            # --- Read full claims file
-            with st.spinner("Loading claims file..."):
-                claims_file.seek(0)
-                claims_df = read_claims_with_header_option(
-                    claims_file,
-                    headerless=(header_file is not None),
-                    header_file=header_file,
-                    delimiter=delimiter
-                )
-
-                # Fallback for junk columns
-                if claims_df.columns.isnull().any():
-                    claims_df.columns = [f"col_{i}" if not col or pd.isna(col) else str(col) for i, col in enumerate(claims_df.columns)]
-
-                # Save to session
-                st.session_state.claims_df = claims_df
-                capture_claims_file_metadata(claims_file, has_header=(header_file is None))
-
-                st.success("✅ Claims file loaded successfully using " +
-                           ("embedded headers." if header_file is None else "external header file."))
-
-        except Exception as e:
-            st.error(f"Error processing claims file: {e}")
-
-def dual_input_field(field_label: str, options: List[str], key_prefix: str) -> Optional[str]:
-    """
-    Renders a dropdown + manual text input side-by-side.
-    Returns whichever the user picked or typed.
-    """
-    col1, col2 = st.columns([2, 3])
-
-    with col1:
-        dropdown_selection = st.selectbox(
-            f"Select {field_label}", 
-            options=[""] + options,
-            key=f"{key_prefix}_dropdown"
-        )
-
-    with col2:
-        manual_entry = st.text_input(
-            f"Or manually enter {field_label}", 
-            key=f"{key_prefix}_manual"
-        )
-
-    if manual_entry.strip():
-        return manual_entry.strip()
-    else:
-        return dropdown_selection.strip() if dropdown_selection else None
-    
-def render_field_mapping_tab():
-    """
-    Renders the Field Mapping tab where users map source columns to internal fields.
-    Fields are grouped by category and separated by required/optional.
-    """
-    layout_df = st.session_state.get("layout_df")
-    claims_df = st.session_state.get("claims_df")
-
-    if layout_df is None or claims_df is None:
-        st.info("Please upload both layout and claims files to begin mapping.")
-        return
-
-    # Initialize undo/redo
-    initialize_undo_redo()
-
-    # Initialize widget counter for unique keys (reset each time function is called)
-    widget_counter = 0
-
-    # --- Claims File Preview with Real-time Updates ---
-    st.markdown("#### Claims File Preview (First 5 Rows)")
-    preview_df = claims_df.head()
-    
-    # Apply search filter if active
-    search_query = st.session_state.get("field_search", "")
-    if search_query and search_query.strip():
-        preview_df = preview_df.filter(regex=search_query, axis=1)  # type: ignore[no-untyped-call]
-    
-    st.dataframe(preview_df, use_container_width=True)  # type: ignore[no-untyped-call]
-    
-    # Real-time preview of mapped data
-    if st.session_state.get("final_mapping"):
-        with st.expander("🔍 Real-time Mapping Preview", expanded=False):
-            try:
-                preview_mapped = transform_claims_data(claims_df.head(10), st.session_state.final_mapping)
-                st.dataframe(preview_mapped, use_container_width=True)  # type: ignore[no-untyped-call]
-            except Exception as e:
-                st.warning(f"Preview unavailable: {e}")
-
-    required_fields = get_required_fields(layout_df)
-
-    # --- Safety Check ---
-    if not isinstance(required_fields, pd.DataFrame):  # type: ignore[redundant-cast,type-py]
-        st.error("Error: Required fields extraction failed. Please check layout file format.")
-        st.stop()
-
-    field_groups = get_field_groups(required_fields)
-
-    if "final_mapping" not in st.session_state:
-        st.session_state.final_mapping = {}
-
-    final_mapping: Dict[str, Dict[str, Any]] = st.session_state.get("final_mapping", {})
-
-    # --- AI Auto-Mapping Suggestions ---
-    if "auto_mapping" not in st.session_state or not st.session_state.auto_mapping:
-        st.session_state.auto_mapping = get_enhanced_automap(layout_df, claims_df)
-
-    ai_suggestions = st.session_state.get("auto_mapping", {})
-
-    # --- Auto-Apply High Confidence Suggestions (≥80%) ---
-    if "final_mapping" not in st.session_state:
-        st.session_state.final_mapping = {}
-
-    auto_mapped: List[str] = []
-    for field, info in ai_suggestions.items():
-        score = info.get("score", 0)
-        if score >= 80 and field not in final_mapping:
-            final_mapping[field] = {
-                "mode": "auto",
-                "value": info["value"]
-            }
-            auto_mapped.append(field)
-
-    st.session_state.auto_mapped_fields = auto_mapped
-
-    # --- Mapping Progress ---
-    _mapped_required, total_required, _percent_complete = calculate_mapping_progress(layout_df, final_mapping)
-    
-    # --- Required Fields Heading ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### Mandatory Fields Mapping")
-            
-    # --- Required Fields Mapping ---
-    # Get search query from session state
-    search_query = st.session_state.get("field_search", "")
-    
-    for group in field_groups:
-        group_fields = required_fields[required_fields["Category"] == group]
-        
-        # Deduplicate fields within the group - keep first occurrence of each field
-        group_fields = group_fields.drop_duplicates(subset=["Internal Field"], keep="first")  # type: ignore[no-untyped-call]
-
-        # Apply search filter
-        if search_query and search_query.strip():
-            search_lower = search_query.lower()
-            group_fields = group_fields[
-                group_fields["Internal Field"].str.lower().str.contains(search_lower, na=False)  # type: ignore[no-untyped-call]
-            ]
-
-        group_field_names = group_fields["Internal Field"].tolist()
-        mapped_count = sum(
-            1 for f in group_field_names
-            if f in final_mapping and final_mapping[f].get("value")
-        )
-        total_in_group = len(group_field_names)
-        
-        group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
-
-        with st.expander(group_label, expanded=False):
-            for row_idx, (original_idx, row) in enumerate(group_fields.iterrows()):
-                field_name = row["Internal Field"]
-                
-                # Show AI suggestion if available
-                has_suggestion = field_name in ai_suggestions
-                if has_suggestion:
-                    suggestion_score = ai_suggestions[field_name].get("score", 0)
-                    st.markdown(f"**{field_name}** <span style='color: #ff9800; font-size: 0.85em;'>(AI: {suggestion_score}%)</span>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"**{field_name}**")
-                raw_columns = claims_df.columns.tolist()
-
-                # --- AI suggestion if available ---
-                suggestion_info = ai_suggestions.get(field_name, {})
-                suggested_column = suggestion_info.get("value")
-                suggestion_score = suggestion_info.get("score")
-
-                col_options: List[str] = []
-                for col in raw_columns:
-                    if col == suggested_column:
-                        label = f"{col} (AI Suggested)"
-                        if suggestion_score:
-                            label = f"{col} (AI: {suggestion_score}%)"
-                        col_options.append(str(label))
-                    else:
-                        col_options.append(str(col))
-
-                default_value = final_mapping.get(field_name, {}).get("value", None)
-                default_label: Optional[str] = None
-                if default_value:
-                    if default_value == suggested_column and suggestion_score:
-                        default_label = f"{default_value} (AI: {suggestion_score}%)"
-                    else:
-                        default_label = str(default_value)
-
-                # Create unique key using group, field name, and incrementing counter
-                # Counter ensures absolute uniqueness even with duplicate rows
-                widget_counter += 1
-                unique_key = f"req_{group}_{field_name}_{widget_counter}"
-                # Sanitize key to remove special characters that might cause issues
-                unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-
-                selected_clean: Optional[str] = None
-                if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                    widget_counter += 1
-                    key_prefix = f"req_{group}_{field_name}_{widget_counter}"
-                    key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                    selected = dual_input_field(field_name, col_options, key_prefix=key_prefix)
-                    manual_key = f"{key_prefix}_manual"
-                    manual_value = st.session_state.get(manual_key)
-
-                    if manual_value:
-                        selected_clean = manual_value.strip()
-                    else:
-                        selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
-                else:
-                    select_idx = col_options.index(default_label) + 1 if (default_label is not None and default_label in col_options) else 0
-                    selected = st.selectbox(
-                        "Select column:",
-                        options=[""] + col_options,
-                        index=select_idx,
-                        key=unique_key,
-                        help=f"Map {field_name} to a claims file column"
-                    )
-                    selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
-
-                if selected_clean:
-                    old_mapping = final_mapping.get(field_name)
-                    new_mapping = {
-                        "mode": "manual" if selected_clean != suggested_column else "auto",
-                        "value": selected_clean
-                    }
-                    final_mapping[field_name] = new_mapping
-                    # Don't save to history here - wait for form submission
-
-    # --- Show Unmapped Required Fields ---
-    unmapped = [
-        field for field in required_fields["Internal Field"].tolist()
-        if field not in final_mapping or not final_mapping[field]["value"]
-    ]
-
-    if total_required == 0:
-        st.info("No required fields defined in layout file.")
-    elif unmapped:
-        st.markdown(
-            f"""
-            <div style="border: 1px solid #ffa94d; background-color: #ffffff; padding: 16px; border-radius: 8px; margin-top: 10px;">
-                <strong style="color: #d9480f;">⚠️ Unmapped Required Fields</strong><br>
-                <span style="color: #212529;">{', '.join(unmapped)}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.success("All required fields mapped.")
-
-    # --- Optional Fields Mapping ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### Optional Fields Mapping")
-
-    optional_fields = get_optional_fields(layout_df)
-
-    # --- Safety Check ---
-    if not isinstance(optional_fields, pd.DataFrame):  # type: ignore[redundant-cast,type-py]
-        st.error("Error: Optional fields extraction failed. Please check layout file format.")
-        st.stop()
-
-    if "Internal Field" not in optional_fields.columns or "Category" not in optional_fields.columns:
-        st.error("Error: Layout file must contain 'Internal Field' and 'Category' columns.")
-        st.stop()
-
-    optional_fields = optional_fields[optional_fields["Internal Field"].notnull()]
-    optional_fields = optional_fields[optional_fields["Category"].notnull()]
-    optional_fields = optional_fields[~optional_fields["Internal Field"].isin(required_fields["Internal Field"].tolist())]  # type: ignore[no-untyped-call]
-
-    # --- Optional Fields Mapping ---
-    if not optional_fields.empty:
-        optional_field_groups = get_field_groups(optional_fields)
-
-        for group in optional_field_groups:
-            group_fields = optional_fields[optional_fields["Category"] == group]
-            
-            # Deduplicate fields within the group - keep first occurrence of each field
-            group_fields = group_fields.drop_duplicates(subset=["Internal Field"], keep="first")  # type: ignore[no-untyped-call]
-
-            group_field_names = group_fields["Internal Field"].tolist()
-            mapped_count = sum(
-                1 for f in group_field_names
-                if f in final_mapping and final_mapping[f].get("value")
-            )
-            total_in_group = len(group_field_names)
-            group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
-
-            with st.expander(group_label, expanded=False):
-                for row_idx, (original_idx, row) in enumerate(group_fields.iterrows()):
-                    field_name = row["Internal Field"]
-                    raw_columns = claims_df.columns.tolist()
-
-                    suggestion_info = ai_suggestions.get(field_name, {})
-                    suggested_column = suggestion_info.get("value")
-                    suggestion_score = suggestion_info.get("score")
-
-                    col_options: List[str] = []
-                    for col in raw_columns:
-                        if col == suggested_column:
-                            label = f"{col} (AI Suggested)"
-                            if suggestion_score:
-                                label = f"{col} (AI: {suggestion_score}%)"
-                            col_options.append(str(label))
-                        else:
-                            col_options.append(str(col))
-
-                    default_value = final_mapping.get(field_name, {}).get("value", None)
-                    default_label = None
-                    if default_value:
-                        if default_value == suggested_column and suggestion_score:
-                            default_label = f"{default_value} (AI: {suggestion_score}%)"
-                        else:
-                            default_label = default_value
-
-                    # Create unique key using group, field name, and incrementing counter
-                    # Counter ensures absolute uniqueness even with duplicate rows
-                    widget_counter += 1
-                    unique_key = f"opt_{group}_{field_name}_{widget_counter}"
-                    # Sanitize key to remove special characters that might cause issues
-                    unique_key = unique_key.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-
-                    selected_clean: Optional[str] = None
-                    if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
-                        widget_counter += 1
-                        key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
-                        key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                        selected = dual_input_field(field_name, col_options, key_prefix=key_prefix)
-                    else:
-                        selected = st.selectbox(
-                            f"{field_name}",
-                            options=[""] + col_options,
-                            index=col_options.index(default_label) + 1 if default_label in col_options else 0,
-                            key=unique_key
-                        )
-                        selected_clean = selected.replace(f" (AI: {suggestion_score}%)", "").replace(" (AI Suggested)", "") if selected else None
-
-                    if selected_clean:
-                        final_mapping[field_name] = {
-                            "mode": "manual" if selected_clean != suggested_column else "auto",
-                            "value": selected_clean
-                        }
-
-    # --- After ALL mappings, refresh transformed_df ---
-    claims_df = st.session_state.get("claims_df")
-    final_mapping = st.session_state.get("final_mapping", {})
-
-    if claims_df is not None and final_mapping:
-        st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping)
-        st.session_state.final_mapping = final_mapping
-
-    if st.session_state.get("final_mapping"):
-        generate_all_outputs()
-
-def calculate_mapping_progress(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Tuple[int, int, int]:
-    """Calculates progress stats for required fields mapping."""
-    required_fields = get_required_fields(layout_df)["Internal Field"].tolist()
-    mapped_fields = [field for field in required_fields if field in final_mapping and final_mapping[field]["value"]]
-    total_required = len(required_fields)
-    mapped_required = len(mapped_fields)
-    percent_complete = int((mapped_required / total_required) * 100) if total_required > 0 else 0
-
-    return mapped_required, total_required, percent_complete
-
-def generate_all_outputs():
-    """
-    Generates anonymized claims file and mapping table outputs
-    based on the latest field mappings.
-    """
-    final_mapping = st.session_state.get("final_mapping")
-    claims_df = st.session_state.get("claims_df")
-    layout_df = st.session_state.get("layout_df")
-
-    if final_mapping and claims_df is not None and layout_df is not None:
-        # --- Extract basic filename (placeholders removed) ---
-
-        # --- Generate outputs ---
-        anonymized_df = anonymize_claims_data(claims_df, final_mapping)
-        mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)  # <-- Fixed this line
-
-        # --- Save in session_state
-        st.session_state.anonymized_df = anonymized_df
-        st.session_state.mapping_table = mapping_table
-    else:
-        st.session_state.anonymized_df = None
-        st.session_state.mapping_table = None
-
-def render_claims_file_deep_dive():
-    """
-    Displays the deep dive summary of the claims file after mapping:
-    showing all internal fields, mapped columns, data types, fill rates, required flag, and pass/fail status.
-    """
-    st.markdown("#### Claims File Deep Dive (Mapped Columns Analysis)")
-
-    claims_df = st.session_state.get("claims_df")
-    final_mapping = st.session_state.get("final_mapping", {})
-    layout_df = st.session_state.get("layout_df")
-    transformed_df = st.session_state.get("transformed_df")
-
-    if claims_df is None or final_mapping is None or layout_df is None or transformed_df is None:
-        st.info("Upload claims file, complete mappings, and preview transformed data first.")
-        return
-
-    deep_dive_rows: List[Dict[str, Any]] = []
-
-    internal_fields = layout_df["Internal Field"].tolist()
-
-    for internal_field in internal_fields:
-        source_column = final_mapping.get(internal_field, {}).get("value", None)
-
-        if source_column and source_column in transformed_df.columns:
-            col_dtype = str(transformed_df[source_column].dtype)
-            fill_rate = 100 * transformed_df[source_column].notnull().sum() / len(transformed_df)
-
-            if fill_rate == 0:
-                status_icon = "❌ Fail"
-            elif fill_rate < 95:
-                status_icon = "⚠️ Warning"
-            else:
-                status_icon = "✅ Pass"
-        else:
-            col_dtype = "N/A"
-            fill_rate = 0.0
-            status_icon = "❌ Fail"
-
-        # Check if field is required
-        usage = layout_df[layout_df["Internal Field"] == internal_field]["Usage"].values
-        is_required = usage[0].lower() == "required" if len(usage) > 0 else False
-
-        deep_dive_rows.append({
-            "Internal Field": internal_field,
-            "Mapped Claims Column": source_column if source_column else "Not Mapped",
-            "Data Type": col_dtype,
-            "Fill Rate %": f"{fill_rate:.1f}",
-            "Required": "Yes" if is_required else "No",
-            "Status": status_icon
-        })
-
-    deep_dive_df = pd.DataFrame(deep_dive_rows)
-
-    st.dataframe(deep_dive_df, use_container_width=True)  # type: ignore[no-untyped-call]
-
-    deep_dive_csv = deep_dive_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Deep Dive CSV",
-        data=deep_dive_csv,
-        file_name="deep_dive_report.csv",
-        mime="text/csv",
-        key="download_deep_dive_csv"
-    )
+# --- Removed: Functions moved to ui_styling.py ---
+# inject_summary_card_css() - now in ui_styling.py
+# inject_ux_javascript() - now in ui_styling.py
+
+# --- Removed: Functions moved to ui_components.py ---
+# _notify() - now in ui_components.py
+# render_tooltip() - now in ui_components.py
+# render_status_indicator() - now in ui_components.py
+# render_progress_bar() - now in ui_components.py
+# render_title() - now in ui_components.py
+
+# --- Removed: Functions moved to session_state.py ---
+# initialize_undo_redo() - now in session_state.py
+# save_to_history() - now in session_state.py
+# undo_mapping() - now in session_state.py
+# redo_mapping() - now in session_state.py
+
+# --- Removed: Functions moved to cache_utils.py ---
+# load_layout_cached() - now in cache_utils.py
+# load_lookups_cached() - now in cache_utils.py
+
+# --- Removed: Functions moved to upload_ui.py ---
+# render_lookup_summary_section() - now in upload_ui.py
+# render_upload_and_claims_preview() - now in upload_ui.py
+# render_claims_file_deep_dive() - now in upload_ui.py
+
+# --- Removed: Functions moved to mapping_ui.py ---
+# dual_input_field() - now in mapping_ui.py
+# generate_mapping_table() - now in mapping_ui.py
+# calculate_mapping_progress() - now in mapping_ui.py
+# render_field_mapping_tab() - now in mapping_ui.py
+
+# --- Removed: Functions moved to output_generator.py ---
+# save_mapping_template() - now in output_generator.py
+# load_mapping_template() - now in output_generator.py
+# generate_all_outputs() - now in output_generator.py
 
 # --- App Layout ---
 # Inject UX JavaScript and CSS
@@ -1240,16 +104,109 @@ with tab1:
     # Inject CSS for modern cards
     inject_summary_card_css()
     
-    # All three summaries side by side in modern cards
-    st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3, gap="large")
-    with col1:
-        render_layout_summary_section()
+    # Dynamic summary cards based on upload order
+    upload_order = cast(List[str], st.session_state.get("upload_order", []))
+    
+    # Build list of summaries to render based on upload order
+    summary_functions_tab1: List[Callable[[], None]] = []
+    summary_map_tab1: Dict[str, Callable[[], None]] = {
+        "layout": render_layout_summary_section,
+        "lookup": render_lookup_summary_section,
+        "claims": render_claims_file_summary
+    }
+    
+    # Add summaries in upload order
+    for file_type in upload_order:
+        if file_type in summary_map_tab1:
+            # Verify file is still uploaded
+            if file_type == "layout" and "layout_file_obj" in st.session_state:
+                summary_functions_tab1.append(summary_map_tab1[file_type])
+            elif file_type == "lookup" and "lookup_file_obj" in st.session_state:
+                summary_functions_tab1.append(summary_map_tab1[file_type])
+            elif file_type == "claims" and "claims_file_obj" in st.session_state:
+                summary_functions_tab1.append(summary_map_tab1[file_type])
+    
+    # Render summaries dynamically
+    if summary_functions_tab1:
+        st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
+        num_summaries = len(summary_functions_tab1)
+        
+        # Create columns based on number of summaries (1, 2, or 3)
+        if num_summaries == 1:
+            cols = st.columns(1, gap="large")
+        elif num_summaries == 2:
+            cols = st.columns(2, gap="large")
+        else:
+            cols = st.columns(3, gap="large")
+        
+        # Render each summary in its column
+        for i, summary_func in enumerate(summary_functions_tab1):
+            with cols[i]:
+                summary_func()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # --- Ready to Process Card ---
+    # Show this card when all files are uploaded and claims file is processed
+    all_files_ready = (
+        "layout_file_obj" in st.session_state and 
+        "lookup_file_obj" in st.session_state and 
+        "claims_file_obj" in st.session_state and
+        "claims_df" in st.session_state and
+        st.session_state.get("claims_df") is not None
+    )
+    
+    if all_files_ready:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            color: white;
+        ">
+            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                <div style="
+                    width: 48px;
+                    height: 48px;
+                    background: rgba(255,255,255,0.2);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 1rem;
+                ">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4L4 8L12 12L20 8L12 4Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M4 12L12 16L20 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M4 16L12 20L20 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h3 style="margin: 0; color: white; font-size: 1.5rem; font-weight: 600;">Ready to Process</h3>
+            </div>
+            <p style="margin: 0 0 1.5rem 0; color: rgba(255,255,255,0.9); font-size: 1rem; line-height: 1.5;">
+                File structure confirmed. Proceed to map your source columns to the internal schema.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Button to navigate to Field Mapping tab
+        col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        render_lookup_summary_section()
-    with col3:
-        render_claims_file_summary()
-    st.markdown('</div>', unsafe_allow_html=True)
+            if st.button("Go to Mapping →", key="go_to_mapping_btn", use_container_width=True, type="primary"):
+                # Use JavaScript to switch to Field Mapping tab
+                st.markdown("""
+                <script>
+                setTimeout(function() {
+                    const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+                    if (tabs.length > 1) {
+                        tabs[1].click();
+                    }
+                }, 100);
+                </script>
+                """, unsafe_allow_html=True)
+                st.rerun()
 
 with tab2:
     layout_df = st.session_state.get("layout_df")
@@ -1259,97 +216,97 @@ with tab2:
     if layout_df is None or claims_df is None:
         st.info("Upload both layout and claims files to begin mapping.")
         st.stop()
+    else:
+        # --- Sticky Mapping Progress Bar ---
+        # Guard layout_df and string operations
+        required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
+        total_required = len(required_fields) if required_fields else 0
+        mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
+        mapped_count = len(mapped_required)
+        percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
 
-    # --- Sticky Mapping Progress Bar ---
-    # Guard layout_df and string operations
-    required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
-    total_required = len(required_fields) if required_fields else 0
-    mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
-    mapped_count = len(mapped_required)
-    percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
+        progress_html = render_progress_bar(percent_complete, f"{mapped_count} / {total_required} fields mapped ({percent_complete}%)")
+        st.markdown(
+            f'<div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; z-index: 999; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><b style="font-size: 1.1rem;">📌 Required Field Mapping Progress</b>{progress_html}</div>',
+            unsafe_allow_html=True
+        )
 
-    progress_html = render_progress_bar(percent_complete, f"{mapped_count} / {total_required} fields mapped ({percent_complete}%)")
-    st.markdown(
-        f'<div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; z-index: 999; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><b style="font-size: 1.1rem;">📌 Required Field Mapping Progress</b>{progress_html}</div>',
-        unsafe_allow_html=True
-    )
-
-    # --- UX Tools (Collapsible Container) ---
-    with st.expander("⚙️ Tools & Actions", expanded=False):
-        # Search field at the top of the container
-        search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search")
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("**History**")
-            # Initialize undo/redo
-            initialize_undo_redo()
-            final_mapping = st.session_state.get("final_mapping", {})
+        # --- UX Tools (Collapsible Container) ---
+        with st.expander("⚙️ Tools & Actions", expanded=False):
+            # Search field at the top of the container
+            search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search")
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            # Initialize history with current state if empty
-            if len(st.session_state.mapping_history) == 0:
-                if final_mapping:
-                    save_to_history(final_mapping)
-                else:
-                    # Save empty state as initial state
-                    save_to_history({})
+            col1, col2, col3 = st.columns(3)
             
-            # Check if undo/redo is possible
-            can_undo = st.session_state.history_index > 0
-            can_redo = st.session_state.history_index < len(st.session_state.mapping_history) - 1
+            with col1:
+                st.markdown("**History**")
+                # Initialize undo/redo
+                initialize_undo_redo()
+                final_mapping = st.session_state.get("final_mapping", {})
+                
+                # Initialize history with current state if empty
+                if len(st.session_state.mapping_history) == 0:
+                    if final_mapping:
+                        save_to_history(final_mapping)
+                    else:
+                        # Save empty state as initial state
+                        save_to_history({})
+                
+                # Check if undo/redo is possible
+                can_undo = st.session_state.history_index > 0
+                can_redo = st.session_state.history_index < len(st.session_state.mapping_history) - 1
+                
+                if st.button("↶ Undo", key="undo_btn", use_container_width=True, disabled=not can_undo, help="Undo last mapping change (Ctrl+Z)"):
+                    undone = undo_mapping()
+                    if undone is not None:
+                        import copy
+                        st.session_state.final_mapping = copy.deepcopy(undone)
+                        # Clear auto_mapping to force refresh
+                        if "auto_mapping" in st.session_state:
+                            del st.session_state.auto_mapping
+                        st.rerun()
+                
+                if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
+                    redone = redo_mapping()
+                    if redone is not None:
+                        import copy
+                        st.session_state.final_mapping = copy.deepcopy(redone)
+                        # Clear auto_mapping to force refresh
+                        if "auto_mapping" in st.session_state:
+                            del st.session_state.auto_mapping
+                        st.rerun()
             
-            if st.button("↶ Undo", key="undo_btn", use_container_width=True, disabled=not can_undo, help="Undo last mapping change (Ctrl+Z)"):
-                undone = undo_mapping()
-                if undone is not None:
-                    import copy
-                    st.session_state.final_mapping = copy.deepcopy(undone)
-                    # Clear auto_mapping to force refresh
-                    if "auto_mapping" in st.session_state:
-                        del st.session_state.auto_mapping
-                    st.rerun()
+            with col2:
+                st.markdown("**Bulk Actions**")
+                ai_suggestions = st.session_state.get("auto_mapping", {})
+                final_mapping = st.session_state.get("final_mapping", {})
+                if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
+                    accepted = 0
+                    for field, info in ai_suggestions.items():
+                        score = info.get("score", 0)
+                        if score >= 80 and (field not in final_mapping or not final_mapping[field].get("value")):
+                            final_mapping[field] = {"mode": "auto", "value": info["value"]}
+                            accepted += 1
+                    if accepted > 0:
+                        st.session_state.final_mapping = final_mapping
+                        save_to_history(final_mapping)
+                        st.success(f"Accepted {accepted} AI suggestions!")
+                        st.rerun()
+                if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
+                    if st.checkbox("Confirm: Clear all mappings?", key="confirm_clear"):
+                        st.session_state.final_mapping = {}
+                        save_to_history({})
+                        st.success("All mappings cleared!")
+                        st.rerun()
             
-            if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
-                redone = redo_mapping()
-                if redone is not None:
-                    import copy
-                    st.session_state.final_mapping = copy.deepcopy(redone)
-                    # Clear auto_mapping to force refresh
-                    if "auto_mapping" in st.session_state:
-                        del st.session_state.auto_mapping
-                    st.rerun()
-        
-        with col2:
-            st.markdown("**Bulk Actions**")
-            ai_suggestions = st.session_state.get("auto_mapping", {})
-            final_mapping = st.session_state.get("final_mapping", {})
-            if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
-                accepted = 0
-                for field, info in ai_suggestions.items():
-                    score = info.get("score", 0)
-                    if score >= 80 and (field not in final_mapping or not final_mapping[field].get("value")):
-                        final_mapping[field] = {"mode": "auto", "value": info["value"]}
-                        accepted += 1
-                if accepted > 0:
-                    st.session_state.final_mapping = final_mapping
-                    save_to_history(final_mapping)
-                    st.success(f"Accepted {accepted} AI suggestions!")
-                    st.rerun()
-            if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
-                if st.checkbox("Confirm: Clear all mappings?", key="confirm_clear"):
-                    st.session_state.final_mapping = {}
-                    save_to_history({})
-                    st.success("All mappings cleared!")
-                    st.rerun()
-        
-        with col3:
-            st.markdown("**Utilities**")
-            if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
-                import json
-                mapping_str = json.dumps(final_mapping, indent=2)
-                st.code(mapping_str, language="json")
-                st.info("Right-click and copy the JSON above")
+            with col3:
+                st.markdown("**Utilities**")
+                if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
+                    import json
+                    mapping_str = json.dumps(final_mapping, indent=2)
+                    st.code(mapping_str, language="json")
+                    st.info("Right-click and copy the JSON above")
 
     # --- Main Mapping Section ---
     st.markdown("## Manual Field Mapping")
@@ -1381,7 +338,7 @@ with tab2:
         st.info("Fields with AI confidence ≥ 80% have already been auto-mapped. You can override them manually below.")
 
         with st.expander("🔍 View and Commit Additional Suggestions", expanded=False):
-            selected_fields: List[str] = []
+            selected_fields_tab2: List[str] = []
 
             for field, info in ai_suggestions.items():
                 if field in auto_mapped_fields:
@@ -1397,17 +354,17 @@ with tab2:
                 with col3:
                     selected = st.checkbox("Accept", key=f"ai_accept_{field}")
                     if selected:
-                        selected_fields.append(field)
+                            selected_fields_tab2.append(field)
 
-                if selected_fields and st.button("✅ Commit Selected Suggestions"):
-                    for field in selected_fields:
-                        st.session_state.final_mapping[field] = {
-                            "mode": "auto",
-                            "value": ai_suggestions[field]["value"]
-                        }
+                    if selected_fields_tab2 and st.button("✅ Commit Selected Suggestions"):
+                        for field in selected_fields_tab2:
+                            st.session_state.final_mapping[field] = {
+                                "mode": "auto",
+                                "value": ai_suggestions[field]["value"]
+                            }
 
                     with st.spinner("Applying selected suggestions..."):
-                        st.success(f"Committed {len(selected_fields)} suggestion(s).")
+                        st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
                         generate_all_outputs()
 
                         # --- Refresh transformed dataframe ---
@@ -1428,44 +385,44 @@ with tab3:
     if transformed_df is None or not final_mapping:
         st.info("Please complete field mappings and preview transformed data first.")
         st.stop()
-
-    # --- Auto-run validation (cached to avoid re-running on every rerun) ---
-    # Create a hash of the data to detect changes
-    data_hash = hashlib.md5(
-        (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
-    ).hexdigest()
-    
-    # Check if we need to re-run validations
-    cached_hash = st.session_state.get("validation_data_hash")
-    validation_results = st.session_state.get("validation_results", [])
-    
-    if cached_hash != data_hash or not validation_results:
-        with st.spinner("Running validation checks..."):
-            # Get required fields from layout file, not from mapping
-            if layout_df is not None:
-                required_fields_df = get_required_fields(layout_df)
-                required_fields = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
-            else:
-                # Fallback: use all mapped fields as required
-                required_fields = list(final_mapping.keys())
-            
-            # Get ALL mapped internal fields (both required and optional)
-            all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
-            
-            # Get mapped field values (source column names) for reference
-            mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
-            
-            # Run field-level validations (row-by-row checks)
-            # Pass all mapped internal fields to ensure comprehensive validation
-            field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
-            
-            # Run file-level validations (summary/aggregate checks)
-            file_level_results = dynamic_run_validations(transformed_df, final_mapping)
-            
-            # Combine both types of validation results
-            validation_results = field_level_results + file_level_results
-            st.session_state.validation_results = validation_results
-            st.session_state.validation_data_hash = data_hash
+    else:
+        # --- Auto-run validation (cached to avoid re-running on every rerun) ---
+        # Create a hash of the data to detect changes
+        data_hash = hashlib.md5(
+            (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
+        ).hexdigest()
+        
+        # Check if we need to re-run validations
+        cached_hash = st.session_state.get("validation_data_hash")
+        validation_results = st.session_state.get("validation_results", [])
+        
+        if cached_hash != data_hash or not validation_results:
+            with st.spinner("Running validation checks..."):
+                # Get required fields from layout file, not from mapping
+                if layout_df is not None:
+                    required_fields_df = get_required_fields(layout_df)
+                    required_fields = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
+                else:
+                    # Fallback: use all mapped fields as required
+                    required_fields = list(final_mapping.keys())
+                
+                # Get ALL mapped internal fields (both required and optional)
+                all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
+                
+                # Get mapped field values (source column names) for reference
+                mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
+                
+                # Run field-level validations (row-by-row checks)
+                # Pass all mapped internal fields to ensure comprehensive validation
+                field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
+                
+                # Run file-level validations (summary/aggregate checks)
+                file_level_results = dynamic_run_validations(transformed_df, final_mapping)
+                
+                # Combine both types of validation results
+                validation_results = field_level_results + file_level_results
+                st.session_state.validation_results = validation_results
+                st.session_state.validation_data_hash = data_hash
 
     # --- Validation Metrics Summary ---
     st.markdown("### Validation Summary")
@@ -1497,6 +454,7 @@ with tab3:
             data=val_csv,
             file_name="validation_report.csv",
             mime="text/csv",
+            key="download_validation_report",
             on_click=lambda: _notify("✅ Validation Report Ready!")
         )
     else:
@@ -1504,76 +462,323 @@ with tab3:
 
     st.divider()
 
-    # --- Final Verdict Block ---
-    st.markdown("### Final Verdict")
+    # --- Final Verdict Block with Threshold Analysis ---
+    st.markdown("### File Status & Validation Summary")
 
     if not validation_results:
         st.info("No validations have been run yet.")
     else:
-        if fails:
-            st.markdown(
-                """
-                <div style='background-color:#fdecea; padding: 1rem; border-radius: 8px;'>
-                <strong style='color: #b02a37;'>❌ File Status: Rejected — Critical issues found.</strong>
+            # Analyze validation results to calculate thresholds and stats
+            layout_df = st.session_state.get("layout_df")
+            final_mapping = st.session_state.get("final_mapping", {})
+            
+            # Extract required fields from layout
+            if layout_df is None:
+                required_fields_tab3: List[str] = []
+            else:
+                required_fields_tab3 = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
+            
+            # Check for missing mandatory fields (this is the only rejection reason)
+            unmapped_required_fields_tab3: List[str] = []
+            for field in required_fields_tab3:
+                mapping = final_mapping.get(field)
+                if not mapping or not mapping.get("value") or str(mapping.get("value")).strip() == "":
+                    unmapped_required_fields_tab3.append(field)
+            
+            # Analyze validation results for thresholds and stats
+            total_records = len(transformed_df) if transformed_df is not None else 0
+            
+            # Calculate null check statistics for required fields
+            required_field_null_stats: List[Dict[str, Any]] = []
+            
+            for result in validation_results:
+                if result.get("check") == "Required Field Check":
+                    field = result.get("field", "")
+                    status = result.get("status", "")
+                    # Handle both string and numeric values
+                    fail_pct_str = result.get("fail_pct", "0")
+                    fail_pct = float(fail_pct_str) if fail_pct_str else 0.0
+                    fail_count_str = result.get("fail_count", "0")
+                    fail_count = int(float(fail_count_str)) if fail_count_str else 0
+                    
+                    required_field_null_stats.append({
+                        "field": field,
+                        "null_percentage": fail_pct,
+                        "null_count": fail_count,
+                        "status": status
+                    })
+            
+            # Calculate baseline threshold based on actual data
+            # Use median + 2 standard deviations approach for more robust threshold
+            if required_field_null_stats:
+                null_percentages = [s["null_percentage"] for s in required_field_null_stats]
+                avg_null_pct = sum(null_percentages) / len(null_percentages)
+                max_null_pct = max(null_percentages)
+                
+                # Calculate standard deviation if we have enough data points
+                if len(null_percentages) > 1:
+                    import statistics
+                    try:
+                        std_dev = statistics.stdev(null_percentages)
+                        # Threshold = average + 2*std_dev, but with reasonable bounds
+                        suggested_threshold = min(max(avg_null_pct + (2 * std_dev), 1.0), 15.0)
+                    except (statistics.StatisticsError, ValueError):
+                        # Fallback if std_dev calculation fails
+                        suggested_threshold = min(max(avg_null_pct + 3.0, 2.0), 10.0)
+                else:
+                    # If only one field, use a conservative threshold
+                    suggested_threshold = min(max(avg_null_pct + 3.0, 2.0), 10.0)
+            else:
+                avg_null_pct = 0.0
+                max_null_pct = 0.0
+                suggested_threshold = 5.0
+            
+            # Find fields that actually exceed the calculated threshold (not just status="Fail")
+            fields_exceeding_threshold: List[Dict[str, Any]] = []
+            for stat in required_field_null_stats:
+                if stat["null_percentage"] > suggested_threshold:
+                    fields_exceeding_threshold.append(stat)
+            
+            # Count other validation issues (excluding optional field checks - user doesn't care about those)
+            other_failures = [
+                r for r in fails 
+                if r.get("check") != "Required Field Check" 
+                and r.get("check") != "Optional Field Check"
+                and r.get("check") != "Fill Rate Check"
+            ]
+            other_warnings = [
+                r for r in warnings 
+                if r.get("check") != "Required Field Check"
+                and r.get("check") != "Optional Field Check"
+                and r.get("check") != "Fill Rate Check"
+            ]
+            
+            # Determine file status
+            is_rejected = len(unmapped_required_fields_tab3) > 0
+            has_critical_issues = len(fields_exceeding_threshold) > 0
+            has_warnings = len(other_failures) > 0  # Only care about non-optional issues
+            
+            # --- Status Display ---
+            if is_rejected:
+                st.markdown(
+                    """
+                    <div style='background-color:#fdecea; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
+                    <strong style='color: #b02a37; font-size: 1.2rem;'>❌ File Status: Rejected</strong>
+                    <p style='color: #721c24; margin-top: 0.5rem; margin-bottom: 0;'>Mandatory fields are missing from the file.</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            elif has_critical_issues:
+                st.markdown(
+                    """
+                    <div style='background-color:#fff3cd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
+                    <strong style='color: #856404; font-size: 1.2rem;'>⚠️ File Status: Needs Review</strong>
+                    <p style='color: #856404; margin-top: 0.5rem; margin-bottom: 0;'>Some required fields have high null rates that exceed recommended thresholds.</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            elif has_warnings:
+                st.markdown(
+                    """
+                    <div style='background-color:#d1ecf1; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
+                    <strong style='color: #0c5460; font-size: 1.2rem;'>ℹ️ File Status: Approved with Warnings</strong>
+                    <p style='color: #0c5460; margin-top: 0.5rem; margin-bottom: 0;'>File meets requirements but has some data quality issues to review.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
-            )
-        elif warnings:
-            st.markdown(
-                """
-                <div style='background-color:#fff3cd; padding: 1rem; border-radius: 8px;'>
-                <strong style='color: #8a6d3b;'>⚠️ File Status: Warning — Minor issues detected.</strong>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                """
-                <div style='background-color:#d4edda; padding: 1rem; border-radius: 8px;'>
-                <strong style='color: #155724;'>✅ File Status: Approved — All checks passed.</strong>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                )
+            else:
+                st.markdown(
+                    """
+                    <div style='background-color:#d4edda; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;'>
+                    <strong style='color: #155724; font-size: 1.2rem;'>✅ File Status: Approved</strong>
+                    <p style='color: #155724; margin-top: 0.5rem; margin-bottom: 0;'>All validation checks passed. File is ready for processing.</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-    # --- Rejection Reason Generator (only if Rejected) ---
-    if fails:
-        st.markdown("### Rejection Reason for Client Success Team")
-        st.caption("Copy this paragraph to explain rejection to the client")
-
-        layout_df = st.session_state.get("layout_df")
-        final_mapping = st.session_state.get("final_mapping", {})
-
-        # Extract required fields from layout (guard None and typing)
-        if layout_df is None:
-            required_fields: List[str] = []
-        else:
-            required_fields = layout_df[layout_df["Usage"].astype(str).str.lower() == "required"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
-
-        # Recompute unmapped fields accurately
-        unmapped_required_fields: List[str] = []
-        for field in required_fields:
-            mapping = final_mapping.get(field)
-            if not mapping or not mapping.get("value") or str(mapping.get("value")).strip() == "":
-                unmapped_required_fields.append(field)
-
-        # --- Generate rejection reason ---
-        if unmapped_required_fields:
-            field_list = ", ".join(f"`{f}`" for f in unmapped_required_fields)
-            reason_text = (
-                "This file cannot be approved for automated processing because the following mandatory fields "
-                f"required for Targeted Marketing setup are missing: {field_list}. "
-                "Please ensure these fields are present and reupload the file."
-            )
-        else:
-            reason_text = (
-                "This file cannot be approved due to failed validation checks. "
-                "Please review and correct the issues."
-            )
-
-        st.code(reason_text, language="markdown")
+            # --- Detailed Status Summary (Collapsible Sections) ---
+            
+            # Mandatory Fields Status (Collapsible)
+            with st.expander("📋 Mandatory Fields Status", expanded=True):
+                if unmapped_required_fields_tab3:
+                    field_list = ", ".join(f"`{f}`" for f in unmapped_required_fields_tab3)
+                    st.error(f"**Missing Fields:** {field_list}")
+                    st.caption("These mandatory fields must be present in the source file and properly mapped.")
+                else:
+                    st.success(f"✅ All {len(required_fields_tab3)} required fields are mapped and available in the file.")
+            
+            # Required Fields Analysis (Collapsible)
+            if required_field_null_stats:
+                with st.expander("📊 Mandatory Fields Analysis", expanded=True):
+                    # Calculate insights
+                    total_records = len(transformed_df) if transformed_df is not None else 0
+                    fields_with_no_nulls = [s for s in required_field_null_stats if s["null_percentage"] == 0.0]
+                    fields_with_low_nulls = [s for s in required_field_null_stats if 0 < s["null_percentage"] <= suggested_threshold]
+                    fields_with_high_nulls = fields_exceeding_threshold
+                    
+                    # Summary metrics
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Mandatory Fields", len(required_field_null_stats))
+                    with col2:
+                        st.metric("Perfect Fields (0% null)", len(fields_with_no_nulls))
+                    with col3:
+                        st.metric("Fields Within Threshold", len(fields_with_low_nulls))
+                    with col4:
+                        st.metric("Fields Exceeding Threshold", len(fields_with_high_nulls))
+                    
+                    st.markdown("---")
+                    
+                    # Key Insights Section
+                    st.markdown("#### 📈 Key Insights")
+                    
+                    # Insight 1: Overall data quality
+                    if len(fields_with_no_nulls) == len(required_field_null_stats):
+                        st.success(f"**Excellent Data Quality:** All {len(required_field_null_stats)} mandatory fields have zero null values. This file demonstrates exceptional data completeness.")
+                    elif len(fields_with_high_nulls) == 0:
+                        completeness_pct = ((len(fields_with_no_nulls) + len(fields_with_low_nulls)) / len(required_field_null_stats) * 100) if required_field_null_stats else 0
+                        st.success(f"**Good Data Quality:** {completeness_pct:.1f}% of mandatory fields ({len(fields_with_no_nulls) + len(fields_with_low_nulls)}/{len(required_field_null_stats)}) are within acceptable null rate thresholds.")
+                    else:
+                        st.warning(f"**Data Quality Concerns:** {len(fields_with_high_nulls)} out of {len(required_field_null_stats)} mandatory fields ({len(fields_with_high_nulls)/len(required_field_null_stats)*100:.1f}%) exceed the recommended null rate threshold.")
+                    
+                    # Insight 2: Threshold recommendation
+                    st.markdown(f"""
+                    <div style='background-color:#e7f3ff; padding: 1rem; border-radius: 6px; margin-top: 1rem; margin-bottom: 1rem;'>
+                    <strong>📋 Recommended Threshold: {suggested_threshold:.1f}%</strong><br>
+                    Based on statistical analysis of this file's data, the recommended null rate threshold for mandatory fields is <strong>{suggested_threshold:.1f}%</strong>. 
+                    This is calculated from the average null rate ({avg_null_pct:.2f}%) plus 2 standard deviations, ensuring data quality while accounting for expected variations.
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Fields Exceeding Threshold (only if any exist)
+                    if fields_exceeding_threshold:
+                        st.markdown("#### ⚠️ Fields Requiring Attention")
+                        st.markdown("The following mandatory fields have null rates that exceed the recommended threshold:")
+                        
+                        # Create a clean table-like list
+                        list_items = []
+                        for field_stat in sorted(fields_exceeding_threshold, key=lambda x: x["null_percentage"], reverse=True):
+                            field_name = field_stat["field"]
+                            null_pct = field_stat["null_percentage"]
+                            null_count = field_stat["null_count"]
+                            fill_rate = 100 - null_pct
+                            list_items.append(f"- **{field_name}**: {null_pct:.2f}% null ({null_count:,} of {total_records:,} records) - Fill rate: {fill_rate:.2f}%")
+                        
+                        st.markdown("\n".join(list_items))
+                        
+                        # Actionable recommendation
+                        worst_field = max(fields_exceeding_threshold, key=lambda x: x["null_percentage"])
+                        st.info(f"""
+                        **💡 Recommendation:** Focus on improving data collection for **{worst_field['field']}** first, as it has the highest null rate ({worst_field['null_percentage']:.2f}%). 
+                        This field affects {worst_field['null_count']:,} records ({worst_field['null_percentage']:.2f}% of the file).
+                        """)
+                    else:
+                        st.success(f"✅ **All mandatory fields meet quality standards.** All {len(required_field_null_stats)} fields have null rates below the recommended {suggested_threshold:.1f}% threshold.")
+                    
+                    # Show all mandatory fields breakdown (using details HTML since expanders can't be nested)
+                    st.markdown("<details><summary>📋 View All Mandatory Fields Breakdown</summary>", unsafe_allow_html=True)
+                    # Sort by null percentage
+                    sorted_stats = sorted(required_field_null_stats, key=lambda x: x["null_percentage"], reverse=True)
+                    breakdown_items = []
+                    for stat in sorted_stats:
+                        field_name = stat["field"]
+                        null_pct = stat["null_percentage"]
+                        null_count = stat["null_count"]
+                        fill_rate = 100 - null_pct
+                        status_icon = "✅" if null_pct <= suggested_threshold else "⚠️"
+                        breakdown_items.append(f"{status_icon} **{field_name}**: {null_pct:.2f}% null ({fill_rate:.2f}% filled) - {null_count:,} null records")
+                    
+                    st.markdown("\n".join(breakdown_items))
+                    st.markdown("</details>", unsafe_allow_html=True)
+            
+            # Other Mandatory Field Validation Issues (Collapsible) - Only show non-optional issues
+            if other_failures or other_warnings:
+                with st.expander("⚠️ Other Mandatory Field Validations", expanded=False):
+                    if other_failures:
+                        st.markdown("**Critical Issues:**")
+                        failure_list = []
+                        for issue in other_failures:
+                            check_name = issue.get("check", "Unknown Check")
+                            field = issue.get("field", "")
+                            message = issue.get("message", "")
+                            if field:
+                                failure_list.append(f"- **{check_name}** ({field}): {message}")
+                            else:
+                                failure_list.append(f"- **{check_name}**: {message}")
+                        st.markdown("\n".join(failure_list))
+                    
+                    if other_warnings:
+                        st.markdown("**Warnings:**")
+                        warning_list = []
+                        for issue in other_warnings:
+                            check_name = issue.get("check", "Unknown Check")
+                            field = issue.get("field", "")
+                            message = issue.get("message", "")
+                            if field:
+                                warning_list.append(f"- **{check_name}** ({field}): {message}")
+                            else:
+                                warning_list.append(f"- **{check_name}**: {message}")
+                        st.markdown("\n".join(warning_list))
+            
+            # File-Level Statistics (Collapsible) - Focus on mandatory fields insights
+            file_level_results = [r for r in validation_results if not r.get("field")]
+            if file_level_results:
+                with st.expander("📈 File-Level Summary", expanded=False):
+                    # Parse and display meaningful statistics
+                    for result in file_level_results:
+                        check_name = result.get("check", "Unknown")
+                        message = result.get("message", "")
+                        status = result.get("status", "")
+                        
+                        if check_name == "Required Fields Completeness":
+                            # Extract percentage from message
+                            if "%" in message:
+                                st.metric("Mandatory Fields Completeness", message)
+                            else:
+                                if status == "Pass":
+                                    st.success(f"✅ **{check_name}**: {message}")
+                                else:
+                                    st.error(f"❌ **{check_name}**: {message}")
+                        else:
+                            # Other file-level checks
+                            if status == "Pass":
+                                st.success(f"✅ **{check_name}**: {message}")
+                            elif status == "Warning":
+                                st.warning(f"⚠️ **{check_name}**: {message}")
+                            else:
+                                st.error(f"❌ **{check_name}**: {message}")
+            
+            # --- Rejection Explanation (only if rejected, Collapsible) ---
+            if is_rejected:
+                with st.expander("❌ Rejection Explanation", expanded=True):
+                    field_list = ", ".join(f"`{f}`" for f in unmapped_required_fields_tab3)
+                    rejection_text = (
+                        f"This file has been **rejected** because the following mandatory fields required for Targeted Marketing setup are missing: {field_list}. "
+                        f"These fields must be present in the source file and properly mapped before the file can be processed. "
+                        f"Please ensure these fields are included in your source data and re-upload the file."
+                    )
+                    st.markdown(rejection_text)
+                    
+                    # Additional context if there are other issues
+                    if has_critical_issues or has_warnings:
+                        additional_issues = []
+                        if has_critical_issues:
+                            additional_issues.append(f"{len(fields_exceeding_threshold)} required field(s) with high null rates")
+                        if other_failures:
+                            additional_issues.append(f"{len(other_failures)} other validation failure(s)")
+                        if other_warnings:
+                            additional_issues.append(f"{len(other_warnings)} warning(s)")
+                        
+                        st.markdown("---")
+                        st.markdown(f"""
+                        <div style='background-color:#fff3cd; padding: 1rem; border-radius: 6px;'>
+                        <strong>Additional Issues to Address:</strong> Once the mandatory fields are added, please also review: {', '.join(additional_issues)}.
+                        </div>
+                        """, unsafe_allow_html=True)
 
 with tab4:
     st.markdown("## Final Outputs and Downloads")
@@ -1727,4 +932,5 @@ with tab4:
                             st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
                         if layout_df is not None and claims_df is not None:
                             st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
-                        _notify("All outputs regenerated.")
+                        _notify("✅ All outputs regenerated!")
+                        st.rerun()

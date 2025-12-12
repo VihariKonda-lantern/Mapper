@@ -1,7 +1,7 @@
 # pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any, Optional, cast, IO
+from typing import Any, Optional, cast
 from file_handler import detect_delimiter, read_claims_with_header_option
 
 # Help the type checker understand dynamic Streamlit/Pandas attributes

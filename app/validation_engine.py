@@ -72,8 +72,8 @@ class ValidationResult:
         if self.metrics:
             result.update(self.metrics)
         if self.failed_count >= 0:
-            result["fail_count"] = self.failed_count
-            result["fail_pct"] = round(self.get_failure_rate(), 2)
+            result["fail_count"] = str(self.failed_count)
+            result["fail_pct"] = str(round(self.get_failure_rate(), 2))
         return result
 
 
@@ -86,7 +86,7 @@ class BaseValidationRule(ABC):
         self.validation_inputs = config.get("validation_inputs", {})
     
     @abstractmethod
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         """
         Execute validation logic and return (failed_records_df, failed_count).
 
@@ -98,7 +98,7 @@ class BaseValidationRule(ABC):
         """
         pass
     
-    def validate(self, df: pd.DataFrame) -> ValidationResult:
+    def validate(self, df: Any) -> ValidationResult:
         """
         Main validation method that wraps execution with error handling.
 
@@ -120,6 +120,7 @@ class BaseValidationRule(ABC):
                 )
             
             failed_records_df, failed_count = self._execute_validation(df)
+            _ = failed_records_df  # Mark as used even if not accessed
             
             # Determine status based on failed count
             status = self._determine_status(failed_count, total_count)
@@ -188,7 +189,7 @@ class BaseValidationRule(ABC):
 class NullCheckRule(BaseValidationRule):
     """Validates that required fields are not null/empty."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         column = self.config.get("column_name")
         if not column or column not in df.columns:
             return df.iloc[0:0], 0  # Empty DataFrame
@@ -209,7 +210,7 @@ class NullCheckRule(BaseValidationRule):
 class DatatypeCheckRule(BaseValidationRule):
     """Validates that date fields can be parsed correctly."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         column = self.config.get("column_name")
         if not column or column not in df.columns:
             return df.iloc[0:0], 0
@@ -231,7 +232,7 @@ class DatatypeCheckRule(BaseValidationRule):
 class AgeValidationRule(BaseValidationRule):
     """Validates that patients are at least 18 years old."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         dob_field = self.config.get("column_name")
         if not dob_field or dob_field not in df.columns:
             return df.iloc[0:0], 0
@@ -250,7 +251,7 @@ class AgeValidationRule(BaseValidationRule):
 class FillRateCheckRule(BaseValidationRule):
     """Checks fill rate for mapped fields and warns when too sparse."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         column = self.config.get("column_name")
         if not column or column not in df.columns:
             return df.iloc[0:0], 0
@@ -277,7 +278,7 @@ class FillRateCheckRule(BaseValidationRule):
 class RequiredFieldsCompletenessRule(BaseValidationRule):
     """Summarizes required field completeness across the entire file."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         required_fields = self.validation_inputs.get("required_fields", [])
         if not required_fields:
             self._completeness = 100.0
@@ -314,7 +315,7 @@ class RequiredFieldsCompletenessRule(BaseValidationRule):
 class AgeDistributionRule(BaseValidationRule):
     """Summarizes age validation (18+) rate across the file."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         dob_field = self.config.get("column_name")
         if not dob_field or dob_field not in df.columns:
             self._over_18_pct = 0.0
@@ -336,14 +337,20 @@ class AgeDistributionRule(BaseValidationRule):
     def _build_message(self, failed_count: int, total_count: int) -> str:
         """Override to provide percentage."""
         if hasattr(self, '_over_18_pct'):
-            return f"{self._over_18_pct:.1f}% patients are 18+"
+            over_18_pct = self._over_18_pct
+            under_18_pct = 100.0 - over_18_pct
+            # If validation failed (most patients are under 18), show failure percentage
+            if failed_count > 0:
+                return f"{under_18_pct:.1f}% members fail 18+ rule"
+            else:
+                return f"{over_18_pct:.1f}% patients are 18+"
         return f"{failed_count} validation issues found"
 
 
 class DateRangeCheckRule(BaseValidationRule):
     """Summarizes claims within a date range (e.g., last 6 months)."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         date_field = self.config.get("column_name")
         if not date_field or date_field not in df.columns:
             self._valid_dates_pct = 0.0
@@ -368,14 +375,21 @@ class DateRangeCheckRule(BaseValidationRule):
     def _build_message(self, failed_count: int, total_count: int) -> str:
         """Override to provide percentage."""
         if hasattr(self, '_valid_dates_pct') and hasattr(self, '_months_back'):
-            return f"{self._valid_dates_pct:.1f}% claims within last {self._months_back} months"
+            valid_dates_pct = self._valid_dates_pct
+            invalid_dates_pct = 100.0 - valid_dates_pct
+            months_back = self._months_back
+            # If validation failed (too many claims outside window), show failure percentage
+            if failed_count > 0:
+                return f"{invalid_dates_pct:.1f}% claims fall outside {months_back}-month window"
+            else:
+                return f"{valid_dates_pct:.1f}% claims within last {months_back} months"
         return f"{failed_count} validation issues found"
 
 
 class DiagnosisCodeCoverageRule(BaseValidationRule):
     """Summarizes presence of MSK/BAR diagnosis codes across fields."""
     
-    def _execute_validation(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    def _execute_validation(self, df: Any) -> Tuple[Any, int]:
         dx_fields = self.validation_inputs.get("dx_fields", [])
         if not dx_fields:
             # Auto-detect diagnosis fields

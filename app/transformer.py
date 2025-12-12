@@ -48,20 +48,20 @@ def transform_claims_data(claims_df: Any, final_mapping: Dict[str, Dict[str, Any
             # Extract year (first 4 digits) and check if in reasonable range (1900-2100)
             year_str = s_str.str[:4]  # type: ignore[no-untyped-call]
             year_numeric = pd.to_numeric(year_str, errors='coerce')  # type: ignore[no-untyped-call]
-            valid_year = (year_numeric >= 1900) & (year_numeric <= 2100)
+            valid_year = (year_numeric >= 1900) & (year_numeric <= 2100)  # type: ignore[operator]
             # Extract month and day for basic validation
             month_str = s_str.str[4:6]  # type: ignore[no-untyped-call]
             day_str = s_str.str[6:8]  # type: ignore[no-untyped-call]
             month_numeric = pd.to_numeric(month_str, errors='coerce')  # type: ignore[no-untyped-call]
             day_numeric = pd.to_numeric(day_str, errors='coerce')  # type: ignore[no-untyped-call]
-            valid_month = (month_numeric >= 1) & (month_numeric <= 12)
-            valid_day = (day_numeric >= 1) & (day_numeric <= 31)
+            valid_month = (month_numeric >= 1) & (month_numeric <= 12)  # type: ignore[operator]
+            valid_day = (day_numeric >= 1) & (day_numeric <= 31)  # type: ignore[operator]
             
             # Identify YYYYMMDD format values
-            mask_yyyymmdd = is_8_digits & valid_year & valid_month & valid_day
+            mask_yyyymmdd = is_8_digits & valid_year & valid_month & valid_day  # type: ignore[operator]
             
             # Excel serial dates: between 1 and 100000, and not YYYYMMDD format
-            mask_excel = numeric.notna() & (numeric >= 1) & (numeric <= 100000) & ~mask_yyyymmdd
+            mask_excel = numeric.notna() & (numeric >= 1) & (numeric <= 100000) & ~mask_yyyymmdd  # type: ignore[operator]
             
             result = pd.Series(index=s.index, dtype='object')
             

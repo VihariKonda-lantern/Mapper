@@ -70,8 +70,28 @@ def render_claims_file_summary() -> None:
     metadata = st.session_state.get("claims_file_metadata", {})
     claims_file = st.session_state.get("claims_file_obj")
 
-    if claims_df is not None:
+    # Show summary if file is uploaded (even if not processed yet)
+    if claims_file is not None:
         st.markdown("#### Claims File Summary")
+        
+        # Show basic file info if not processed yet
+        if claims_df is None:
+            # Basic file information
+            file_name = claims_file.name
+            file_size = claims_file.size / (1024 * 1024)  # Size in MB
+            file_ext = file_name.split('.')[-1].upper() if '.' in file_name else "Unknown"
+            
+            st.markdown(f"<p style='margin-bottom: 0.25rem;'>File: **{file_name}** ({file_size:.2f} MB, {file_ext} format)</p>", unsafe_allow_html=True)
+            
+            with st.expander("📄 File Information", expanded=True):
+                st.write(f"**File Name:** {file_name}")  # type: ignore[no-untyped-call]
+                st.write(f"**File Size:** {file_size:.2f} MB")  # type: ignore[no-untyped-call]
+                st.write(f"**File Format:** {file_ext}")  # type: ignore[no-untyped-call]
+                st.info("⏳ File will be processed automatically when all required files (Layout, Lookup, Claims) are uploaded.")
+            return
+    
+    if claims_df is not None:
+        # Header already shown above, don't repeat it
 
         # File info in intelligent single line (compact, outside collapsible)
         date_cols = [col for col in claims_df.columns if "date" in col.lower()]
@@ -97,13 +117,13 @@ def render_claims_file_summary() -> None:
                 else:
                     delim_display = delim
             
-            # Build description: "file is a csv with , delimiter, file has headers in it."
-            header_text = "file has headers in it" if metadata.get('header') else "file has no headers"
+            # Build description: "File is csv with , delimiter; file has headers"
+            header_text = "file has headers" if metadata.get('header') else "file has no headers"
             
             if delim_display:
-                file_description = f"file is a **{format_type}** with **{delim_display}** delimiter, {header_text}."
+                file_description = f"File is {format_type} with {delim_display} delimiter; {header_text}"
             else:
-                file_description = f"file is a **{format_type}**, {header_text}."
+                file_description = f"File is {format_type}; {header_text}"
             
             st.markdown(f"<p style='margin-bottom: 0.25rem;'>{file_description}</p>", unsafe_allow_html=True)
         
