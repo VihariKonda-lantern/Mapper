@@ -5,8 +5,8 @@ from typing import Dict, Any, Optional
 
 st: Any = st
 
-# Constants
-MAPPING_HISTORY_MAX_SIZE = 50
+# Configuration
+from config import MAPPING_HISTORY_MAX_SIZE
 
 
 def initialize_undo_redo():

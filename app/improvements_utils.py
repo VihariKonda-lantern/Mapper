@@ -118,24 +118,40 @@ ERROR_MESSAGES: Dict[str, str] = {
 
 
 def get_user_friendly_error(error: Exception) -> str:
-    """Convert technical errors to user-friendly messages."""
-    error_type = type(error).__name__
-    error_message = str(error)
+    """
+    Get a user-friendly error message from an exception.
     
-    # Check for specific error messages
-    if error_type in ERROR_MESSAGES:
-        return ERROR_MESSAGES[error_type]
+    Uses enhanced error handling if available, otherwise falls back to basic handling.
     
-    # Check for common error patterns
-    if "encoding" in error_message.lower():
-        return "File encoding issue. Please save your file as UTF-8 and try again."
-    if "delimiter" in error_message.lower():
-        return "Could not detect the file delimiter. Please specify the delimiter manually."
-    if "memory" in error_message.lower():
-        return "File is too large to process. Please split the file into smaller chunks."
+    Args:
+        error: The exception that occurred
     
-    # Default fallback
-    return f"An error occurred: {error_message}. Please try again or contact support if the issue persists."
+    Returns:
+        User-friendly error message
+    """
+    # Try to use enhanced error handling
+    try:
+        from error_handling import get_user_friendly_error as _enhanced
+        return _enhanced(error)
+    except (ImportError, Exception):
+        # Fallback to basic error message handling
+        error_type = type(error).__name__
+        error_message = str(error)
+        
+        # Check for specific error messages
+        if error_type in ERROR_MESSAGES:
+            return ERROR_MESSAGES[error_type]
+        
+        # Check for common error patterns
+        if "encoding" in error_message.lower():
+            return "File encoding issue. Please save your file as UTF-8 and try again."
+        if "delimiter" in error_message.lower():
+            return "Could not detect the file delimiter. Please specify the delimiter manually."
+        if "memory" in error_message.lower():
+            return "File is too large to process. Please split the file into smaller chunks."
+        
+        # Default fallback
+        return f"An error occurred: {error_message}. Please try again or contact support if the issue persists."
 
 
 # --- Input Validation ---
