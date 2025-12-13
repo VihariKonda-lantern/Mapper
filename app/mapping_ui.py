@@ -3,6 +3,7 @@
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
 from typing import Any, List, Dict, Set, Optional, Tuple
+import time
 
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
@@ -12,6 +13,8 @@ from mapping_engine import get_enhanced_automap
 from transformer import transform_claims_data
 from session_state import initialize_undo_redo
 from anonymizer import anonymize_claims_data
+from improvements_utils import DEBOUNCE_DELAY_SECONDS
+from ui_improvements import render_tooltip  # type: ignore[import-untyped]
 
 
 def dual_input_field(field_label: str, options: List[str], key_prefix: str) -> Optional[str]:
@@ -189,16 +192,43 @@ def render_field_mapping_tab():
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### Mandatory Fields Mapping")
     
-    # --- Enhanced Search and Filter ---
+    # --- Enhanced Search and Filter with Debouncing ---
     search_col1, search_col2, search_col3 = st.columns([3, 2, 2])
     with search_col1:
-        search_query = st.text_input(
+        # Get raw input
+        raw_search_input = st.text_input(
             "🔍 Search fields:",
-            value=st.session_state.get("field_search_input", ""),
-            key="field_search_input",
+            value=st.session_state.get("field_search_input_raw", ""),
+            key="field_search_input_raw",
             placeholder="Type to search field names...",
-            help="Search for fields by name"
+            help="Search for fields by name (debounced)"
         )
+        
+        # Debounce the search input
+        current_time = time.time()
+        last_search_time = st.session_state.get("field_search_last_time", 0)
+        debounced_search = st.session_state.get("field_search_input", "")
+        
+        # Update debounced value if enough time has passed or if input changed significantly
+        if raw_search_input != st.session_state.get("field_search_input_raw_prev", ""):
+            st.session_state.field_search_input_raw_prev = raw_search_input
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = raw_search_input
+                st.session_state.field_search_input = debounced_search
+                st.session_state.field_search_last_time = current_time
+            else:
+                # Store pending input
+                st.session_state.field_search_pending = raw_search_input
+        
+        # Check if debounce delay has passed for pending input
+        if "field_search_pending" in st.session_state:
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = st.session_state.field_search_pending
+                st.session_state.field_search_input = debounced_search
+                st.session_state.field_search_last_time = current_time
+                del st.session_state.field_search_pending
+        
+        search_query = debounced_search
     
     with search_col2:
         filter_status = st.selectbox(
@@ -270,6 +300,12 @@ def render_field_mapping_tab():
                         label = f"{col} (AI Suggested)"
                         if suggestion_score:
                             label = f"{col} (AI: {suggestion_score}%)"
+                            # Add tooltip for AI suggestions
+                            render_tooltip(
+                                label,
+                                f"AI confidence: {suggestion_score}%. This column was automatically matched based on name similarity, data patterns, and field types.",
+                                key=f"ai_tooltip_{field_name}_{col}"
+                            )
                         field_col_options.append(str(label))
                     else:
                         field_col_options.append(str(col))

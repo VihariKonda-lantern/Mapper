@@ -543,6 +543,75 @@ def inject_summary_card_css():
         background-color: #eff6ff !important;
         border-color: #3b82f6 !important;
     }
+    
+    /* Responsive Design - Mobile/Tablet Support */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            max-width: 100% !important;
+        }
+        
+        [data-testid="column"] {
+            flex-direction: column !important;
+            width: 100% !important;
+            margin-bottom: 1rem !important;
+        }
+        
+        .upload-columns-container {
+            flex-direction: column !important;
+            max-width: 100% !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.85rem !important;
+        }
+        
+        h1 { font-size: 1.25rem !important; }
+        h2 { font-size: 1.1rem !important; }
+        h3 { font-size: 1rem !important; }
+        
+        .stDataFrame {
+            font-size: 0.8rem !important;
+        }
+        
+        .stButton > button {
+            padding: 0.4rem 0.8rem !important;
+            font-size: 0.85rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .main .block-container {
+            padding-left: 0.25rem !important;
+            padding-right: 0.25rem !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            padding: 0.4rem 0.8rem !important;
+            font-size: 0.75rem !important;
+        }
+    }
+    
+    /* Column Resizing for Data Tables */
+    .stDataFrame table {
+        table-layout: auto !important;
+    }
+    
+    .stDataFrame th {
+        min-width: 100px !important;
+        max-width: 300px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    .stDataFrame td {
+        min-width: 80px !important;
+        max-width: 250px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 

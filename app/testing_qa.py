@@ -240,59 +240,180 @@ def validate_mapping_correctness(mapping: Dict[str, Dict[str, Any]],
 
 
 def generate_test_data_from_claims(claims_df: Any, count: int = 100) -> pd.DataFrame:
-    """Generate test data that replicates the claims file structure with dummy data.
+    """Generate test data that replicates the claims file structure with realistic dummy data.
+    
+    Analyzes actual data patterns (formats, lengths, ranges, value distributions) and generates
+    test data that matches those patterns.
     
     Args:
         claims_df: Original claims DataFrame
         count: Number of records to generate
         
     Returns:
-        Generated DataFrame with same structure as claims_df
+        Generated DataFrame with same structure as claims_df, with realistic data patterns
     """
     import random
     import string
+    import re
     from datetime import datetime, timedelta
+    from collections import Counter
     
     data = {}
     
+    # Sample a subset of actual data for pattern analysis (max 1000 rows for performance)
+    sample_size = min(1000, len(claims_df))
+    sample_df = claims_df.head(sample_size) if sample_size > 0 else claims_df
+    
     for col in claims_df.columns:
         col_dtype = str(claims_df[col].dtype).lower()
+        col_lower = col.lower()
         
-        # Generate dummy data based on column type and name
-        if 'date' in col.lower() or 'dob' in col.lower() or col_dtype.startswith('datetime'):
-            start_date = datetime(2020, 1, 1)
-            data[col] = [(start_date + timedelta(days=random.randint(0, 1825))).strftime("%Y-%m-%d")
-                        for _ in range(count)]
-        elif 'id' in col.lower() or 'code' in col.lower():
-            # Generate alphanumeric IDs
-            data[col] = [''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-                         for _ in range(count)]
-        elif col_dtype.startswith('int'):
-            # Generate random integers
-            data[col] = [random.randint(1, 10000) for _ in range(count)]
-        elif col_dtype.startswith('float'):
-            # Generate random floats
-            data[col] = [round(random.uniform(0.01, 10000.0), 2) for _ in range(count)]
-        elif 'name' in col.lower():
-            # Generate fake names
-            first_names = ["John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank"]
-            last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis"]
-            if 'first' in col.lower():
-                data[col] = [random.choice(first_names) for _ in range(count)]
-            elif 'last' in col.lower():
-                data[col] = [random.choice(last_names) for _ in range(count)]
+        # Get non-null sample values for pattern analysis
+        sample_values = sample_df[col].dropna().astype(str).tolist()
+        non_empty_samples = [v for v in sample_values if v.strip()]
+        
+        if not non_empty_samples:
+            # If no samples, use default generation
+            data[col] = [None for _ in range(count)]
+            continue
+        
+        # Analyze patterns from actual data
+        sample_lengths = [len(str(v)) for v in non_empty_samples[:100]]
+        avg_length = int(sum(sample_lengths) / len(sample_lengths)) if sample_lengths else 10
+        min_length = min(sample_lengths) if sample_lengths else 1
+        max_length = max(sample_lengths) if sample_lengths else 20
+        
+        # Check if values follow a pattern (numeric, alphanumeric, date format, etc.)
+        first_few = non_empty_samples[:10]
+        
+        # Detect date patterns
+        date_patterns = [
+            r'\d{4}-\d{2}-\d{2}',  # YYYY-MM-DD
+            r'\d{2}/\d{2}/\d{4}',   # MM/DD/YYYY
+            r'\d{2}-\d{2}-\d{4}',   # MM-DD-YYYY
+            r'\d{4}/\d{2}/\d{2}',   # YYYY/MM/DD
+        ]
+        is_date = False
+        date_format = None
+        if 'date' in col_lower or 'dob' in col_lower or col_dtype.startswith('datetime'):
+            is_date = True
+            # Detect date format from samples
+            for pattern in date_patterns:
+                if any(re.match(pattern, str(v)) for v in first_few):
+                    date_format = pattern
+                    break
+            if not date_format:
+                date_format = '%Y-%m-%d'  # Default
+        
+        # Detect numeric patterns
+        is_numeric = False
+        is_integer = False
+        numeric_range = None
+        if col_dtype.startswith('int') or all(str(v).replace('-', '').replace('.', '').isdigit() for v in first_few if v):
+            is_numeric = True
+            is_integer = col_dtype.startswith('int') or all('.' not in str(v) for v in first_few if v)
+            try:
+                numeric_values = [float(str(v).replace(',', '')) for v in non_empty_samples[:100] if str(v).replace('-', '').replace('.', '').replace(',', '').isdigit()]
+                if numeric_values:
+                    numeric_range = (min(numeric_values), max(numeric_values))
+            except:
+                pass
+        
+        # Detect ID/code patterns (alphanumeric, specific length, prefixes, etc.)
+        is_id_like = 'id' in col_lower or 'code' in col_lower
+        id_pattern = None
+        if is_id_like and non_empty_samples:
+            # Check if IDs have consistent format
+            sample_id = str(non_empty_samples[0])
+            if sample_id.isdigit():
+                id_pattern = 'numeric'
+            elif sample_id.isalnum():
+                id_pattern = 'alphanumeric'
+            elif any(c.isalpha() for c in sample_id) and any(c.isdigit() for c in sample_id):
+                id_pattern = 'mixed'
             else:
-                data[col] = [f"{random.choice(first_names)} {random.choice(last_names)}" for _ in range(count)]
+                id_pattern = 'string'
+        
+        # Generate data based on analyzed patterns
+        if is_date:
+            # Generate dates in the detected format
+            start_date = datetime(2020, 1, 1)
+            dates = [(start_date + timedelta(days=random.randint(0, 1825))) for _ in range(count)]
+            
+            if date_format == r'\d{2}/\d{2}/\d{4}':
+                data[col] = [d.strftime("%m/%d/%Y") for d in dates]
+            elif date_format == r'\d{2}-\d{2}-\d{4}':
+                data[col] = [d.strftime("%m-%d-%Y") for d in dates]
+            elif date_format == r'\d{4}/\d{2}/\d{2}':
+                data[col] = [d.strftime("%Y/%m/%d") for d in dates]
+            else:
+                data[col] = [d.strftime("%Y-%m-%d") for d in dates]
+                
+        elif is_numeric and numeric_range:
+            # Generate numbers within actual range
+            min_val, max_val = numeric_range
+            if is_integer:
+                data[col] = [random.randint(int(min_val), int(max_val)) for _ in range(count)]
+            else:
+                # Preserve decimal places from samples
+                decimals = 2
+                sample_decimals = [len(str(v).split('.')[-1]) if '.' in str(v) else 0 for v in first_few]
+                if sample_decimals:
+                    decimals = max(sample_decimals)
+                data[col] = [round(random.uniform(min_val, max_val), decimals) for _ in range(count)]
+        elif is_id_like and id_pattern:
+            # Generate IDs matching the pattern
+            if id_pattern == 'numeric':
+                # Generate numeric IDs with similar length
+                data[col] = [str(random.randint(10**(min_length-1), 10**max_length - 1))[:max_length] 
+                            for _ in range(count)]
+            elif id_pattern == 'alphanumeric':
+                # Generate alphanumeric IDs with similar length
+                chars = string.ascii_uppercase + string.digits
+                data[col] = [''.join(random.choices(chars, k=random.randint(min_length, max_length)))
+                            for _ in range(count)]
+            else:
+                # Mixed pattern - analyze character distribution
+                chars = string.ascii_uppercase + string.digits + string.ascii_lowercase
+                data[col] = [''.join(random.choices(chars, k=random.randint(min_length, max_length)))
+                            for _ in range(count)]
+        elif 'name' in col_lower:
+            # Extract actual names from samples if available
+            name_samples = [v for v in non_empty_samples if any(c.isalpha() for c in str(v))]
+            if name_samples and len(name_samples) > 5:
+                # Use actual name patterns
+                data[col] = [random.choice(name_samples) for _ in range(count)]
+            else:
+                # Generate fake names
+                first_names = ["John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank", 
+                             "Michael", "Sarah", "David", "Emily", "James", "Lisa", "Robert", "Maria"]
+                last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+                            "Wilson", "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris"]
+                if 'first' in col_lower:
+                    data[col] = [random.choice(first_names) for _ in range(count)]
+                elif 'last' in col_lower:
+                    data[col] = [random.choice(last_names) for _ in range(count)]
+                else:
+                    data[col] = [f"{random.choice(first_names)} {random.choice(last_names)}" for _ in range(count)]
         else:
-            # Default: generate random strings
-            data[col] = [''.join(random.choices(string.ascii_letters + string.digits, k=15))
-                        for _ in range(count)]
+            # For other strings, use actual value patterns if available
+            if len(non_empty_samples) > 10:
+                # Use actual samples with some variation
+                data[col] = [random.choice(non_empty_samples) for _ in range(count)]
+            else:
+                # Generate strings matching length patterns
+                chars = string.ascii_letters + string.digits + " -_"
+                data[col] = [''.join(random.choices(chars, k=random.randint(min_length, max_length)))
+                            for _ in range(count)]
     
     return pd.DataFrame(data)
 
 
 def generate_test_data_from_layout(layout_df: Any, count: int = 100) -> pd.DataFrame:
-    """Generate test data based on layout schema with dummy data.
+    """Generate test data based on layout schema with realistic dummy data.
+    
+    Uses the actual claims data if available to match patterns, otherwise generates
+    data based on field name patterns.
     
     Args:
         layout_df: Layout DataFrame
@@ -303,35 +424,99 @@ def generate_test_data_from_layout(layout_df: Any, count: int = 100) -> pd.DataF
     """
     import random
     import string
+    import re
     from datetime import datetime, timedelta
     
     data = {}
+    
+    # Try to get actual claims data to match patterns
+    claims_df = st.session_state.get("claims_df")
+    final_mapping = st.session_state.get("final_mapping", {})
     
     for _, row in layout_df.iterrows():
         field_name = row.get("Internal Field", "")
         if not field_name:
             continue
         
-        # Generate dummy data based on field name
-        if 'date' in field_name.lower() or 'dob' in field_name.lower():
+        field_lower = field_name.lower()
+        
+        # Try to find mapped column in claims data to match patterns
+        mapped_col = None
+        if field_name in final_mapping:
+            mapped_col = final_mapping[field_name].get("value")
+        
+        # If we have claims data and a mapping, use actual patterns
+        if claims_df is not None and mapped_col and mapped_col in claims_df.columns:
+            sample_values = claims_df[mapped_col].dropna().astype(str).tolist()
+            non_empty_samples = [v for v in sample_values if v.strip()]
+            
+            if non_empty_samples:
+                # Use actual value patterns
+                if len(non_empty_samples) > 10:
+                    data[field_name] = [random.choice(non_empty_samples) for _ in range(count)]
+                else:
+                    # Analyze pattern and generate similar
+                    sample_lengths = [len(str(v)) for v in non_empty_samples]
+                    avg_length = int(sum(sample_lengths) / len(sample_lengths)) if sample_lengths else 10
+                    
+                    first_few = non_empty_samples[:5]
+                    if all(str(v).replace('-', '').replace('.', '').isdigit() for v in first_few if v):
+                        # Numeric pattern
+                        try:
+                            numeric_values = [float(str(v).replace(',', '')) for v in non_empty_samples if str(v).replace('-', '').replace('.', '').replace(',', '').isdigit()]
+                            if numeric_values:
+                                min_val, max_val = min(numeric_values), max(numeric_values)
+                                data[field_name] = [round(random.uniform(min_val, max_val), 2) for _ in range(count)]
+                            else:
+                                data[field_name] = [random.choice(non_empty_samples) for _ in range(count)]
+                        except:
+                            data[field_name] = [random.choice(non_empty_samples) for _ in range(count)]
+                    else:
+                        # String pattern - use actual samples
+                        data[field_name] = [random.choice(non_empty_samples) for _ in range(count)]
+                continue
+        
+        # Fallback: Generate based on field name patterns
+        if 'date' in field_lower or 'dob' in field_lower:
             start_date = datetime(2020, 1, 1)
             data[field_name] = [(start_date + timedelta(days=random.randint(0, 1825))).strftime("%Y-%m-%d")
                                for _ in range(count)]
-        elif 'id' in field_name.lower() or 'code' in field_name.lower():
-            data[field_name] = [''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        elif 'id' in field_lower or 'code' in field_lower:
+            # Generate IDs with reasonable length
+            chars = string.ascii_uppercase + string.digits
+            data[field_name] = [''.join(random.choices(chars, k=random.randint(8, 12)))
                                for _ in range(count)]
-        elif 'name' in field_name.lower():
-            first_names = ["John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank"]
-            last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis"]
-            if 'first' in field_name.lower():
+        elif 'amount' in field_lower or 'cost' in field_lower or 'price' in field_lower or 'fee' in field_lower:
+            # Generate monetary values
+            data[field_name] = [round(random.uniform(10.0, 5000.0), 2) for _ in range(count)]
+        elif 'name' in field_lower:
+            first_names = ["John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank",
+                         "Michael", "Sarah", "David", "Emily", "James", "Lisa", "Robert", "Maria"]
+            last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+                        "Wilson", "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris"]
+            if 'first' in field_lower:
                 data[field_name] = [random.choice(first_names) for _ in range(count)]
-            elif 'last' in field_name.lower():
+            elif 'last' in field_lower:
                 data[field_name] = [random.choice(last_names) for _ in range(count)]
             else:
                 data[field_name] = [f"{random.choice(first_names)} {random.choice(last_names)}" for _ in range(count)]
+        elif 'phone' in field_lower or 'tel' in field_lower:
+            # Generate phone numbers
+            data[field_name] = [f"{random.randint(100, 999)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
+                               for _ in range(count)]
+        elif 'email' in field_lower:
+            # Generate emails
+            domains = ["example.com", "test.com", "sample.org", "demo.net"]
+            names = ["user", "test", "sample", "demo", "john", "jane"]
+            data[field_name] = [f"{random.choice(names)}{random.randint(1, 999)}@{random.choice(domains)}"
+                               for _ in range(count)]
+        elif 'zip' in field_lower or 'postal' in field_lower:
+            # Generate zip codes
+            data[field_name] = [f"{random.randint(10000, 99999)}" for _ in range(count)]
         else:
-            # Default: generate random strings
-            data[field_name] = [''.join(random.choices(string.ascii_letters + string.digits, k=15))
+            # Default: generate reasonable strings
+            chars = string.ascii_letters + string.digits + " -_"
+            data[field_name] = [''.join(random.choices(chars, k=random.randint(5, 20)))
                                for _ in range(count)]
     
     return pd.DataFrame(data)

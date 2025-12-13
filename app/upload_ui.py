@@ -526,9 +526,8 @@ def render_upload_and_claims_preview():
                 # Mark that processing is complete - success message will show above after refresh
                 st.session_state.claims_processing_complete = True
                 
-                # Show preview after successful load
-                st.markdown("**Preview of Claims File (First 5 Rows):**")
-                st.dataframe(claims_df.head(5), use_container_width=True)  # type: ignore[no-untyped-call]
+                # Preview is handled by the file uploader's intelligent header detection
+                # No need to show preview rows here - header detection already handled it
                 
                 st.session_state.needs_refresh = True
 

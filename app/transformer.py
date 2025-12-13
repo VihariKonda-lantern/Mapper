@@ -1,9 +1,14 @@
 # pyright: reportUnknownMemberType=false, reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 import pandas as pd  # type: ignore[import-not-found]
 from typing import Any, cast, Dict, Optional
+import streamlit as st  # type: ignore[import-not-found]
+import hashlib
+import json
 
 pd = cast(Any, pd)
+st = cast(Any, st)
 
+@st.cache_data(show_spinner=False)
 def transform_claims_data(claims_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
     """Transform claims data into internal layout columns using mappings.
 

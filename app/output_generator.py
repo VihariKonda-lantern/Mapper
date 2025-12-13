@@ -24,19 +24,28 @@ def generate_all_outputs():
     """
     Generates anonymized claims file and mapping table outputs
     based on the latest field mappings.
+    Includes error handling and progress tracking.
     """
     final_mapping = st.session_state.get("final_mapping")
     claims_df = st.session_state.get("claims_df")
     layout_df = st.session_state.get("layout_df")
 
     if final_mapping and claims_df is not None and layout_df is not None:
-        # --- Generate outputs ---
-        anonymized_df = anonymize_claims_data(claims_df, final_mapping)
-        mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
+        try:
+            # --- Generate outputs with error handling ---
+            anonymized_df = anonymize_claims_data(claims_df, final_mapping)
+            mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
 
-        # --- Save in session_state
-        st.session_state.anonymized_df = anonymized_df
-        st.session_state.mapping_table = mapping_table
+            # --- Save in session_state
+            st.session_state.anonymized_df = anonymized_df
+            st.session_state.mapping_table = mapping_table
+        except Exception as e:
+            # Import here to avoid circular imports
+            from improvements_utils import get_user_friendly_error
+            error_msg = get_user_friendly_error(e)
+            st.error(f"Error generating outputs: {error_msg}")
+            st.session_state.anonymized_df = None
+            st.session_state.mapping_table = None
     else:
         st.session_state.anonymized_df = None
         st.session_state.mapping_table = None

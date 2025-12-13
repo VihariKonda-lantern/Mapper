@@ -105,7 +105,7 @@ def show_onboarding_tour() -> None:
             
             if st.button("Got it! Start using the app", key="complete_onboarding"):
                 st.session_state.onboarding_completed = True
-                st.rerun()
+                st.session_state.needs_refresh = True
 
 
 # --- Contextual Help ---

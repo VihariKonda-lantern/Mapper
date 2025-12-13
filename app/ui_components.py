@@ -75,7 +75,7 @@ def confirm_action(message: str, key: str) -> bool:
     with col1:
         if st.button("Confirm", key=f"confirm_yes_{key}"):
             st.session_state[f"confirm_{key}"] = True
-            st.rerun()
+            st.session_state.needs_refresh = True
     with col2:
         if st.button("Cancel", key=f"confirm_no_{key}"):
             st.session_state[f"confirm_{key}"] = False

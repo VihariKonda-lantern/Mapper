@@ -12,6 +12,7 @@ pd: Any = pd
 np: Any = np
 
 
+@st.cache_data(show_spinner=False)
 def calculate_data_quality_score(df: pd.DataFrame, required_fields: Optional[List[str]] = None) -> Dict[str, Any]:
     """Calculate overall data quality score (0-100) with breakdown by dimension.
     
@@ -104,6 +105,7 @@ def calculate_data_quality_score(df: pd.DataFrame, required_fields: Optional[Lis
     }
 
 
+@st.cache_data(show_spinner=False)
 def detect_duplicates(df: pd.DataFrame, columns: Optional[List[str]] = None, 
                       method: str = "exact") -> pd.DataFrame:
     """Detect duplicate records with configurable matching rules.
@@ -143,6 +145,7 @@ def detect_duplicates(df: pd.DataFrame, columns: Optional[List[str]] = None,
     return duplicates
 
 
+@st.cache_data(show_spinner=False)
 def get_column_statistics(df: pd.DataFrame, column: str) -> Dict[str, Any]:
     """Get comprehensive statistics for a column.
     
@@ -209,6 +212,7 @@ def get_column_statistics(df: pd.DataFrame, column: str) -> Dict[str, Any]:
     return stats
 
 
+@st.cache_data(show_spinner=False)
 def detect_outliers(df: pd.DataFrame, column: str, method: str = "zscore", 
                     threshold: float = 3.0) -> pd.DataFrame:
     """Detect statistical outliers in a column.
@@ -258,6 +262,7 @@ def detect_outliers(df: pd.DataFrame, column: str, method: str = "zscore",
     return outliers[outliers["is_outlier"] == True]
 
 
+@st.cache_data(show_spinner=False)
 def create_completeness_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """Create a heatmap matrix showing data completeness across fields/rows.
     
@@ -320,6 +325,7 @@ def sample_data(df: pd.DataFrame, method: str = "random", n: int = 1000,
         return df.sample(n=n, random_state=42)
 
 
+@st.cache_data(show_spinner=False)
 def generate_data_profile(df: pd.DataFrame) -> Dict[str, Any]:
     """Generate comprehensive data profile.
     

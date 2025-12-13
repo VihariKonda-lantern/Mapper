@@ -62,7 +62,7 @@ from advanced_features import (  # type: ignore[import-untyped]
     load_mapping_template,
     list_saved_templates,
 )
-from performance_utils import paginate_dataframe, get_data_hash  # type: ignore[import-untyped]
+from performance_utils import paginate_dataframe, get_data_hash, render_lazy_dataframe  # type: ignore[import-untyped]
 from validation_builder import (  # type: ignore[import-untyped]
     CustomValidationRule,
     save_custom_rule,
@@ -286,43 +286,35 @@ st.markdown("""
             padding-right: 1rem !important;
             max-width: 1400px;
         }
-        
         /* Reduce font sizes globally */
         body, .main {
             font-size: 13px !important;
         }
-        
         /* Consistent header sizing - enforce same size for all headers of same level */
         h1 {
             font-size: 1.5rem !important;
             font-weight: 600 !important;
         }
-        
         h2 {
             font-size: 1.25rem !important;
             font-weight: 600 !important;
         }
-        
         h3 {
             font-size: 1.1rem !important;
             font-weight: 600 !important;
         }
-        
         h4 {
             font-size: 1rem !important;
             font-weight: 600 !important;
         }
-        
         h5 {
             font-size: 0.9rem !important;
             font-weight: 600 !important;
         }
-        
         h6 {
             font-size: 0.85rem !important;
             font-weight: 600 !important;
         }
-        
         /* Override any inline styles in markdown headers */
         .stMarkdown h1,
         .stMarkdown h2,
@@ -333,7 +325,6 @@ st.markdown("""
             font-size: inherit !important;
             font-weight: 600 !important;
         }
-        
         /* Ensure markdown headers use consistent sizing */
         .stMarkdown h1 { font-size: 1.5rem !important; }
         .stMarkdown h2 { font-size: 1.25rem !important; }
@@ -341,95 +332,77 @@ st.markdown("""
         .stMarkdown h4 { font-size: 1rem !important; }
         .stMarkdown h5 { font-size: 0.9rem !important; }
         .stMarkdown h6 { font-size: 0.85rem !important; }
-        
         p, div, span, label {
             font-size: 13px !important;
         }
-        
         /* Reduce excessive vertical spacing */
         h1, h2, h3, h4, h5, h6 {
             margin-top: 0.25rem !important;
             margin-bottom: 0.125rem !important;
         }
-        
         /* Tighter spacing for tabs */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.125rem !important;
             margin-bottom: 0.125rem !important;
         }
-        
         /* Reduce spacing for dividers */
         hr {
             margin: 0.25rem 0 !important;
         }
-        
         /* Tighter spacing between elements */
         .element-container {
             margin-bottom: 0.125rem !important;
         }
-        
         /* Reduce spacing in columns */
         .stColumn {
             gap: 0.25rem !important;
         }
-        
         /* Tighter spacing for expanders */
         [data-testid="stExpander"] {
             margin-bottom: 0.25rem !important;
         }
-        
         [data-testid="stExpander"] > div {
             padding-top: 0.25rem !important;
             padding-bottom: 0.25rem !important;
         }
-        
         /* Reduce spacing in file uploader */
         [data-testid="stFileUploader"] {
             margin-bottom: 0.25rem !important;
         }
-        
         /* Tighter spacing for buttons */
         .stButton {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing in forms */
         [data-testid="stForm"] {
             margin-bottom: 0.25rem !important;
         }
-        
         /* Tighter spacing for dataframes */
         [data-testid="stDataFrame"] {
             margin-bottom: 0.25rem !important;
             font-size: 12px !important;
         }
-        
         /* Reduce spacing for metrics */
         [data-testid="stMetricContainer"] {
             margin-bottom: 0.125rem !important;
         }
-        
         [data-testid="stMetricValue"] {
             font-size: 1.25rem !important;
         }
-        
         [data-testid="stMetricLabel"] {
             font-size: 0.75rem !important;
         }
-        
         /* Tighter spacing for info/warning/error messages */
         .stAlert {
             margin-bottom: 0.25rem !important;
             padding: 0.375rem 0.75rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing for selectboxes and inputs */
         .stSelectbox, .stTextInput, .stNumberInput, .stTextArea, .stMultiselect, .stDateInput, .stTimeInput {
             margin-bottom: 0.5rem !important;
         }
-        
         /* Ensure proper spacing for input containers */
         .stSelectbox > div,
         .stTextInput > div,
@@ -440,155 +413,128 @@ st.markdown("""
         .stTimeInput > div {
             margin-bottom: 0.5rem !important;
         }
-        
         /* Tighter spacing for captions */
         .stCaption {
             margin-top: 0.0625rem !important;
             margin-bottom: 0.0625rem !important;
             font-size: 11px !important;
         }
-        
         /* Reduce spacing in sidebar */
         .css-1d391kg {
             padding-top: 0.5rem !important;
         }
-        
         /* Tighter spacing for markdown blocks */
         .stMarkdown {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing between containers */
         .stContainer {
             margin-bottom: 0.25rem !important;
         }
-        
         /* Tighter spacing for download buttons */
         [data-testid="stDownloadButton"] {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing for progress bars */
         [data-testid="stProgressBar"] {
             margin-bottom: 0.125rem !important;
         }
-        
         /* Tighter spacing for code blocks */
         .stCodeBlock {
             margin-bottom: 0.25rem !important;
             font-size: 12px !important;
         }
-        
         /* Reduce spacing for JSON displays */
         [data-testid="stJson"] {
             margin-bottom: 0.25rem !important;
             font-size: 12px !important;
         }
-        
         /* Tighter overall page spacing */
         .main {
             padding-top: 0.25rem !important;
         }
-        
         /* Reduce spacing in summary cards */
         .summary-cards-wrapper {
             margin-bottom: 0.25rem !important;
         }
-        
         /* Tighter spacing for data editor */
         [data-testid="stDataEditor"] {
             margin-bottom: 0.25rem !important;
             font-size: 12px !important;
         }
-        
         /* Additional tight spacing rules */
         .stCheckbox, .stRadio {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing in multi-select */
         [data-testid="stMultiSelect"] {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Tighter spacing for sliders */
         [data-testid="stSlider"] {
             margin-bottom: 0.125rem !important;
         }
-        
         /* Reduce spacing for date inputs */
         [data-testid="stDateInput"] {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Tighter spacing for time inputs */
         [data-testid="stTimeInput"] {
             margin-bottom: 0.125rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing for color pickers */
         [data-testid="stColorPicker"] {
             margin-bottom: 0.125rem !important;
         }
-        
         /* Tighter spacing for file uploader dropzone */
         [data-testid="stFileUploader"] > div {
             padding: 0.5rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing in columns wrapper */
         [data-testid="column"] {
             gap: 0.25rem !important;
         }
-        
         /* Tighter spacing for empty states */
         .stEmpty {
             margin-bottom: 0.25rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing for success messages */
         .stSuccess {
             margin-bottom: 0.25rem !important;
             padding: 0.375rem 0.75rem !important;
             font-size: 13px !important;
         }
-        
         /* Tighter spacing for error messages */
         .stError {
             margin-bottom: 0.25rem !important;
             padding: 0.375rem 0.75rem !important;
             font-size: 13px !important;
         }
-        
         /* Reduce spacing for warning messages */
         .stWarning {
             margin-bottom: 0.25rem !important;
             padding: 0.375rem 0.75rem !important;
             font-size: 13px !important;
         }
-        
         /* Tighter spacing for info messages */
         .stInfo {
             margin-bottom: 0.25rem !important;
             padding: 0.375rem 0.75rem !important;
             font-size: 13px !important;
         }
-        
         /* Remove all gradient backgrounds */
         * {
             background-image: none !important;
         }
-        
         /* UI/UX Best Practices - Golden Rules */
-        
         /* 1. Visual Hierarchy - Primary vs Secondary Actions */
         .stButton > button[type="primary"],
         button[data-baseweb="button"][kind="primary"] {
@@ -597,12 +543,10 @@ st.markdown("""
             font-weight: 600 !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
         }
-        
         .stButton > button:not([type="primary"]):not(:disabled) {
             background-color: #6c757d !important;
             color: white !important;
         }
-        
         /* 2. Accessibility - Focus States */
         .stButton > button:focus,
         .stTextInput > div > div > input:focus,
@@ -613,7 +557,6 @@ st.markdown("""
             outline-offset: 2px !important;
             box-shadow: 0 0 0 3px rgba(73, 80, 87, 0.2) !important;
         }
-        
         /* 3. Clear Affordances - Hover States */
         .stButton > button:not(:disabled):hover,
         button[data-baseweb="button"]:not(:disabled):hover {
@@ -621,13 +564,11 @@ st.markdown("""
             box-shadow: 0 3px 6px rgba(0,0,0,0.2) !important;
             transition: all 0.2s ease !important;
         }
-        
         .stButton > button:not(:disabled):active,
         button[data-baseweb="button"]:not(:disabled):active {
             transform: translateY(0) !important;
             box-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
         }
-        
         /* 4. Input Field Feedback */
         .stTextInput > div > div > input:focus,
         .stTextArea > div > div > textarea:focus,
@@ -635,13 +576,11 @@ st.markdown("""
             border-color: #495057 !important;
             box-shadow: 0 0 0 2px rgba(73, 80, 87, 0.1) !important;
         }
-        
         .stTextInput > div > div > input:hover,
         .stTextArea > div > div > textarea:hover,
         .stSelectbox > div > div:hover {
             border-color: #adb5bd !important;
         }
-        
         /* 5. Clear Disabled States */
         .stButton > button:disabled,
         button[data-baseweb="button"]:disabled {
@@ -649,37 +588,31 @@ st.markdown("""
             cursor: not-allowed !important;
             transform: none !important;
         }
-        
         /* 6. Better Contrast for Accessibility */
         .stMarkdown, p, span, div, label {
             color: #212529 !important;
         }
-        
         /* 7. Clear Interactive Elements */
         [data-testid="stExpander"]:hover .streamlit-expanderHeader {
             background-color: #e9ecef !important;
             cursor: pointer !important;
         }
-        
         /* 8. Loading States - Spinner Visibility */
         .stSpinner > div {
             border-color: #495057 !important;
             border-top-color: transparent !important;
         }
-        
         /* 9. Better Empty States */
         .stEmpty, .stInfo:empty {
             padding: 1rem !important;
             text-align: center !important;
             color: #6c757d !important;
         }
-        
         /* 10. Form Validation Feedback */
         .stTextInput > div > div > input:invalid,
         .stTextArea > div > div > textarea:invalid {
             border-color: #dc3545 !important;
         }
-        
         /* 11. Clear Clickable Areas - Minimum Touch Target */
         .stButton > button,
         button[data-baseweb="button"],
@@ -687,26 +620,21 @@ st.markdown("""
             min-height: 2rem !important;
             min-width: 2.5rem !important;
         }
-        
         /* 12. Better Table/DataFrame Readability */
         .stDataFrame table {
             border-collapse: collapse !important;
         }
-        
         .stDataFrame th {
             background-color: #f8f9fa !important;
             font-weight: 600 !important;
             border-bottom: 2px solid #dee2e6 !important;
         }
-        
         .stDataFrame td {
             border-bottom: 1px solid #e9ecef !important;
         }
-        
         .stDataFrame tr:hover {
             background-color: #f8f9fa !important;
         }
-        
         /* 13. Improved Metrics Display */
         [data-testid="stMetricContainer"] {
             border: 1px solid #e9ecef !important;
@@ -714,81 +642,66 @@ st.markdown("""
             padding: 0.5rem !important;
             background-color: #f8f9fa !important;
         }
-        
         /* 14. Better Progress Indicators */
         [data-testid="stProgressBar"] > div > div {
             background-color: #495057 !important;
         }
-        
         /* 15. Clear Section Separators */
         hr {
             border-top: 1px solid #dee2e6 !important;
             margin: 0.75rem 0 !important;
         }
-        
         /* 16. Improved Alert/Message Visibility */
         .stAlert {
             border-left-width: 3px !important;
             border-left-style: solid !important;
         }
-        
         .stSuccess {
             border-left-color: #28a745 !important;
         }
-        
         .stError {
             border-left-color: #dc3545 !important;
         }
-        
         .stWarning {
             border-left-color: #ffc107 !important;
         }
-        
         .stInfo {
             border-left-color: #17a2b8 !important;
         }
-        
         /* 17. Better Tab Navigation */
         .stTabs [data-baseweb="tab"]:hover {
             background-color: #f8f9fa !important;
         }
-        
         .stTabs [aria-selected="true"] {
             border-bottom: 2px solid #495057 !important;
             font-weight: 600 !important;
         }
-        
         /* 18. Improved File Uploader Affordance */
         .stFileUploader:hover {
             border-color: #495057 !important;
             background-color: #f8f9fa !important;
         }
-        
         /* 19. Better Checkbox/Radio Visibility */
         .stCheckbox label,
         .stRadio label {
             cursor: pointer !important;
             user-select: none !important;
         }
-        
         /* 20. Better Link/Clickable Text */
         a, [role="link"] {
             color: #495057 !important;
             text-decoration: underline !important;
             cursor: pointer !important;
         }
-        
         a:hover, [role="link"]:hover {
             color: #212529 !important;
         }
-        
         /* 22. Improved Code Block Readability */
         .stCodeBlock, code, pre {
             background-color: #f8f9fa !important;
             border: 1px solid #e9ecef !important;
             color: #212529 !important;
         }
-        
         /* 23. Better JSON Display */
         [data-testid="stJson"] {
             background-color: #f8f9fa !important;
@@ -796,40 +709,33 @@ st.markdown("""
             border-radius: 4px !important;
             padding: 0.5rem !important;
         }
-        
         /* 24. Clear Visual Feedback for Actions */
         .stButton > button:not(:disabled) {
             cursor: pointer !important;
             transition: all 0.2s ease !important;
         }
-        
         /* 25. Improved Spacing for Readability */
         .stMarkdown p {
             line-height: 1.5 !important;
         }
-        
         /* 26. Better List Styling */
         ul, ol {
             padding-left: 1.5rem !important;
             margin-bottom: 0.5rem !important;
         }
-        
         li {
             margin-bottom: 0.25rem !important;
             line-height: 1.5 !important;
         }
-        
         /* 27. Improved Caption Readability */
         .stCaption {
             color: #6c757d !important;
             font-style: italic !important;
         }
-        
         /* 28. Better Tooltip Visibility */
         [title], [data-tooltip] {
             cursor: help !important;
         }
-        
         /* 29. Clear Visual Grouping */
         .stContainer {
             border: 1px solid #e9ecef !important;
@@ -837,26 +743,21 @@ st.markdown("""
             padding: 0.75rem !important;
             background-color: #ffffff !important;
         }
-        
         /* 30. Improved Scrollbar Styling (where applicable) */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
-        
         ::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
-        
         ::-webkit-scrollbar-thumb {
             background: #adb5bd;
             border-radius: 4px;
         }
-        
         ::-webkit-scrollbar-thumb:hover {
             background: #868e96;
         }
-        
         /* 31. Better Form Layout */
         .stForm {
             background-color: #ffffff !important;
@@ -864,37 +765,30 @@ st.markdown("""
             border-radius: 4px !important;
             padding: 1rem !important;
         }
-        
         /* 32. Improved Data Editor */
         [data-testid="stDataEditor"] {
             border: 1px solid #e9ecef !important;
             border-radius: 4px !important;
         }
-        
         /* 33. Better Metric Cards */
         [data-testid="stMetricValue"] {
             font-weight: 600 !important;
             color: #212529 !important;
         }
-        
         [data-testid="stMetricLabel"] {
             color: #6c757d !important;
             font-weight: 500 !important;
         }
-        
         /* 34. Clear Visual States for Validation */
         [data-testid="stDataFrame"] tr[data-status="error"] {
             background-color: #fff5f5 !important;
         }
-        
         [data-testid="stDataFrame"] tr[data-status="warning"] {
             background-color: #fffbf0 !important;
         }
-        
         [data-testid="stDataFrame"] tr[data-status="success"] {
             background-color: #f0fff4 !important;
         }
-        
         /* 35. Better Mobile Responsiveness */
         @media (max-width: 768px) {
             .stButton > button {
@@ -902,69 +796,56 @@ st.markdown("""
                 margin-bottom: 0.5rem !important;
             }
         }
-        
         /* 36. Improved Loading Spinner */
         .stSpinner {
             color: #495057 !important;
         }
-        
         /* 37. Better Placeholder Text */
         input::placeholder,
         textarea::placeholder {
             color: #adb5bd !important;
             opacity: 1 !important;
         }
-        
         /* 38. Clear Visual Hierarchy in Cards */
         .summary-cards-wrapper [data-testid="column"] {
             transition: box-shadow 0.2s ease !important;
         }
-        
         .summary-cards-wrapper [data-testid="column"]:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
         }
-        
         /* 39. Better Error Message Styling */
         .stError {
             background-color: #fff5f5 !important;
             border-left-color: #dc3545 !important;
         }
-        
         /* 40. Improved Success Message Styling */
         .stSuccess {
             background-color: #f0fff4 !important;
             border-left-color: #28a745 !important;
         }
-        
         /* 41. Better Warning Message Styling */
         .stWarning {
             background-color: #fffbf0 !important;
             border-left-color: #ffc107 !important;
         }
-        
         /* 42. Improved Info Message Styling */
         .stInfo {
             background-color: #e7f3ff !important;
             border-left-color: #17a2b8 !important;
         }
-        
         /* 43. Better Required Field Indicators (handled via label styling) */
-        
         /* 44. Better Pagination Controls */
         .stButton > button:disabled {
             opacity: 0.4 !important;
         }
-        
         /* 45. Improved Sidebar Styling */
         [data-testid="stSidebar"] {
             border-right: 1px solid #e9ecef !important;
         }
-        
         /* 46. Better Toggle/Switch Visibility */
         .stCheckbox input[type="checkbox"]:checked + label::before {
             background-color: #495057 !important;
         }
-        
         /* 47. Clear Visual Separation for Sections */
         .stMarkdown h2,
         .stMarkdown h3 {
@@ -972,30 +853,25 @@ st.markdown("""
             padding-bottom: 0.25rem !important;
             margin-bottom: 0.5rem !important;
         }
-        
         /* 48. Better Slider Visibility */
         [data-testid="stSlider"] {
             margin: 0.5rem 0 !important;
         }
-        
         /* 49. Improved Date/Time Input Styling */
         [data-testid="stDateInput"] > div,
         [data-testid="stTimeInput"] > div {
             border: 1px solid #ddd !important;
             border-radius: 4px !important;
         }
-        
         /* 50. Better Multiselect Display */
         [data-testid="stMultiSelect"] > div > div {
             min-height: 2.5rem !important;
         }
-        
         /* Ensure no gradient colors in any elements */
         [style*="gradient"], [style*="linear-gradient"] {
             background: #f5f5f5 !important;
             background-image: none !important;
         }
-        
         /* Override ui_styling.py conflicting styles - enforce consistent neutral theme */
         .stButton > button,
         button[data-baseweb="button"],
@@ -1009,7 +885,6 @@ st.markdown("""
             font-size: 13px !important;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
         }
-        
         .stButton > button:hover,
         button[data-baseweb="button"]:hover,
         .stDownloadButton > button:hover {
@@ -1017,14 +892,12 @@ st.markdown("""
             color: white !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
         }
-        
         .stButton > button:disabled,
         button[data-baseweb="button"]:disabled {
             background-color: #c6c8ca !important;
             color: #6c757d !important;
             cursor: not-allowed !important;
         }
-        
         /* Consistent status boxes - neutral gray theme */
         div[style*="background-color:#fdecea"],
         div[style*="background-color:#fff3cd"],
@@ -1034,20 +907,17 @@ st.markdown("""
             border: 1px solid #ddd !important;
             color: #000000 !important;
         }
-        
         div[style*="color: #b02a37"],
         div[style*="color: #856404"],
         div[style*="color: #0c5460"],
         div[style*="color: #155724"] {
             color: #000000 !important;
         }
-        
         /* Consistent activity log styling */
         div[style*="background-color: #f5f5f5"] {
             background-color: #f5f5f5 !important;
             border: 1px solid #ddd !important;
         }
-        
         /* Override expander styles for consistency */
         .streamlit-expanderHeader {
             background-color: #f5f5f5 !important;
@@ -1057,7 +927,6 @@ st.markdown("""
             font-size: 13px !important;
             font-weight: 500 !important;
         }
-        
         .streamlit-expanderContent {
             padding: 0.5rem 0.75rem !important;
             background-color: #ffffff !important;
@@ -1065,7 +934,6 @@ st.markdown("""
             border-top: none !important;
             border-radius: 0 0 4px 4px !important;
         }
-        
         /* Consistent input field styling */
         .stTextInput > div > div > input,
         .stTextArea > div > div > textarea,
@@ -1076,7 +944,6 @@ st.markdown("""
             font-size: 13px !important;
             background-color: white !important;
         }
-        
         /* Fix selectbox labels - ensure they're not cut off */
         .stSelectbox label,
         .stTextInput label,
@@ -1095,7 +962,6 @@ st.markdown("""
             height: auto !important;
             min-height: auto !important;
         }
-        
         /* Ensure selectbox container has enough space */
         .stSelectbox > div,
         .stTextInput > div,
@@ -1107,46 +973,39 @@ st.markdown("""
             margin-bottom: 0.5rem !important;
             min-height: auto !important;
         }
-        
         /* Fix selectbox dropdown itself */
         .stSelectbox > div > div > div {
             min-height: 2rem !important;
             padding: 0.375rem 0.5rem !important;
             font-size: 13px !important;
         }
-        
         /* Ensure multiselect has proper sizing */
         [data-testid="stMultiSelect"] > div {
             min-height: 2rem !important;
         }
-        
         [data-testid="stMultiSelect"] label {
             font-size: 13px !important;
             line-height: 1.4 !important;
             padding-bottom: 0.25rem !important;
             white-space: normal !important;
         }
-        
         /* Consistent tabs styling */
         .stTabs [data-baseweb="tab-list"] {
             background-color: #f5f5f5 !important;
             border-bottom: 1px solid #ddd !important;
         }
-        
         .stTabs [data-baseweb="tab"] {
             background-color: transparent !important;
             color: #000000 !important;
             font-size: 13px !important;
             padding: 0.5rem 1rem !important;
         }
-        
         .stTabs [aria-selected="true"] {
             background-color: white !important;
             color: #000000 !important;
             font-weight: 600 !important;
             border-bottom: 2px solid #666 !important;
         }
-        
         /* Consistent file uploader */
         .stFileUploader {
             border: 1px dashed #ddd !important;
@@ -1154,12 +1013,10 @@ st.markdown("""
             background-color: #fafafa !important;
             padding: 0.5rem !important;
         }
-        
         /* Remove all colored borders and backgrounds from status indicators */
         div[style*="border-left: 3px solid"] {
             border-left: 2px solid #999 !important;
         }
-        
         /* Consistent summary cards */
         .summary-cards-wrapper [data-testid="column"] {
             background: white !important;
@@ -1168,34 +1025,28 @@ st.markdown("""
             padding: 0.75rem !important;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
         }
-        
         /* Override any large font sizes in status messages */
         strong[style*="font-size: 1.2rem"],
         strong[style*="font-size"] {
             font-size: 1rem !important;
         }
-        
         /* Consistent padding for all status boxes */
         div[style*="padding: 1.5rem"] {
             padding: 0.75rem 1rem !important;
         }
-        
         /* Ensure all inline styles respect our font sizes */
         [style*="font-size"] {
             font-size: 13px !important;
         }
-        
         [style*="font-size: 0.85rem"],
         [style*="font-size: 0.75rem"],
         [style*="font-size: 0.7rem"] {
             font-size: 12px !important;
         }
-        
         [style*="font-size: 1.2rem"],
         [style*="font-size: 1.1rem"] {
             font-size: 1rem !important;
         }
-        
         /* Consistent colors - remove all bright colors */
         [style*="color: #b02a37"],
         [style*="color: #721c24"],
@@ -1204,7 +1055,6 @@ st.markdown("""
         [style*="color: #155724"] {
             color: #000000 !important;
         }
-        
         /* Make all colored backgrounds neutral */
         [style*="background-color:#fdecea"],
         [style*="background-color:#fff3cd"],
@@ -1224,11 +1074,9 @@ with st.sidebar:
         toggle_dark_mode()
         show_toast("Dark mode toggled", "🌙")
         st.session_state.needs_refresh = True
-    
     st.divider()
     st.markdown("### 📋 Activity Log")
     audit_log = st.session_state.setdefault("audit_log", [])
-    
     if audit_log:
         # Show last 10 events in reverse chronological order
         recent_events = audit_log[-10:][::-1]
@@ -1236,14 +1084,12 @@ with st.sidebar:
             event_type = event.get("event_type", "unknown")
             message = event.get("message", "")
             timestamp = event.get("timestamp", "")
-            
             # Format timestamp for display
             try:
                 dt = datetime.fromisoformat(timestamp)
                 time_str = dt.strftime("%H:%M:%S")
             except Exception:
                 time_str = timestamp[:8] if len(timestamp) >= 8 else timestamp
-            
             # Color code by event type
             color_map = {
                 "file_upload": "#4CAF50",
@@ -1252,7 +1098,6 @@ with st.sidebar:
                 "output": "#9C27B0"
             }
             color = color_map.get(event_type, "#757575")
-            
             st.markdown(f"""
                 <div style="
                     background-color: #f5f5f5;
@@ -1269,7 +1114,6 @@ with st.sidebar:
             """, unsafe_allow_html=True)
     else:
         st.caption("No activity yet. Events will appear here as you use the app.")
-    
     # Clear log button
     if st.button("Clear Log", key="clear_audit_log", use_container_width=True):
         if show_confirmation_dialog(
@@ -1283,10 +1127,10 @@ with st.sidebar:
             show_toast("Activity log cleared", "🗑️")
             st.session_state.needs_refresh = True
 
-# Handle refresh flag at the start
+# Handle refresh flag at the start - use state flag instead of rerun
 if st.session_state.get("needs_refresh", False):
     st.session_state.needs_refresh = False
-    st.rerun()
+    # Don't rerun - let Streamlit's natural rerun cycle handle updates
 
 # Wrap tabs in container for better layout control
 main_container = st.container()
@@ -1302,7 +1146,6 @@ with main_container:
 
 with tab1:
     render_upload_and_claims_preview()
-    
     # Log file upload events if files were just loaded
     if "layout_df" in st.session_state and st.session_state.get("layout_df") is not None:
         layout_file_name = st.session_state.get("layout_file_obj")
@@ -1317,7 +1160,6 @@ with tab1:
                     pass  # Function not available yet
                 st.session_state.last_logged_layout_file = layout_file_name.name
                 add_recent_file(layout_file_name.name, "layout", {})
-    
     if "claims_df" in st.session_state and st.session_state.get("claims_df") is not None:
         claims_file_name = st.session_state.get("claims_file_obj")
         if claims_file_name and hasattr(claims_file_name, "name"):
@@ -1334,7 +1176,6 @@ with tab1:
                     pass  # Function not available yet
                 st.session_state.last_logged_claims_file = claims_file_name.name
                 add_recent_file(claims_file_name.name, "claims", {"rows": row_count, "columns": col_count})
-    
     if "msk_codes" in st.session_state or "bar_codes" in st.session_state:
         lookup_file_name = st.session_state.get("lookup_file_obj")
         if lookup_file_name and hasattr(lookup_file_name, "name"):
@@ -1350,13 +1191,10 @@ with tab1:
                     pass  # Function not available yet
                 st.session_state.last_logged_lookup_file = lookup_file_name.name
                 add_recent_file(lookup_file_name.name, "lookup", {"msk": msk_count, "bar": bar_count})
-    
     # Inject CSS for modern cards
     inject_summary_card_css()
-    
     # Dynamic summary cards based on upload order
     upload_order = cast(List[str], st.session_state.get("upload_order", []))
-    
     # Build list of summaries to render based on upload order
     summary_functions_tab1: List[Callable[[], None]] = []
     summary_map_tab1: Dict[str, Callable[[], None]] = {
@@ -1364,7 +1202,6 @@ with tab1:
         "lookup": render_lookup_summary_section,
         "claims": render_claims_file_summary
     }
-    
     # Add summaries in upload order if available
     for file_type in upload_order:
         if file_type in summary_map_tab1:
@@ -1375,7 +1212,6 @@ with tab1:
                 summary_functions_tab1.append(summary_map_tab1[file_type])
             elif file_type == "claims" and "claims_file_obj" in st.session_state:
                 summary_functions_tab1.append(summary_map_tab1[file_type])
-    
     # Also add summaries for files that exist but might not be in upload_order
     # (fallback to ensure stats are always shown when files are uploaded)
     if "layout_file_obj" in st.session_state and "layout" not in upload_order:
@@ -1387,7 +1223,6 @@ with tab1:
     if "claims_file_obj" in st.session_state and "claims" not in upload_order:
         if "claims" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions_tab1]:
             summary_functions_tab1.append(summary_map_tab1["claims"])
-    
     # Render summaries dynamically - always show if files are uploaded
     # Check if we have any uploaded files
     has_uploaded_files = (
@@ -1395,7 +1230,6 @@ with tab1:
         "lookup_file_obj" in st.session_state or 
         "claims_file_obj" in st.session_state
     )
-    
     # If we have files but no summaries in list, add them
     if not summary_functions_tab1 and has_uploaded_files:
         if "layout_file_obj" in st.session_state:
@@ -1404,11 +1238,9 @@ with tab1:
             summary_functions_tab1.append(summary_map_tab1["lookup"])
         if "claims_file_obj" in st.session_state:
             summary_functions_tab1.append(summary_map_tab1["claims"])
-    
     if summary_functions_tab1:
         st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
         num_summaries = len(summary_functions_tab1)
-        
         # Create columns based on number of summaries (1, 2, or 3)
         if num_summaries == 1:
             cols = st.columns(1, gap="large")
@@ -1416,12 +1248,10 @@ with tab1:
             cols = st.columns(2, gap="large")
         else:
             cols = st.columns(3, gap="large")
-        
         # Render each summary in its column
         for i, summary_func in enumerate(summary_functions_tab1):
             with cols[i]:
                 summary_func()
-        
         st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
@@ -1439,7 +1269,6 @@ with tab2:
             action_callback=lambda: st.session_state.setdefault("active_tab", "Setup")
         )
         st.stop()
-    
     # --- Sticky Mapping Progress Bar ---
     # Cache required fields calculation to avoid recomputing on every rerun
     if layout_df is not None:
@@ -1454,7 +1283,6 @@ with tab2:
             required_fields = st.session_state[cache_key]
     else:
         required_fields = []
-    
     total_required = len(required_fields) if required_fields else 0
     mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
     mapped_count = len(mapped_required)
@@ -1468,18 +1296,36 @@ with tab2:
 
     # --- UX Tools (Collapsible Container) ---
     with st.expander("⚙️ Tools & Actions", expanded=False):
-        # Search field at the top of the container
-        search_query = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search_tools")
+        # Search field at the top of the container with debouncing
+        import time
+        from improvements_utils import DEBOUNCE_DELAY_SECONDS
+        raw_search_tools = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search_tools_raw")
+        # Debounce search input
+        current_time = time.time()
+        last_search_time = st.session_state.get("field_search_tools_last_time", 0)
+        debounced_search = st.session_state.get("field_search_tools", "")
+        if raw_search_tools != st.session_state.get("field_search_tools_raw_prev", ""):
+            st.session_state.field_search_tools_raw_prev = raw_search_tools
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = raw_search_tools
+                st.session_state.field_search_tools = debounced_search
+                st.session_state.field_search_tools_last_time = current_time
+            else:
+                st.session_state.field_search_tools_pending = raw_search_tools
+        if "field_search_tools_pending" in st.session_state:
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = st.session_state.field_search_tools_pending
+                st.session_state.field_search_tools = debounced_search
+                st.session_state.field_search_tools_last_time = current_time
+                del st.session_state.field_search_tools_pending
+        search_query = debounced_search
         st.markdown("<br>", unsafe_allow_html=True)
-        
         col1, col2, col3 = st.columns(3)
-        
         with col1:
                 st.markdown("**History**")
                 # Initialize undo/redo
                 initialize_undo_redo()
                 # final_mapping already cached above
-                
                 # Initialize history with current state if empty
                 if len(st.session_state.mapping_history) == 0:
                     if final_mapping:
@@ -1487,11 +1333,9 @@ with tab2:
                     else:
                         # Save empty state as initial state
                         save_to_history({})
-                
                 # Check if undo/redo is possible
                 can_undo = st.session_state.history_index > 0
                 can_redo = st.session_state.history_index < len(st.session_state.mapping_history) - 1
-                
                 if st.button("↶ Undo", key="undo_btn", use_container_width=True, disabled=not can_undo, help="Undo last mapping change (Ctrl+Z)"):
                     undone = undo_mapping()
                     if undone is not None:
@@ -1505,7 +1349,6 @@ with tab2:
                         field_name = list(undone.keys())[0] if undone else None
                         show_undo_redo_feedback("Undone", field_name)
                         st.session_state.needs_refresh = True
-                
                 if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
                     redone = redo_mapping()
                     if redone is not None:
@@ -1519,7 +1362,6 @@ with tab2:
                         field_name = list(redone.keys())[0] if redone else None
                         show_undo_redo_feedback("Redone", field_name)
                         st.session_state.needs_refresh = True
-            
         with col2:
             st.markdown("**Bulk Actions**")
             ai_suggestions = st.session_state.get("auto_mapping", {})
@@ -1550,14 +1392,12 @@ with tab2:
                     show_toast("All mappings cleared!", "🔄")
                     log_event("mapping", "Cleared all mappings")
                     st.session_state.needs_refresh = True
-        
         with col3:
             st.markdown("**Utilities**")
             if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
                 mapping_str = json.dumps(final_mapping, indent=2)
                 st.code(mapping_str, language="json")
                 st.info("Right-click and copy the JSON above")
-            
             # Export mapping as JSON file
             if final_mapping:
                 mapping_json = json.dumps(final_mapping, indent=2).encode('utf-8')
@@ -1570,7 +1410,6 @@ with tab2:
                     use_container_width=True,
                     help="Download current mapping as JSON template"
                 )
-            
             # Save/Load Mapping Templates
             st.markdown("**Mapping Templates**")
             template_col1, template_col2 = st.columns(2)
@@ -1582,7 +1421,6 @@ with tab2:
                         log_event("template", f"Saved mapping template: {os.path.basename(filename)}")
                     else:
                         st.warning("No mapping to save")
-                
                 with template_col2:
                     saved_templates = list_saved_templates()
                     if saved_templates:
@@ -1616,7 +1454,6 @@ with tab2:
                 st.error("❌ Mapping validation failed:")
                 for error in errors:
                     st.error(f"- {error}")
-        
         # Mapping Confidence Scores
         ai_suggestions_tab2 = st.session_state.get("auto_mapping", {})
         if ai_suggestions_tab2:
@@ -1624,13 +1461,22 @@ with tab2:
             st.markdown("#### Mapping Confidence Scores")
             confidence_df = pd.DataFrame(list(confidence_scores.items()), columns=["Field", "Confidence"])
             confidence_df["Confidence"] = (confidence_df["Confidence"] * 100).round(1)
-            st.dataframe(confidence_df, use_container_width=True)
-        
+            if confidence_df.empty:
+                render_empty_state(
+                    icon="🎯",
+                    title="No Confidence Scores",
+                    message="AI mapping suggestions will appear here once available."
+                )
+            else:
+                render_tooltip(
+                    "AI mapping confidence scores",
+                    "Higher scores indicate better matches. Scores above 80% are considered high confidence."
+                )
+                render_sortable_table(confidence_df, key="confidence_table")
         # Mapping Version Control
         st.markdown("#### Mapping Version Control")
         mapping_version = get_mapping_version(final_mapping)
         st.code(f"Current Version: {mapping_version}")
-        
         # Export/Import for Sharing
         col1, col2 = st.columns(2)
         with col1:
@@ -1645,7 +1491,6 @@ with tab2:
                                  "mapping_template_shareable.json",
                                  "application/json",
                                  key="download_shareable")
-        
         with col2:
             uploaded_template = st.file_uploader("Import Shareable Template",
                                                 type=["json"],
@@ -1661,7 +1506,6 @@ with tab2:
                 except Exception as e:
                     error_msg = get_user_friendly_error(e)
                     st.error(f"Error importing template: {error_msg}")
-    
     # --- Main Mapping Section ---
     st.markdown("#### Manual Field Mapping")
     # Gate heavy mapping updates behind a form submit to avoid recomputation on every rerun
@@ -1682,7 +1526,6 @@ with tab2:
                         log_event("mapping", f"Manual field mappings committed via form ({manual_mapped_count} fields mapped)")
                     except NameError:
                         pass
-                
                 # Automatically run unit tests in the background when mappings are applied
                 try:
                     tests = create_mapping_unit_tests(final_mapping, claims_df, layout_df)
@@ -1693,13 +1536,11 @@ with tab2:
                         pass
 
     st.divider()
-    
     # --- Test Mapping Section (Auto-run only, results shown in Tools & Analytics tab) ---
     if st.session_state.get("mappings_ready") and final_mapping:
         # Check if we need to run tests (if mappings changed or tests don't exist)
         mapping_hash = str(hash(str(final_mapping)))
         last_hash = st.session_state.get("last_mapping_hash")
-        
         # Run tests automatically if mappings changed or tests don't exist
         if last_hash != mapping_hash or not st.session_state.get("unit_test_results"):
             # Run tests automatically in background
@@ -1716,38 +1557,30 @@ with tab2:
     if st.session_state.get("mappings_ready") and final_mapping:
         st.markdown("#### Review & Adjust Mappings")
         st.caption("Review and edit your mappings in the table below. Click 'Apply Edited Mappings' to save changes.")
-        
         # Get all internal fields from layout
         all_internal_fields = layout_df["Internal Field"].dropna().unique().tolist()  # type: ignore[no-untyped-call]
-        
         # Get required fields to mark which are required
         required_fields_df = get_required_fields(layout_df)
         required_fields_list = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
         required_fields_set = set(required_fields_list)
-        
         # Get available source columns for validation
         available_source_columns = claims_df.columns.tolist()
-        
         # Build review table data
         review_data: List[Dict[str, Any]] = []
         for field in all_internal_fields:
             mapping_info = final_mapping.get(field, {})
             source_col = mapping_info.get("value", "")
             is_required = "Yes" if field in required_fields_set else "No"
-            
             review_data.append({
                 "Internal Field": field,
                 "Source Column": source_col,
                 "Is Required": is_required
             })
-        
         # Create DataFrame for data editor
         review_df = pd.DataFrame(review_data)
-        
         # Sort: Required fields first, then alphabetically by Internal Field
         review_df["_sort_key"] = review_df["Is Required"].apply(lambda x: 0 if x == "Yes" else 1)  # type: ignore[no-untyped-call]
         review_df = review_df.sort_values(by=["_sort_key", "Internal Field"]).drop(columns=["_sort_key"])  # type: ignore[no-untyped-call]
-        
         # Configure column editing - only Source Column should be editable
         column_config = {
             "Internal Field": st.column_config.TextColumn(
@@ -1766,7 +1599,6 @@ with tab2:
                 help="Whether this field is mandatory"
             )
         }
-        
         # Display data editor
         edited_df = st.data_editor(
             review_df,
@@ -1776,28 +1608,23 @@ with tab2:
             key="mapping_review_editor",
             hide_index=True
         )
-        
         # Apply Edited Mappings button
         if st.button("Apply Edited Mappings", key="apply_edited_mappings", use_container_width=True, type="primary"):
             # Read edited table and update final_mapping using vectorized operations
             # Use itertuples for better performance than iterrows
             updated_mapping: Dict[str, Dict[str, Any]] = final_mapping.copy()  # Start with existing mappings
-            
             # Process edited rows using itertuples (faster than iterrows)
             for row in edited_df.itertuples(index=False):
                 internal_field = str(row[0])  # Internal Field column
                 source_col = str(row[1]).strip() if pd.notna(row[1]) else ""  # Source Column column
-                
                 # Only update mapping if source column is provided
                 if source_col and source_col != "":
                     # Preserve existing mode if field was already mapped, otherwise set to manual
                     existing_mapping = updated_mapping.get(internal_field, {})
                     mode = existing_mapping.get("mode", "manual")
-                    
                     # If source column changed, mark as manual
                     if existing_mapping.get("value") != source_col:
                         mode = "manual"
-                    
                     updated_mapping[internal_field] = {
                         "mode": mode,
                         "value": source_col
@@ -1805,19 +1632,15 @@ with tab2:
                 elif internal_field in updated_mapping:
                     # If source column is empty, remove the mapping
                     del updated_mapping[internal_field]
-            
             # Update session state (merge with existing, don't overwrite)
             st.session_state.final_mapping = updated_mapping
-            
             # Save to history
             if updated_mapping:
                 save_to_history(updated_mapping)
-            
             # Regenerate outputs
             if claims_df is not None and updated_mapping:
                 st.session_state.transformed_df = transform_claims_data(claims_df, updated_mapping)
                 generate_all_outputs()
-                
                 # Automatically run unit tests when mappings are updated
                 try:
                     tests = create_mapping_unit_tests(updated_mapping, claims_df, layout_df)
@@ -1827,7 +1650,6 @@ with tab2:
                 except Exception:
                     # Silently fail - tests will be available when user clicks button
                     pass
-            
             st.success("✅ Mappings updated successfully!")
             # Only log manual mappings (exclude AI auto-mapped fields)
             manual_mapped_count = len([f for f in updated_mapping.keys() 
@@ -1859,10 +1681,8 @@ with tab2:
             (field, info) for field, info in ai_suggestions.items()
             if field in auto_mapped_fields and info.get("score", 0) >= 80
         ]
-        
         if auto_mapped_high_confidence:
             st.info("Fields with AI confidence ≥ 80% have already been auto-mapped. You can override them manually below.")
-            
             with st.expander("📋 Auto-Mapped Fields (≥80% confidence) - Click to Override", expanded=False):
                 st.caption("These fields were automatically mapped. You can change them in the mapping form below.")
                 for field, info in auto_mapped_high_confidence:
@@ -1910,9 +1730,22 @@ with tab2:
                         "value": ai_suggestions[field]["value"]
                     }
 
-                with st.spinner("Applying selected suggestions..."):
-                    st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
+                # Show progress indicator for applying suggestions
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                try:
+                    status_text.text("Applying selected suggestions...")
+                    progress_bar.progress(0.3)
                     generate_all_outputs()
+                    progress_bar.progress(1.0)
+                    status_text.empty()
+                    progress_bar.empty()
+                    st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
+                except Exception as e:
+                    progress_bar.empty()
+                    status_text.empty()
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error applying suggestions: {error_msg}")
                     # Note: Not logging AI suggestions - only manual changes are logged
 
                     # --- Refresh transformed dataframe ---
@@ -1950,12 +1783,12 @@ with tab3:
         data_hash = hashlib.md5(
             (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
         ).hexdigest()
-        
         # Check if we need to re-run validations
         cached_hash = st.session_state.get("validation_data_hash")
         validation_results = st.session_state.get("validation_results", [])
-        
         if cached_hash != data_hash or not validation_results:
+            # Show loading skeleton while running validations
+            render_loading_skeleton(rows=3, cols=4)
             with st.spinner("Running validation checks..."):
                 # Get required fields from layout file, not from mapping
                 if layout_df is not None:
@@ -1964,31 +1797,35 @@ with tab3:
                 else:
                     # Fallback: use all mapped fields as required
                     required_fields = list(final_mapping.keys())
-                
                 # Get ALL mapped internal fields (both required and optional)
                 all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
-                
                 # Get mapped field values (source column names) for reference
                 mapped_fields = [mapping["value"] for mapping in final_mapping.values() if mapping.get("value")]
-                
-                # Run field-level validations (row-by-row checks)
+                # Run field-level validations (row-by-row checks) with progress indicator
                 # Pass all mapped internal fields to ensure comprehensive validation
                 start_time = time.time()
-                field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
-                
-                # Run file-level validations (summary/aggregate checks)
-                file_level_results = dynamic_run_validations(transformed_df, final_mapping)
-                
+                try:
+                    with st.spinner("Running field-level validations..."):
+                        field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
+                except Exception as e:
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error during field-level validation: {error_msg}")
+                    field_level_results = []
+                # Run file-level validations (summary/aggregate checks) with progress indicator
+                try:
+                    with st.spinner("Running file-level validations..."):
+                        file_level_results = dynamic_run_validations(transformed_df, final_mapping)
+                except Exception as e:
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error during file-level validation: {error_msg}")
+                    file_level_results = []
                 # Combine both types of validation results
                 validation_results = field_level_results + file_level_results
                 execution_time = time.time() - start_time
-                
                 # Track validation performance
                 track_validation_performance("full_validation", execution_time, len(transformed_df), len(validation_results))
-                
                 st.session_state.validation_results = validation_results
                 st.session_state.validation_data_hash = data_hash
-                
                 # Log validation completion
                 fail_count = len([r for r in validation_results if r.get("status") == "Fail"])
                 warning_count = len([r for r in validation_results if r.get("status") == "Warning"])
@@ -2000,7 +1837,6 @@ with tab3:
 
     # --- Validation Metrics Summary ---
     st.markdown("#### Validation Summary")
-    
     # validation_results already set above in the validation block
     if "validation_results" not in st.session_state:
         validation_results: List[Dict[str, Any]] = []
@@ -2025,7 +1861,6 @@ with tab3:
     # --- Custom Validation Rules Builder ---
     with st.expander("🔧 Custom Validation Rules Builder", expanded=False):
         st.markdown("Create custom validation rules for your data")
-        
         rule_name = st.text_input("Rule Name:", key="custom_rule_name", placeholder="e.g., 'Email Format Check'")
         rule_field = st.selectbox(
             "Field to Validate:",
@@ -2038,7 +1873,6 @@ with tab3:
             key="custom_rule_type",
             help="null_check: Check null percentage\nmin_value: Minimum value threshold\nmax_value: Maximum value threshold\npattern_match: Pattern matching (coming soon)"
         )
-        
         if rule_type in ["null_check", "min_value", "max_value"]:
             rule_threshold = st.number_input(
                 "Threshold:",
@@ -2049,7 +1883,6 @@ with tab3:
             )
         else:
             rule_threshold = 0.0
-        
         if st.button("Add Custom Rule", key="add_custom_rule"):
             if rule_name and rule_field:
                 rule = CustomValidationRule(rule_name, rule_field, rule_type, rule_threshold)
@@ -2058,7 +1891,6 @@ with tab3:
                 st.session_state.needs_refresh = True
             else:
                 st.warning("Please provide both rule name and field")
-        
         # Show existing custom rules
         custom_rules = load_custom_rules()
         if custom_rules:
@@ -2072,7 +1904,6 @@ with tab3:
                         st.session_state.custom_validation_rules.pop(i)
                         show_toast("Custom rule removed", "🗑️")
                         st.session_state.needs_refresh = True
-            
             # Run custom validations
             if st.button("Run Custom Validations", key="run_custom_validations"):
                 if transformed_df is not None:
@@ -2097,19 +1928,24 @@ with tab3:
                 page_size=page_size
             )
             st.caption(f"Page {page_num} of {total_pages} ({len(validation_results)} total results)")
-            
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("← Previous", key="prev_validation_page", disabled=page_num == 1):
                     st.session_state.validation_page_num = max(1, page_num - 1)
                 if st.button("Next →", key="next_validation_page", disabled=page_num == total_pages):
                     st.session_state.validation_page_num = min(total_pages, page_num + 1)
-            
             validation_df = paginated_results
         else:
             validation_df = pd.DataFrame(validation_results)
-        
-        st.dataframe(validation_df, use_container_width=True)  # type: ignore[no-untyped-call]
+        # Use sortable/filterable table for better UX
+        if validation_df.empty:
+            render_empty_state(
+                icon="✅",
+                title="No Validation Issues",
+                message="All validations passed! Your data looks good."
+            )
+        else:
+            render_sortable_table(validation_df, key="validation_results_table")
 
         val_csv = validation_df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -2133,7 +1969,6 @@ with tab3:
     else:
             # Analyze validation results to calculate thresholds and stats
             # layout_df and final_mapping already cached above
-            
             # Extract required fields from layout (use cached version if available)
             if layout_df is None:
                 required_fields_tab3: List[str] = []
@@ -2146,20 +1981,16 @@ with tab3:
                     usage_normalized = layout_df["Usage"].astype(str).str.strip().str.lower()
                     required_fields_tab3 = layout_df[usage_normalized == "mandatory"]["Internal Field"].tolist()  # type: ignore[no-untyped-call]
                     st.session_state[cache_key_tab3] = required_fields_tab3
-            
             # Check for missing mandatory fields (this is the only rejection reason)
             unmapped_required_fields_tab3: List[str] = []
             for field in required_fields_tab3:
                 mapping = final_mapping.get(field)
                 if not mapping or not mapping.get("value") or str(mapping.get("value")).strip() == "":
                     unmapped_required_fields_tab3.append(field)
-            
             # Analyze validation results for thresholds and stats
             total_records = len(transformed_df) if transformed_df is not None else 0
-            
             # Calculate null check statistics for required fields
             required_field_null_stats: List[Dict[str, Any]] = []
-            
             for result in validation_results:
                 if result.get("check") == "Required Field Check":
                     field = result.get("field", "")
@@ -2169,21 +2000,18 @@ with tab3:
                     fail_pct = float(fail_pct_str) if fail_pct_str else 0.0
                     fail_count_str = result.get("fail_count", "0")
                     fail_count = int(float(fail_count_str)) if fail_count_str else 0
-                    
                     required_field_null_stats.append({
                         "field": field,
                         "null_percentage": fail_pct,
                         "null_count": fail_count,
                         "status": status
                     })
-            
             # Calculate baseline threshold based on actual data
             # Use median + 2 standard deviations approach for more robust threshold
             if required_field_null_stats:
                 null_percentages = [s["null_percentage"] for s in required_field_null_stats]
                 avg_null_pct = sum(null_percentages) / len(null_percentages)
                 max_null_pct = max(null_percentages)
-                
                 # Calculate standard deviation if we have enough data points
                 if len(null_percentages) > 1:
                     import statistics
@@ -2201,13 +2029,11 @@ with tab3:
                 avg_null_pct = 0.0
                 max_null_pct = 0.0
                 suggested_threshold = 5.0
-            
             # Find fields that actually exceed the calculated threshold (not just status="Fail")
             fields_exceeding_threshold: List[Dict[str, Any]] = []
             for stat in required_field_null_stats:
                 if stat["null_percentage"] > suggested_threshold:
                     fields_exceeding_threshold.append(stat)
-            
             # Count other validation issues (excluding optional field checks - user doesn't care about those)
             other_failures = [
                 r for r in fails 
@@ -2221,12 +2047,10 @@ with tab3:
                 and r.get("check") != "Optional Field Check"
                 and r.get("check") != "Fill Rate Check"
             ]
-            
             # Determine file status
             is_rejected = len(unmapped_required_fields_tab3) > 0
             has_critical_issues = len(fields_exceeding_threshold) > 0
             has_warnings = len(other_failures) > 0  # Only care about non-optional issues
-            
             # --- Status Display ---
             if is_rejected:
                 st.markdown(
@@ -2270,7 +2094,6 @@ with tab3:
                 )
 
             # --- Detailed Status Summary (Collapsible Sections) ---
-            
             # Mandatory Fields Status (Collapsible)
             with st.expander("📋 Mandatory Fields Status", expanded=False):
                 if unmapped_required_fields_tab3:
@@ -2279,7 +2102,6 @@ with tab3:
                     st.caption("These mandatory fields must be present in the source file and properly mapped.")
                 else:
                     st.success(f"✅ All {len(required_fields_tab3)} required fields are mapped and available in the file.")
-            
             # Required Fields Analysis (Collapsible)
             if required_field_null_stats:
                 with st.expander("📊 Mandatory Fields Analysis", expanded=False):
@@ -2288,7 +2110,6 @@ with tab3:
                     fields_with_no_nulls = [s for s in required_field_null_stats if s["null_percentage"] == 0.0]
                     fields_with_low_nulls = [s for s in required_field_null_stats if 0 < s["null_percentage"] <= suggested_threshold]
                     fields_with_high_nulls = fields_exceeding_threshold
-                    
                     # Summary metrics
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
@@ -2299,12 +2120,9 @@ with tab3:
                         st.metric("Fields Within Threshold", len(fields_with_low_nulls))
                     with col4:
                         st.metric("Fields Exceeding Threshold", len(fields_with_high_nulls))
-                    
                     st.markdown("---")
-                    
                     # Key Insights Section
                     st.markdown("#### 📈 Key Insights")
-                    
                     # Insight 1: Overall data quality
                     if len(fields_with_no_nulls) == len(required_field_null_stats):
                         st.success(f"**Excellent Data Quality:** All {len(required_field_null_stats)} mandatory fields have zero null values. This file demonstrates exceptional data completeness.")
@@ -2313,7 +2131,6 @@ with tab3:
                         st.success(f"**Good Data Quality:** {completeness_pct:.1f}% of mandatory fields ({len(fields_with_no_nulls) + len(fields_with_low_nulls)}/{len(required_field_null_stats)}) are within acceptable null rate thresholds.")
                     else:
                         st.warning(f"**Data Quality Concerns:** {len(fields_with_high_nulls)} out of {len(required_field_null_stats)} mandatory fields ({len(fields_with_high_nulls)/len(required_field_null_stats)*100:.1f}%) exceed the recommended null rate threshold.")
-                    
                     # Insight 2: Threshold recommendation
                     st.markdown(f"""
                     <div style='background-color:#e7f3ff; padding: 1rem; border-radius: 6px; margin-top: 1rem; margin-bottom: 1rem;'>
@@ -2322,12 +2139,10 @@ with tab3:
                     This is calculated from the average null rate ({avg_null_pct:.2f}%) plus 2 standard deviations, ensuring data quality while accounting for expected variations.
                     </div>
                     """, unsafe_allow_html=True)
-                    
                     # Fields Exceeding Threshold (only if any exist)
                     if fields_exceeding_threshold:
                         st.markdown("#### ⚠️ Fields Requiring Attention")
                         st.markdown("The following mandatory fields have null rates that exceed the recommended threshold:")
-                        
                         # Create a clean table-like list
                         list_items = []
                         for field_stat in sorted(fields_exceeding_threshold, key=lambda x: x["null_percentage"], reverse=True):
@@ -2336,9 +2151,7 @@ with tab3:
                             null_count = field_stat["null_count"]
                             fill_rate = 100 - null_pct
                             list_items.append(f"- **{field_name}**: {null_pct:.2f}% null ({null_count:,} of {total_records:,} records) - Fill rate: {fill_rate:.2f}%")
-                        
                         st.markdown("\n".join(list_items))
-                        
                         # Actionable recommendation
                         worst_field = max(fields_exceeding_threshold, key=lambda x: x["null_percentage"])
                         st.info(f"""
@@ -2347,7 +2160,6 @@ with tab3:
                         """)
                     else:
                         st.success(f"✅ **All mandatory fields meet quality standards.** All {len(required_field_null_stats)} fields have null rates below the recommended {suggested_threshold:.1f}% threshold.")
-                    
                     # Show all mandatory fields breakdown (using details HTML since expanders can't be nested)
                     st.markdown("<details><summary>📋 View All Mandatory Fields Breakdown</summary>", unsafe_allow_html=True)
                     # Sort by null percentage
@@ -2360,11 +2172,9 @@ with tab3:
                         fill_rate = 100 - null_pct
                         status_icon = "✅" if null_pct <= suggested_threshold else "⚠️"
                         breakdown_items.append(f"{status_icon} **{field_name}**: {null_pct:.2f}% null ({fill_rate:.2f}% filled) - {null_count:,} null records")
-                    
                     # Use double newlines for proper line breaks in markdown
                     st.markdown("\n\n".join(breakdown_items))
                     st.markdown("</details>", unsafe_allow_html=True)
-            
             # Other Mandatory Field Validation Issues (Collapsible) - Only show non-optional issues
             if other_failures or other_warnings:
                 with st.expander("⚠️ Other Mandatory Field Validations", expanded=False):
@@ -2380,7 +2190,6 @@ with tab3:
                             else:
                                 failure_list.append(f"- **{check_name}**: {message}")
                         st.markdown("\n".join(failure_list))
-                    
                     if other_warnings:
                         st.markdown("**Warnings:**")
                         warning_list = []
@@ -2393,7 +2202,6 @@ with tab3:
                             else:
                                 warning_list.append(f"- **{check_name}**: {message}")
                         st.markdown("\n".join(warning_list))
-            
             # File-Level Statistics (Collapsible) - Focus on mandatory fields insights
             file_level_results = [r for r in validation_results if not r.get("field")]
             if file_level_results:
@@ -2403,7 +2211,6 @@ with tab3:
                         check_name = result.get("check", "Unknown")
                         message = result.get("message", "")
                         status = result.get("status", "")
-                        
                         if check_name == "Required Fields Completeness":
                             # Extract percentage from message
                             if "%" in message:
@@ -2421,7 +2228,6 @@ with tab3:
                                 st.warning(f"⚠️ **{check_name}**: {message}")
                             else:
                                 st.error(f"❌ **{check_name}**: {message}")
-            
             # --- Rejection Explanation (only if rejected, Collapsible) ---
             if is_rejected:
                 with st.expander("❌ Rejection Explanation", expanded=False):
@@ -2432,7 +2238,6 @@ with tab3:
                         f"Please ensure these fields are included in your source data and re-upload the file."
                     )
                     st.markdown(rejection_text)
-                    
                     # Additional context if there are other issues
                     if has_critical_issues or has_warnings:
                         additional_issues = []
@@ -2442,7 +2247,6 @@ with tab3:
                             additional_issues.append(f"{len(other_failures)} other validation failure(s)")
                         if other_warnings:
                             additional_issues.append(f"{len(other_warnings)} warning(s)")
-                        
                         st.markdown("---")
                         st.markdown(f"""
                         <div style='background-color:#fff3cd; padding: 1rem; border-radius: 6px;'>
@@ -2452,7 +2256,6 @@ with tab3:
 
 with tab4:
     st.markdown("#### Final Outputs and Downloads")
-    
     # --- Batch Processing Section ---
     with st.expander("📦 Batch Processing (Multiple Files)", expanded=False):
         st.markdown("Process multiple claims files with the same mapping configuration")
@@ -2462,7 +2265,6 @@ with tab4:
             key="batch_files",
             help="Select multiple files to process with the current mapping"
         )
-        
         if batch_files and final_mapping:
             if st.button("Process Batch Files", key="process_batch"):
                 with st.spinner("Processing batch files..."):
@@ -2473,7 +2275,6 @@ with tab4:
                         final_mapping,
                         st.session_state.get("lookup_df")
                     )
-                    
                     st.success(f"Processed {len(batch_files)} file(s)")
                     for file_name, result in results.items():
                         if result.get("status") == "processed":
@@ -2486,34 +2287,28 @@ with tab4:
     # --- Activity Log Section ---
     st.markdown("### 📋 Activity Log")
     audit_log = st.session_state.setdefault("audit_log", [])
-    
     if audit_log:
         # Show last 20 events in reverse chronological order
         recent_events = audit_log[-20:][::-1]
-        
         # Create DataFrame for display
         log_data = []
         for event in recent_events:
             event_type = event.get("event_type", "unknown")
             message = event.get("message", "")
             timestamp = event.get("timestamp", "")
-            
             # Format timestamp for display
             try:
                 dt = datetime.fromisoformat(timestamp)
                 time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
                 time_str = timestamp
-            
             log_data.append({
                 "Time": time_str,
                 "Type": event_type.upper(),
                 "Message": message
             })
-        
         log_df = pd.DataFrame(log_data)
-        st.dataframe(log_df, use_container_width=True, hide_index=True)
-        
+        render_sortable_table(log_df, key="audit_log_table")
         # Clear log button
         if st.button("Clear Activity Log", key="clear_activity_log_tab4"):
             if show_confirmation_dialog(
@@ -2528,7 +2323,6 @@ with tab4:
                 st.session_state.needs_refresh = True
     else:
         st.info("No activity logged yet. Events will appear here as you use the app.")
-    
     st.divider()
 
     # Cache frequently accessed session state values
@@ -2548,17 +2342,17 @@ with tab4:
             # --- Anonymized Claims File Section ---
             with st.expander("Anonymized Claims Preview", expanded=False):
                 # anonymized_df already cached above
-                st.dataframe(anonymized_df.head(), use_container_width=True)  # type: ignore[no-untyped-call]
+                render_sortable_table(anonymized_df.head(), key="anonymized_preview_table")  # type: ignore[no-untyped-call]
 
                 st.markdown("**Customize Anonymized File Output**")
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
                     file_name_input = st.text_input("File Name (without extension)", value="anonymized_claims")
                 with col2:
-                    file_type = st.selectbox("File Type", options=[".csv", ".txt", ".xlsx"], index=0)
+                    file_type = st.selectbox("File Type", options=[".csv", ".txt", ".xlsx", ".json", ".parquet"], index=0)
                 with col3:
-                    delimiter = st.selectbox("Delimiter", options=["Comma", "Tab", "Pipe"], index=0)
+                    delimiter = st.selectbox("Delimiter", options=["Comma", "Tab", "Pipe"], index=0, disabled=file_type in [".xlsx", ".json", ".parquet"])
 
                 delim_char = {
                     "Comma": ",",
@@ -2566,15 +2360,33 @@ with tab4:
                     "Pipe": "|"
                 }[delimiter]
 
-                if file_type == ".xlsx":
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                        anonymized_df.to_excel(writer, index=False)  # type: ignore[no-untyped-call]
-                    anonymized_data = output.getvalue()
-                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                else:
-                    anonymized_data = anonymized_df.to_csv(index=False, sep=delim_char).encode('utf-8')  # type: ignore[no-untyped-call]
-                    mime = "text/plain" if file_type == ".txt" else "text/csv"
+                # Generate data based on file type
+                try:
+                    if file_type == ".xlsx":
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                            anonymized_df.to_excel(writer, sheet_name="Anonymized Claims", index=False)  # type: ignore[no-untyped-call]
+                            # Add mapping table as second sheet if available
+                            if mapping_table is not None:
+                                mapping_table.to_excel(writer, sheet_name="Field Mapping", index=False)  # type: ignore[no-untyped-call]
+                        anonymized_data = output.getvalue()
+                        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    elif file_type == ".json":
+                        anonymized_data = anonymized_df.to_json(orient="records", indent=2).encode('utf-8')  # type: ignore[no-untyped-call]
+                        mime = "application/json"
+                    elif file_type == ".parquet":
+                        output = io.BytesIO()
+                        anonymized_df.to_parquet(output, index=False, engine='pyarrow')  # type: ignore[no-untyped-call]
+                        anonymized_data = output.getvalue()
+                        mime = "application/octet-stream"
+                    else:
+                        anonymized_data = anonymized_df.to_csv(index=False, sep=delim_char).encode('utf-8')  # type: ignore[no-untyped-call]
+                        mime = "text/plain" if file_type == ".txt" else "text/csv"
+                except Exception as e:
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error generating {file_type} file: {error_msg}")
+                    anonymized_data = b""
+                    mime = "text/plain"
 
                 full_filename = f"{file_name_input.strip() or 'anonymized_claims'}{file_type}"
 
@@ -2594,41 +2406,49 @@ with tab4:
                     )
                 with col2:
                     if st.button("Regenerate Anonymized File"):
-                        with st.spinner("Regenerating anonymized data..."):
+                        # Show progress indicator
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        try:
+                            status_text.text("Regenerating anonymized data...")
+                            progress_bar.progress(0.5)
                             # claims_df and final_mapping already cached above
                             if claims_df is not None:
                                 st.session_state.anonymized_df = anonymize_claims_data(
                                     claims_df,
                                     final_mapping
                                 )
+                            progress_bar.progress(1.0)
+                            status_text.empty()
+                            progress_bar.empty()
                             _notify("✅ Anonymized file regenerated!")
+                        except Exception as e:
+                            progress_bar.empty()
+                            status_text.empty()
+                            error_msg = get_user_friendly_error(e)
+                            st.error(f"Error regenerating anonymized file: {error_msg}")
 
             # --- Field Mapping Table Section ---
             with st.expander("Field Mapping Table Preview", expanded=False):
                 mapping_table = st.session_state.get("mapping_table")
-                
                 # Generate CSV for download (needed in both branches)
                 mapping_csv = mapping_table.to_csv(index=False).encode('utf-8')  # type: ignore[no-untyped-call]
-                
                 # Add pagination for large tables
                 if mapping_table is not None and len(mapping_table) > 100:
                     table_page_size = st.slider("Rows per page:", 25, min(500, len(mapping_table)), 100, key="mapping_table_page_size")
                     page_num = st.session_state.get("mapping_table_page", 1)
-                    
                     start_idx = (page_num - 1) * table_page_size
                     end_idx = start_idx + table_page_size
                     paginated_table = mapping_table.iloc[start_idx:end_idx]
-                    
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col1:
                         if st.button("← Previous", key="prev_mapping_table", disabled=page_num == 1):
                             st.session_state.mapping_table_page = max(1, page_num - 1)
                         if st.button("Next →", key="next_mapping_table", disabled=page_num * table_page_size >= len(mapping_table)):
                             st.session_state.mapping_table_page = page_num + 1
-                    
-                    st.dataframe(paginated_table, use_container_width=True)  # type: ignore[no-untyped-call]
+                    render_sortable_table(paginated_table, key="mapping_table_paginated")  # type: ignore[no-untyped-call]
                 else:
-                    st.dataframe(mapping_table, use_container_width=True)  # type: ignore[no-untyped-call]
+                    render_sortable_table(mapping_table, key="mapping_table_full")  # type: ignore[no-untyped-call]
                     col1, col2 = st.columns(2)
                     with col1:
                         st.download_button(
@@ -2641,7 +2461,12 @@ with tab4:
                         )
                     with col2:
                         if st.button("Regenerate Mapping Table"):
-                            with st.spinner("Regenerating mapping table..."):
+                            # Show progress indicator
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            try:
+                                status_text.text("Regenerating mapping table...")
+                                progress_bar.progress(0.5)
                                 # layout_df, claims_df, and final_mapping already cached above
                                 if layout_df is not None and claims_df is not None:
                                     st.session_state.mapping_table = generate_mapping_table(
@@ -2649,7 +2474,15 @@ with tab4:
                                         final_mapping,
                                         claims_df
                                     )
+                                progress_bar.progress(1.0)
+                                status_text.empty()
+                                progress_bar.empty()
                                 _notify("✅ Mapping table regenerated!")
+                            except Exception as e:
+                                progress_bar.empty()
+                                status_text.empty()
+                                error_msg = get_user_friendly_error(e)
+                                st.error(f"Error regenerating mapping table: {error_msg}")
 
             # --- Optional Attachments Section ---
             st.markdown("### Optional Attachments to Include in ZIP")
@@ -2691,7 +2524,6 @@ with tab4:
                     except NameError:
                         pass
                     _notify("✅ ZIP file ready!")
-                
                 st.download_button(
                     label="Download All Files (ZIP)",
                     data=buffer,
@@ -2702,24 +2534,36 @@ with tab4:
                 )
             with col2:
                 if st.button("Regenerate All Outputs"):
-                    with st.spinner("Regenerating all outputs..."):
+                    # Show progress indicator
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    try:
+                        status_text.text("Regenerating all outputs...")
+                        progress_bar.progress(0.3)
                         # claims_df, layout_df, and final_mapping already cached above
                         if claims_df is not None:
                             st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
+                        progress_bar.progress(0.6)
                         if layout_df is not None and claims_df is not None:
                             st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
+                        progress_bar.progress(1.0)
+                        status_text.empty()
+                        progress_bar.empty()
                         _notify("✅ All outputs regenerated!")
                         show_toast("All outputs regenerated!", "✅")
                         st.session_state.needs_refresh = True
+                    except Exception as e:
+                        progress_bar.empty()
+                        status_text.empty()
+                        error_msg = get_user_friendly_error(e)
+                        st.error(f"Error regenerating outputs: {error_msg}")
 
 # --- Tab 5: Data Quality & Analysis ---
 with tab5:
     st.markdown("## 📊 Data Quality & Analysis")
-    
     # Cache frequently accessed session state values
     claims_df_tab5 = st.session_state.get("claims_df")
     layout_df_tab5 = st.session_state.get("layout_df")
-    
     if claims_df_tab5 is None or claims_df_tab5.empty:
         render_empty_state(
             icon="📊",
@@ -2736,9 +2580,14 @@ with tab5:
             required_fields_tab5 = layout_df_tab5[
                 layout_df_tab5["Usage"].astype(str).str.lower() == "mandatory"
             ]["Internal Field"].tolist()
-        
-        quality_score = calculate_data_quality_score(claims_df_tab5, required_fields_tab5)
-        
+        # Calculate quality score with error handling
+        try:
+            with st.spinner("Calculating data quality score..."):
+                quality_score = calculate_data_quality_score(claims_df_tab5, required_fields_tab5)
+        except Exception as e:
+            error_msg = get_user_friendly_error(e)
+            st.error(f"Error calculating data quality score: {error_msg}")
+            quality_score = {"overall_score": 0, "breakdown": {"completeness": 0, "uniqueness": 0, "consistency": 0}}
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Overall Score", f"{quality_score['overall_score']:.1f}/100")
@@ -2748,32 +2597,59 @@ with tab5:
             st.metric("Uniqueness", f"{quality_score['breakdown'].get('uniqueness', 0):.1f}%")
         with col4:
             st.metric("Consistency", f"{quality_score['breakdown'].get('consistency', 0):.1f}%")
-        
         # Data Profiling
         with st.expander("📈 Data Profile", expanded=False):
-            profile = generate_data_profile(claims_df_tab5)
-            st.json(profile)
-        
+            render_tooltip(
+                "Comprehensive data profile including statistics, distributions, and patterns",
+                "This analysis provides insights into your data structure, completeness, and quality metrics."
+            )
+            try:
+                with st.spinner("Generating data profile..."):
+                    render_loading_skeleton(rows=3, cols=2)
+                    profile = generate_data_profile(claims_df_tab5)
+                st.json(profile)
+            except Exception as e:
+                error_msg = get_user_friendly_error(e)
+                st.error(f"Error generating data profile: {error_msg}")
         # Column Statistics
         st.markdown("### Column Statistics")
+        render_tooltip(
+            "Detailed statistics for individual columns",
+            "Select a column to see comprehensive statistics including mean, median, mode, null counts, and data types."
+        )
         selected_col = st.selectbox("Select column to analyze", claims_df_tab5.columns.tolist(), key="col_stats_select")
         if selected_col:
-            col_stats = get_column_statistics(claims_df_tab5, selected_col)
-            st.json(col_stats)
-        
+            try:
+                with st.spinner("Calculating column statistics..."):
+                    render_loading_skeleton(rows=2, cols=1)
+                    col_stats = get_column_statistics(claims_df_tab5, selected_col)
+                st.json(col_stats)
+            except Exception as e:
+                error_msg = get_user_friendly_error(e)
+                st.error(f"Error calculating column statistics: {error_msg}")
         # Duplicate Detection
         with st.expander("🔍 Duplicate Detection", expanded=False):
             dup_method = st.selectbox("Detection Method", ["exact", "key_based"], key="dup_method")
             dup_columns = st.multiselect("Columns to check", claims_df_tab5.columns.tolist(), key="dup_columns")
             if st.button("Detect Duplicates", key="detect_dups"):
                 if dup_columns:
-                    duplicates = detect_duplicates(claims_df_tab5, dup_columns, dup_method)
-                    if not duplicates.empty:
-                        st.dataframe(duplicates, use_container_width=True)
-                        st.info(f"Found {len(duplicates)} duplicate records")
-                    else:
-                        st.success("No duplicates found!")
-        
+                    render_tooltip(
+                        "Detect duplicate records in your data",
+                        "Choose columns to check for duplicates and select the detection method (exact match or fuzzy)."
+                    )
+                    try:
+                        with st.spinner("Detecting duplicates..."):
+                            render_loading_skeleton(rows=2, cols=1)
+                            duplicates = detect_duplicates(claims_df_tab5, dup_columns, dup_method)
+                        if not duplicates.empty:
+                            # Use sortable/filterable table
+                            render_filterable_table(duplicates, key="duplicates_table")
+                            st.info(f"Found {len(duplicates)} duplicate records")
+                        else:
+                            st.success("No duplicates found!")
+                    except Exception as e:
+                        error_msg = get_user_friendly_error(e)
+                        st.error(f"Error detecting duplicates: {error_msg}")
         # Outlier Detection
         numeric_cols = claims_df_tab5.select_dtypes(include=['number']).columns.tolist()
         if numeric_cols:
@@ -2781,26 +2657,53 @@ with tab5:
                 outlier_col = st.selectbox("Select numeric column", numeric_cols, key="outlier_col")
                 outlier_method = st.selectbox("Method", ["zscore", "iqr"], key="outlier_method")
                 outlier_threshold = st.slider("Threshold", 1.0, 5.0, 3.0, 0.1, key="outlier_threshold")
+                render_tooltip(
+                    "Detect statistical outliers in your data",
+                    "Outliers are values that deviate significantly from the mean. Adjust the threshold to control sensitivity."
+                )
                 if st.button("Detect Outliers", key="detect_outliers"):
-                    outliers = detect_outliers(claims_df_tab5, outlier_col, outlier_method, outlier_threshold)
-                    if not outliers.empty:
-                        st.dataframe(outliers, use_container_width=True)
-                        st.info(f"Found {len(outliers)} outliers")
-                    else:
-                        st.success("✅ No outliers detected!")
-        
+                    try:
+                        with st.spinner("Detecting outliers..."):
+                            render_loading_skeleton(rows=2, cols=1)
+                            outliers = detect_outliers(claims_df_tab5, outlier_col, outlier_method, outlier_threshold)
+                        if not outliers.empty:
+                            # Use sortable/filterable table
+                            render_filterable_table(outliers, key="outliers_table")
+                            st.info(f"Found {len(outliers)} outliers")
+                        else:
+                            st.success("✅ No outliers detected!")
+                    except Exception as e:
+                        error_msg = get_user_friendly_error(e)
+                        st.error(f"Error detecting outliers: {error_msg}")
         # Completeness Matrix
         with st.expander("📋 Data Completeness Matrix", expanded=False):
-            completeness_matrix = create_completeness_matrix(claims_df_tab5)
-            st.dataframe(completeness_matrix, use_container_width=True)
-        
+            render_tooltip(
+                "Visual matrix showing data completeness across all fields",
+                "This matrix shows which fields have missing data and helps identify patterns in data completeness."
+            )
+            try:
+                with st.spinner("Calculating completeness matrix..."):
+                    render_loading_skeleton(rows=3, cols=3)
+                    completeness_matrix = create_completeness_matrix(claims_df_tab5)
+                # Use sortable table for completeness matrix
+                if completeness_matrix.empty:
+                    render_empty_state(
+                        icon="📋",
+                        title="No Data Available",
+                        message="Unable to generate completeness matrix."
+                    )
+                else:
+                    render_sortable_table(completeness_matrix, key="completeness_table")
+            except Exception as e:
+                error_msg = get_user_friendly_error(e)
+                st.error(f"Error calculating completeness matrix: {error_msg}")
         # Data Sampling
         with st.expander("🎲 Data Sampling", expanded=False):
             sample_method = st.selectbox("Sampling Method", ["random", "first", "last"], key="sample_method")
             sample_size = st.number_input("Sample Size", 100, min(10000, len(claims_df_tab5)), 1000, key="sample_size")
             if st.button("Generate Sample", key="generate_sample"):
                 sample_df = sample_data(claims_df_tab5, sample_method, sample_size)
-                st.dataframe(sample_df, use_container_width=True)
+                render_lazy_dataframe(sample_df, key="sample_dataframe", max_rows_before_pagination=1000)
                 st.download_button("Download Sample", 
                                  sample_df.to_csv(index=False).encode('utf-8'),
                                  "sample_data.csv",
@@ -2810,7 +2713,6 @@ with tab5:
 # --- Tab 6: Tools & Analytics ---
 with tab6:
     st.markdown("## 🛠️ Tools & Analytics")
-    
     # Sub-tabs for different tool categories
     tool_tab1, tool_tab2, tool_tab3, tool_tab4 = st.tabs([
         "System Health",
@@ -2818,27 +2720,58 @@ with tab6:
         "Testing & QA",
         "Help & Documentation"
     ])
-    
     with tool_tab1:
-        st.markdown("### 💻 System Health")
-        
+        st.markdown("### 💻 System Health & Performance")
         health = get_system_health()
-        
+        memory_usage = get_memory_usage()
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("CPU Usage", f"{health.get('cpu_percent', 0):.1f}%")
+            cpu_usage = health.get('cpu_percent', 0)
+            st.metric("CPU Usage", f"{cpu_usage:.1f}%")
+            if cpu_usage > 80:
+                st.warning("⚠️ High CPU usage")
         with col2:
-            st.metric("Memory Usage", f"{health.get('memory_mb', 0):.0f} MB")
+            memory_mb = health.get('memory_mb', 0)
+            st.metric("Memory Usage", f"{memory_mb:.0f} MB")
+            if memory_mb > 1000:
+                st.warning("⚠️ High memory usage")
         with col3:
-            st.metric("Memory %", f"{health.get('memory_percent', 0):.1f}%")
+            memory_pct = health.get('memory_percent', 0)
+            st.metric("Memory %", f"{memory_pct:.1f}%")
+            if memory_pct > 80:
+                st.warning("⚠️ High memory percentage")
         with col4:
             st.metric("Threads", health.get('threads', 0))
-        
+        # Detailed Memory Information
+        st.markdown("#### 📊 Detailed Memory Information")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("RSS Memory", f"{memory_usage.get('rss_mb', 0):.1f} MB")
+        with col2:
+            st.metric("VMS Memory", f"{memory_usage.get('vms_mb', 0):.1f} MB")
+        # Performance Metrics
+        st.markdown("#### ⚡ Operation Performance")
+        perf_stats = get_validation_performance_stats()
+        if perf_stats and perf_stats.get('operations'):
+            perf_df = pd.DataFrame(perf_stats['operations'])
+            if not perf_df.empty:
+                # Show slow operations (>5 seconds)
+                slow_ops = perf_df[perf_df['avg_time'] > 5.0] if 'avg_time' in perf_df.columns else pd.DataFrame()
+                if not slow_ops.empty:
+                    st.warning("⚠️ Slow Operations Detected (>5 seconds):")
+                    render_lazy_dataframe(slow_ops[['operation', 'avg_time', 'count']], key="slow_ops_table", max_rows_before_pagination=100)
+                else:
+                    st.success("✅ All operations are performing well (<5 seconds)")
+                # Show performance chart
+                if 'avg_time' in perf_df.columns:
+                    st.bar_chart(perf_df.set_index('operation')['avg_time'])
         # Error Statistics
-        st.markdown("### ⚠️ Error Statistics")
+        st.markdown("#### ⚠️ Error Statistics")
         error_stats = get_error_statistics()
-        st.json(error_stats)
-        
+        if error_stats:
+            st.json(error_stats)
+        else:
+            st.info("No errors recorded")
         # Export Logs
         st.markdown("### 📥 Export Logs")
         log_type = st.selectbox("Log Type", ["audit", "error", "usage"], key="export_log_type")
@@ -2849,45 +2782,64 @@ with tab6:
                              f"{log_type}_log.{log_format}",
                              "text/plain" if log_format == "json" else "text/csv",
                              key="download_logs")
-    
     with tool_tab2:
-        st.markdown("### 📊 Usage Analytics")
-        
+        st.markdown("### 📊 Usage Analytics Dashboard")
         usage_stats = get_usage_statistics()
-        
-        st.metric("Total Actions", usage_stats.get("total_actions", 0))
-        
-        st.markdown("#### Features Used")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Actions", usage_stats.get("total_actions", 0))
+        with col2:
+            st.metric("Unique Features", len(usage_stats.get("features_used", {})))
+        with col3:
+            st.metric("Session Duration", f"{usage_stats.get('session_duration_minutes', 0):.1f} min")
+        st.markdown("#### 📈 Features Used")
         features_used = usage_stats.get("features_used", {})
         if features_used:
             features_df = pd.DataFrame(list(features_used.items()), columns=["Feature", "Count"])
+            features_df = features_df.sort_values("Count", ascending=False)
             st.bar_chart(features_df.set_index("Feature"))
+            # Show top features
+            st.markdown("#### 🏆 Top 5 Most Used Features")
+            top_features = features_df.head(5)
+            for idx, row in top_features.iterrows():
+                st.markdown(f"**{row['Feature']}**: {row['Count']} times")
         else:
-            st.info("No usage data yet")
-        
-        # Validation Performance
-        st.markdown("### ⚡ Validation Performance")
+            st.info("No usage data yet. Start using the app to see analytics!")
+        # Validation Performance Summary
+        st.markdown("#### ⚡ Validation Performance Summary")
         perf_stats = get_validation_performance_stats()
-        st.json(perf_stats)
-    
+        if perf_stats and perf_stats.get('summary'):
+            summary = perf_stats['summary']
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Avg Validation Time", f"{summary.get('avg_time', 0):.2f}s")
+            with col2:
+                st.metric("Total Validations", summary.get('total_validations', 0))
+            with col3:
+                st.metric("Records Processed", summary.get('total_records', 0))
+        # Performance Trends
+        if perf_stats and perf_stats.get('operations'):
+            st.markdown("#### 📊 Performance Trends")
+            perf_df = pd.DataFrame(perf_stats['operations'])
+            if not perf_df.empty and 'avg_time' in perf_df.columns:
+                st.line_chart(perf_df.set_index('operation')['avg_time'])
     with tool_tab3:
         st.markdown("### 🧪 Testing & Quality Assurance")
-        
         # Test Data Generator
         with st.expander("Generate Test Data", expanded=False):
             claims_df = st.session_state.get("claims_df")
             layout_df = st.session_state.get("layout_df")
-            
             if claims_df is None and layout_df is None:
                 st.info("Please upload a claims file or layout file first to generate test data based on its structure.")
             else:
                 test_data_type = st.selectbox("Data Type", 
                     [opt for opt in ["claims", "layout"] if (opt == "claims" and claims_df is not None) or (opt == "layout" and layout_df is not None)],
                     key="test_data_type")
-                test_data_count = st.number_input("Record Count", 10, 10000, 100, key="test_data_count")
-                
-                if st.button("Generate Test Data", key="generate_test_data"):
+            test_data_count = st.number_input("Record Count", 10, 10000, 100, key="test_data_count")
+            if st.button("Generate Test Data", key="generate_test_data"):
                     test_df = None
+                    # Ensure test_data_type is set (from selectbox above)
+                    test_data_type = st.session_state.get("test_data_type", "claims")
                     if test_data_type == "claims" and claims_df is not None:
                         # Replicate claims file structure with dummy data
                         test_df = generate_test_data_from_claims(claims_df, test_data_count)
@@ -2897,22 +2849,18 @@ with tab6:
                     else:
                         st.error("Unable to generate test data. Please ensure the required file is uploaded.")
                         st.stop()
-                    
                     if test_df is not None:
-                        st.dataframe(test_df, use_container_width=True)
+                        render_lazy_dataframe(test_df, key="test_dataframe", max_rows_before_pagination=1000)
                         st.download_button("Download Test Data",
-                                         test_df.to_csv(index=False).encode('utf-8'),
-                                         f"test_{test_data_type}.csv",
-                                         "text/csv",
-                                         key="download_test_data")
-        
+                                 test_df.to_csv(index=False).encode('utf-8'),
+                                 f"test_{test_data_type}.csv",
+                                 "text/csv",
+                                 key="download_test_data")
         # Unit Test Results - shows background test results
         st.markdown("#### 🧪 Unit Test Results")
         st.caption("Unit tests run automatically when mappings are applied. Results are shown below.")
-        
         final_mapping = st.session_state.get("final_mapping", {})
         mappings_ready = st.session_state.get("mappings_ready", False)
-        
         if not mappings_ready or not final_mapping:
             st.info("Complete your field mappings first. Tests will run automatically when mappings are applied.")
         else:
@@ -2922,7 +2870,6 @@ with tab6:
                 total = unit_test_results.get("total", 0)
                 passed = unit_test_results.get("passed", 0)
                 failed = unit_test_results.get("failed", 0)
-                
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Total Tests", total)
@@ -2930,7 +2877,6 @@ with tab6:
                     st.metric("Passed", passed, delta=f"{int((passed/total*100) if total > 0 else 0)}%")
                 with col3:
                     st.metric("Failed", failed, delta=f"{int((failed/total*100) if total > 0 else 0)}%")
-                
                 # Re-run button
                 if st.button("🔄 Re-run Tests", key="rerun_tests_tools_tab", use_container_width=True):
                     with st.spinner("Running unit tests..."):
@@ -2942,12 +2888,10 @@ with tab6:
                             st.session_state.unit_test_results = test_results
                             st.session_state.last_mapping_hash = str(hash(str(final_mapping)))
                             st.success(f"Tests completed: {test_results['passed']}/{test_results['total']} passed")
-                            st.rerun()
+                            st.session_state.needs_refresh = True
                         except Exception as e:
                             st.error(f"Error running tests: {e}")
-                
                 st.divider()
-                
                 # Detailed results
                 if unit_test_results.get("test_results"):
                     st.markdown("##### Detailed Results")
@@ -2966,28 +2910,59 @@ with tab6:
                                 st.warning(f"Expected: {expected}, Got: {actual}")
             else:
                 st.info("Unit tests are running automatically. Results will appear here once mappings are applied.")
-    
     with tool_tab4:
         st.markdown("### 📚 Help & Documentation")
-        
         help_topic = st.selectbox("Select Topic", 
                                  ["file_upload", "mapping", "validation", "outputs"],
                                  key="help_topic")
-        
         help_content = get_help_content(help_topic)
         if help_content:
             st.markdown(help_content)
-        
         # Global Search
         st.markdown("### 🔍 Global Search")
-        search_query = st.text_input("Search across all tabs", key="global_search_input")
+        render_tooltip(
+            "Search across all tabs, fields, mappings, and data",
+            "This search looks through field names, mappings, validation results, and more."
+        )
+        raw_search_input = st.text_input("Search across all tabs", key="global_search_input_raw", placeholder="Type to search...")
+        
+        # Debounce global search
+        from improvements_utils import DEBOUNCE_DELAY_SECONDS
+        import time
+        current_time = time.time()
+        last_search_time = st.session_state.get("global_search_last_time", 0)
+        debounced_search = st.session_state.get("global_search_input", "")
+        
+        if raw_search_input != st.session_state.get("global_search_input_raw_prev", ""):
+            st.session_state.global_search_input_raw_prev = raw_search_input
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = raw_search_input
+                st.session_state.global_search_input = debounced_search
+                st.session_state.global_search_last_time = current_time
+            else:
+                st.session_state.global_search_pending = raw_search_input
+        
+        if "global_search_pending" in st.session_state:
+            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
+                debounced_search = st.session_state.global_search_pending
+                st.session_state.global_search_input = debounced_search
+                st.session_state.global_search_last_time = current_time
+                del st.session_state.global_search_pending
+        
+        search_query = debounced_search
         if search_query:
             search_results = global_search(search_query)
-            for scope, results in search_results.items():
-                if results:
-                    st.markdown(f"#### {scope.title()}")
-                    st.write(results)
-        
+            if any(search_results.values()):
+                for scope, results in search_results.items():
+                    if results:
+                        st.markdown(f"#### {scope.title()}")
+                        st.write(results)
+            else:
+                render_empty_state(
+                    icon="🔍",
+                    title="No Results Found",
+                    message=f"No matches found for '{search_query}'. Try different search terms."
+                )
         # Notification Center
         st.markdown("### 🔔 Notification Center")
         notifications = get_notifications(unread_only=True)
@@ -3002,14 +2977,12 @@ with tab6:
                     st.success(f"{notif.get('message', '')}")
                 else:
                     st.info(f"{notif.get('message', '')}")
-                
                 if st.button("Mark as Read", key=f"read_notif_{i}"):
                     mark_notification_read(i)
                     show_toast("Notification marked as read", "✅")
                     st.session_state.needs_refresh = True
         else:
             st.info("No unread notifications")
-        
         if st.button("Clear All Notifications", key="clear_notifications"):
             if show_confirmation_dialog(
                 "Clear All Notifications",

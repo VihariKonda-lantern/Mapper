@@ -221,6 +221,60 @@ def inject_keyboard_shortcuts() -> None:
             const redoBtn = document.querySelector('[data-testid="baseButton-secondary"][aria-label*="Redo"]');
             if (redoBtn) redoBtn.click();
         }
+        
+        // Ctrl+A: Apply All Mappings
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !e.shiftKey) {
+            e.preventDefault();
+            const applyAllBtn = document.querySelector('button:has-text("Accept All AI")');
+            if (applyAllBtn) applyAllBtn.click();
+        }
+        
+        // Ctrl+Shift+C: Clear All
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+            e.preventDefault();
+            const clearAllBtn = document.querySelector('button:has-text("Clear All")');
+            if (clearAllBtn) clearAllBtn.click();
+        }
+        
+        // Ctrl+D: Download
+        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            e.preventDefault();
+            const downloadBtn = document.querySelector('[data-testid="baseButton-secondary"][aria-label*="Download"]');
+            if (downloadBtn) downloadBtn.click();
+        }
+        
+        // Ctrl+ArrowRight: Next Tab
+        if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
+            e.preventDefault();
+            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+            const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+            if (activeTab && tabs.length > 0) {
+                const currentIndex = Array.from(tabs).indexOf(activeTab);
+                if (currentIndex < tabs.length - 1) {
+                    tabs[currentIndex + 1].click();
+                }
+            }
+        }
+        
+        // Ctrl+ArrowLeft: Previous Tab
+        if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+            const activeTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+            if (activeTab && tabs.length > 0) {
+                const currentIndex = Array.from(tabs).indexOf(activeTab);
+                if (currentIndex > 0) {
+                    tabs[currentIndex - 1].click();
+                }
+            }
+        }
+        
+        // Ctrl+F: Focus Search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            const searchInput = document.querySelector('input[placeholder*="Search"], input[placeholder*="search"]');
+            if (searchInput) searchInput.focus();
+        }
     });
     </script>
     """
