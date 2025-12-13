@@ -4,7 +4,7 @@ pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false, reportUn
 """
 import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
-from typing import Any, List, Dict, Callable, cast
+from typing import Any, List, Dict, Callable, cast, Set, Optional
 from datetime import datetime
 
 st: Any = st  # type: ignore[assignment]
@@ -75,25 +75,21 @@ from data_quality import (  # type: ignore[import-untyped]
     calculate_data_quality_score,
     detect_duplicates,
     get_column_statistics,
-    sample_data,
+    sample_data,  # type: ignore[assignment]
     detect_outliers,
     create_completeness_matrix,
     generate_data_profile
 )
 from mapping_enhancements import (  # type: ignore[import-untyped]
     get_mapping_confidence_score,
-    validate_mapping_before_processing,
+    validate_mapping_before_processing,  # type: ignore[assignment]
     get_mapping_version,
     export_mapping_template_for_sharing,
     import_mapping_template_from_shareable
 )
 from user_experience import (  # type: ignore[import-untyped]
     init_user_preferences,
-    save_user_preference,
-    load_user_preferences,
     add_recent_file,
-    get_recent_files,
-    get_favorites,
     get_notifications,
     mark_notification_read,
     clear_notifications,
@@ -112,51 +108,29 @@ from monitoring_logging import (  # type: ignore[import-untyped]
     export_logs
 )
 from testing_qa import (  # type: ignore[import-untyped]
-    generate_test_data,
-    generate_test_data_from_claims,
-    generate_test_data_from_layout,
+    generate_test_data_from_claims,  # type: ignore[assignment]
+    generate_test_data_from_layout,  # type: ignore[assignment]
     create_mapping_unit_tests,
     run_unit_tests,
 )
 
 # --- Improvement Modules ---
 from improvements_utils import (  # type: ignore[import-untyped]
-    debounce,
-    show_progress_with_callback,
-    render_empty_state,
+    render_empty_state,  # type: ignore[assignment]
     render_loading_skeleton,
     get_user_friendly_error,
-    validate_file_upload,
     check_session_timeout,
     update_activity_time,
-    check_rate_limit,
-    sanitize_input,
-    track_operation_time,
     get_memory_usage,
-    compress_dataframe,
-    backup_session_state,
-    restore_session_state,
-    MAX_FILE_SIZE_MB,
-    SESSION_TIMEOUT_MINUTES,
 )
 from ui_improvements import (  # type: ignore[import-untyped]
-    show_confirmation_dialog,
+    show_confirmation_dialog,  # type: ignore[assignment]
     show_toast,
     show_undo_redo_feedback,
     render_tooltip,
     show_onboarding_tour,
-    show_contextual_help,
-    render_enhanced_search,
     render_sortable_table,
     render_filterable_table,
-    export_table_view,
-    render_drag_drop_upload,
-    render_file_preview,
-    save_bookmark,
-    load_bookmark,
-    list_bookmarks,
-    render_version_history,
-    render_comparison_view,
 )
 
 # --- Audit Log Helper Function (defined early to ensure availability) ---
@@ -666,7 +640,7 @@ st.markdown("""
             border-left-color: #ffc107 !important;
         }
         .stInfo {
-            border-left-color: #17a2b8 !important;
+            border-left-color: #6b7280 !important;
         }
         /* 17. Better Tab Navigation */
         .stTabs [data-baseweb="tab"]:hover {
@@ -828,10 +802,25 @@ st.markdown("""
             background-color: #fffbf0 !important;
             border-left-color: #ffc107 !important;
         }
-        /* 42. Improved Info Message Styling */
+        /* 42. Improved Info Message Styling - All Grey */
         .stInfo {
-            background-color: #e7f3ff !important;
-            border-left-color: #17a2b8 !important;
+            background-color: #f3f4f6 !important;
+            border-left-color: #6b7280 !important;
+        }
+        
+        .stInfo > div {
+            color: #1f2937 !important;
+        }
+        
+        /* Override all Streamlit alert boxes to use grey for info boxes */
+        div[data-baseweb="notification"] {
+            background-color: #f3f4f6 !important;
+        }
+        
+        /* Info alert boxes specifically */
+        div[data-baseweb="notification"][data-kind="info"] {
+            background-color: #f3f4f6 !important;
+            border-left-color: #6b7280 !important;
         }
         /* 43. Better Required Field Indicators (handled via label styling) */
         /* 44. Better Pagination Controls */
@@ -1284,7 +1273,7 @@ with tab2:
     else:
         required_fields = []
     total_required = len(required_fields) if required_fields else 0
-    mapped_required = [f for f in required_fields if f in final_mapping and final_mapping[f].get("value")]
+    mapped_required: List[str] = [str(f) for f in required_fields if f in final_mapping and final_mapping[f].get("value")]  # type: ignore[arg-type]
     mapped_count = len(mapped_required)
     percent_complete = int((mapped_count / total_required) * 100) if total_required > 0 else 0
 
@@ -1346,8 +1335,8 @@ with tab2:
                         if "auto_mapping" in st.session_state:
                             del st.session_state.auto_mapping
                         # Get field name for feedback
-                        field_name = list(undone.keys())[0] if undone else None
-                        show_undo_redo_feedback("Undone", field_name)
+                        undone_field_name: Optional[str] = list(undone.keys())[0] if undone else None
+                        show_undo_redo_feedback("Undone", undone_field_name or "")
                         st.session_state.needs_refresh = True
                 if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
                     redone = redo_mapping()
@@ -1359,8 +1348,8 @@ with tab2:
                         if "auto_mapping" in st.session_state:
                             del st.session_state.auto_mapping
                         # Get field name for feedback
-                        field_name = list(redone.keys())[0] if redone else None
-                        show_undo_redo_feedback("Redone", field_name)
+                        redone_field_name: Optional[str] = list(redone.keys())[0] if redone else None
+                        show_undo_redo_feedback("Redone", redone_field_name or "")
                         st.session_state.needs_refresh = True
         with col2:
             st.markdown("**Bulk Actions**")
@@ -1561,8 +1550,8 @@ with tab2:
         all_internal_fields = layout_df["Internal Field"].dropna().unique().tolist()  # type: ignore[no-untyped-call]
         # Get required fields to mark which are required
         required_fields_df = get_required_fields(layout_df)
-        required_fields_list = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
-        required_fields_set = set(required_fields_list)
+        required_fields_list: List[str] = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []  # type: ignore[assignment]
+        required_fields_set: Set[str] = set(required_fields_list)
         # Get available source columns for validation
         available_source_columns = claims_df.columns.tolist()
         # Build review table data
@@ -1785,15 +1774,15 @@ with tab3:
         ).hexdigest()
         # Check if we need to re-run validations
         cached_hash = st.session_state.get("validation_data_hash")
-        validation_results = st.session_state.get("validation_results", [])
-        if cached_hash != data_hash or not validation_results:
+        validation_results_cached: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
+        if cached_hash != data_hash or not validation_results_cached:
             # Show loading skeleton while running validations
             render_loading_skeleton(rows=3, cols=4)
             with st.spinner("Running validation checks..."):
                 # Get required fields from layout file, not from mapping
                 if layout_df is not None:
                     required_fields_df = get_required_fields(layout_df)
-                    required_fields = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
+                    required_fields: List[str] = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []  # type: ignore[assignment]
                 else:
                     # Fallback: use all mapped fields as required
                     required_fields = list(final_mapping.keys())
@@ -1820,16 +1809,16 @@ with tab3:
                     st.error(f"Error during file-level validation: {error_msg}")
                     file_level_results = []
                 # Combine both types of validation results
-                validation_results = field_level_results + file_level_results
+                validation_results_new: List[Dict[str, Any]] = field_level_results + file_level_results  # type: ignore[assignment]
                 execution_time = time.time() - start_time
                 # Track validation performance
-                track_validation_performance("full_validation", execution_time, len(transformed_df), len(validation_results))
-                st.session_state.validation_results = validation_results
+                track_validation_performance("full_validation", execution_time, len(transformed_df), len(validation_results_new))
+                st.session_state.validation_results = validation_results_new
                 st.session_state.validation_data_hash = data_hash
                 # Log validation completion
-                fail_count = len([r for r in validation_results if r.get("status") == "Fail"])
-                warning_count = len([r for r in validation_results if r.get("status") == "Warning"])
-                pass_count = len([r for r in validation_results if r.get("status") == "Pass"])
+                fail_count = len([r for r in validation_results_new if r.get("status") == "Fail"])
+                warning_count = len([r for r in validation_results_new if r.get("status") == "Warning"])
+                pass_count = len([r for r in validation_results_new if r.get("status") == "Pass"])
                 try:
                     log_event("validation", f"Validation completed: {pass_count} passed, {warning_count} warnings, {fail_count} failed")
                 except NameError:
@@ -1838,19 +1827,16 @@ with tab3:
     # --- Validation Metrics Summary ---
     st.markdown("#### Validation Summary")
     # validation_results already set above in the validation block
-    if "validation_results" not in st.session_state:
-        validation_results: List[Dict[str, Any]] = []
-    else:
-        validation_results = st.session_state.validation_results
+    validation_results_summary: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
 
-    fails = [r for r in validation_results if r["status"] == "Fail"]
-    warnings = [r for r in validation_results if r["status"] == "Warning"]
-    passes = [r for r in validation_results if r["status"] == "Pass"]
+    fails: List[Dict[str, Any]] = [r for r in validation_results_summary if r["status"] == "Fail"]
+    warnings: List[Dict[str, Any]] = [r for r in validation_results_summary if r["status"] == "Warning"]
+    passes: List[Dict[str, Any]] = [r for r in validation_results_summary if r["status"] == "Pass"]
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric(label="Total Checks", value=len(validation_results))
+        st.metric(label="Total Checks", value=len(validation_results_summary))
     with col2:
         st.metric(label="✅ Passes", value=len(passes))
     with col3:
@@ -1909,8 +1895,9 @@ with tab3:
                 if transformed_df is not None:
                     custom_results = run_custom_validations(transformed_df, custom_rules)
                     # Add to validation results
-                    validation_results.extend(custom_results)
-                    st.session_state.validation_results = validation_results
+                    current_validation_results: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
+                    current_validation_results.extend(custom_results)
+                    st.session_state.validation_results = current_validation_results
                     show_toast(f"Ran {len(custom_results)} custom validation(s)", "✅")
                     st.session_state.needs_refresh = True
 
@@ -1918,16 +1905,16 @@ with tab3:
 
     # --- Detailed Validation Table ---
     st.markdown("#### Detailed Validation Results")
-    if validation_results:
+    if validation_results_summary:
         # Add pagination for large result sets
-        if len(validation_results) > DEFAULT_VALIDATION_PAGE_SIZE:
+        if len(validation_results_summary) > DEFAULT_VALIDATION_PAGE_SIZE:
             default_index = VALIDATION_PAGE_SIZES.index(DEFAULT_VALIDATION_PAGE_SIZE) if DEFAULT_VALIDATION_PAGE_SIZE in VALIDATION_PAGE_SIZES else 1
             page_size = st.selectbox("Results per page:", VALIDATION_PAGE_SIZES, index=default_index, key="validation_page_size")
             paginated_results, page_num, total_pages = paginate_dataframe(
-                pd.DataFrame(validation_results),
+                pd.DataFrame(validation_results_summary),
                 page_size=page_size
             )
-            st.caption(f"Page {page_num} of {total_pages} ({len(validation_results)} total results)")
+            st.caption(f"Page {page_num} of {total_pages} ({len(validation_results_summary)} total results)")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("← Previous", key="prev_validation_page", disabled=page_num == 1):
@@ -1936,7 +1923,7 @@ with tab3:
                     st.session_state.validation_page_num = min(total_pages, page_num + 1)
             validation_df = paginated_results
         else:
-            validation_df = pd.DataFrame(validation_results)
+            validation_df = pd.DataFrame(validation_results_summary)
         # Use sortable/filterable table for better UX
         if validation_df.empty:
             render_empty_state(
@@ -1964,7 +1951,7 @@ with tab3:
     # --- Final Verdict Block with Threshold Analysis ---
     st.markdown("#### File Status & Validation Summary")
 
-    if not validation_results:
+    if not validation_results_summary:
         st.info("No validations have been run yet.")
     else:
             # Analyze validation results to calculate thresholds and stats
@@ -1991,7 +1978,7 @@ with tab3:
             total_records = len(transformed_df) if transformed_df is not None else 0
             # Calculate null check statistics for required fields
             required_field_null_stats: List[Dict[str, Any]] = []
-            for result in validation_results:
+            for result in validation_results_summary:
                 if result.get("check") == "Required Field Check":
                     field = result.get("field", "")
                     status = result.get("status", "")
@@ -2000,7 +1987,7 @@ with tab3:
                     fail_pct = float(fail_pct_str) if fail_pct_str else 0.0
                     fail_count_str = result.get("fail_count", "0")
                     fail_count = int(float(fail_count_str)) if fail_count_str else 0
-                    required_field_null_stats.append({
+                    required_field_null_stats.append({  # type: ignore[arg-type]
                         "field": field,
                         "null_percentage": fail_pct,
                         "null_count": fail_count,
@@ -2009,16 +1996,16 @@ with tab3:
             # Calculate baseline threshold based on actual data
             # Use median + 2 standard deviations approach for more robust threshold
             if required_field_null_stats:
-                null_percentages = [s["null_percentage"] for s in required_field_null_stats]
-                avg_null_pct = sum(null_percentages) / len(null_percentages)
-                max_null_pct = max(null_percentages)
+                null_percentages: List[float] = [float(s["null_percentage"]) for s in required_field_null_stats]  # type: ignore[assignment]
+                avg_null_pct: float = sum(null_percentages) / len(null_percentages) if null_percentages else 0.0  # type: ignore[arg-type]
+                max_null_pct: float = max(null_percentages) if null_percentages else 0.0  # type: ignore[arg-type]
                 # Calculate standard deviation if we have enough data points
                 if len(null_percentages) > 1:
                     import statistics
                     try:
-                        std_dev = statistics.stdev(null_percentages)
+                        std_dev: float = statistics.stdev(null_percentages)  # type: ignore[arg-type]
                         # Threshold = average + 2*std_dev, but with reasonable bounds
-                        suggested_threshold = min(max(avg_null_pct + (2 * std_dev), 1.0), 15.0)
+                        suggested_threshold: float = min(max(avg_null_pct + (2 * std_dev), 1.0), 15.0)  # type: ignore[arg-type]
                     except (statistics.StatisticsError, ValueError):
                         # Fallback if std_dev calculation fails
                         suggested_threshold = min(max(avg_null_pct + 3.0, 2.0), 10.0)
@@ -2031,9 +2018,10 @@ with tab3:
                 suggested_threshold = 5.0
             # Find fields that actually exceed the calculated threshold (not just status="Fail")
             fields_exceeding_threshold: List[Dict[str, Any]] = []
-            for stat in required_field_null_stats:
-                if stat["null_percentage"] > suggested_threshold:
-                    fields_exceeding_threshold.append(stat)
+            for stat_item in required_field_null_stats:  # type: ignore[assignment]
+                stat_dict: Dict[str, Any] = stat_item  # type: ignore[assignment, arg-type, misc]
+                if float(stat_dict.get("null_percentage", 0)) > suggested_threshold:  # type: ignore[arg-type]
+                    fields_exceeding_threshold.append(stat_dict)  # type: ignore[arg-type]
             # Count other validation issues (excluding optional field checks - user doesn't care about those)
             other_failures = [
                 r for r in fails 
@@ -2107,33 +2095,33 @@ with tab3:
                 with st.expander("📊 Mandatory Fields Analysis", expanded=False):
                     # Calculate insights
                     total_records = len(transformed_df) if transformed_df is not None else 0
-                    fields_with_no_nulls = [s for s in required_field_null_stats if s["null_percentage"] == 0.0]
-                    fields_with_low_nulls = [s for s in required_field_null_stats if 0 < s["null_percentage"] <= suggested_threshold]
+                    fields_with_no_nulls: List[Dict[str, Any]] = [s for s in required_field_null_stats if s["null_percentage"] == 0.0]  # type: ignore[assignment]
+                    fields_with_low_nulls: List[Dict[str, Any]] = [s for s in required_field_null_stats if 0 < s["null_percentage"] <= suggested_threshold]  # type: ignore[assignment]
                     fields_with_high_nulls = fields_exceeding_threshold
                     # Summary metrics
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("Total Mandatory Fields", len(required_field_null_stats))
+                        st.metric("Total Mandatory Fields", len(required_field_null_stats))  # type: ignore[arg-type]
                     with col2:
-                        st.metric("Perfect Fields (0% null)", len(fields_with_no_nulls))
+                        st.metric("Perfect Fields (0% null)", len(fields_with_no_nulls))  # type: ignore[arg-type]
                     with col3:
-                        st.metric("Fields Within Threshold", len(fields_with_low_nulls))
+                        st.metric("Fields Within Threshold", len(fields_with_low_nulls))  # type: ignore[arg-type]
                     with col4:
-                        st.metric("Fields Exceeding Threshold", len(fields_with_high_nulls))
+                        st.metric("Fields Exceeding Threshold", len(fields_with_high_nulls))  # type: ignore[arg-type]
                     st.markdown("---")
                     # Key Insights Section
                     st.markdown("#### 📈 Key Insights")
                     # Insight 1: Overall data quality
-                    if len(fields_with_no_nulls) == len(required_field_null_stats):
-                        st.success(f"**Excellent Data Quality:** All {len(required_field_null_stats)} mandatory fields have zero null values. This file demonstrates exceptional data completeness.")
-                    elif len(fields_with_high_nulls) == 0:
-                        completeness_pct = ((len(fields_with_no_nulls) + len(fields_with_low_nulls)) / len(required_field_null_stats) * 100) if required_field_null_stats else 0
-                        st.success(f"**Good Data Quality:** {completeness_pct:.1f}% of mandatory fields ({len(fields_with_no_nulls) + len(fields_with_low_nulls)}/{len(required_field_null_stats)}) are within acceptable null rate thresholds.")
+                    if len(fields_with_no_nulls) == len(required_field_null_stats):  # type: ignore[arg-type]
+                        st.success(f"**Excellent Data Quality:** All {len(required_field_null_stats)} mandatory fields have zero null values. This file demonstrates exceptional data completeness.")  # type: ignore[arg-type]
+                    elif len(fields_with_high_nulls) == 0:  # type: ignore[arg-type]
+                        completeness_pct = ((len(fields_with_no_nulls) + len(fields_with_low_nulls)) / len(required_field_null_stats) * 100) if required_field_null_stats else 0  # type: ignore[arg-type]
+                        st.success(f"**Good Data Quality:** {completeness_pct:.1f}% of mandatory fields ({len(fields_with_no_nulls) + len(fields_with_low_nulls)}/{len(required_field_null_stats)}) are within acceptable null rate thresholds.")  # type: ignore[arg-type]
                     else:
-                        st.warning(f"**Data Quality Concerns:** {len(fields_with_high_nulls)} out of {len(required_field_null_stats)} mandatory fields ({len(fields_with_high_nulls)/len(required_field_null_stats)*100:.1f}%) exceed the recommended null rate threshold.")
+                        st.warning(f"**Data Quality Concerns:** {len(fields_with_high_nulls)} out of {len(required_field_null_stats)} mandatory fields ({len(fields_with_high_nulls)/len(required_field_null_stats)*100:.1f}%) exceed the recommended null rate threshold.")  # type: ignore[arg-type]
                     # Insight 2: Threshold recommendation
                     st.markdown(f"""
-                    <div style='background-color:#e7f3ff; padding: 1rem; border-radius: 6px; margin-top: 1rem; margin-bottom: 1rem;'>
+                    <div style='background-color:#f3f4f6; padding: 1rem; border-radius: 6px; margin-top: 1rem; margin-bottom: 1rem; border-left: 3px solid #6b7280;'>
                     <strong>📋 Recommended Threshold: {suggested_threshold:.1f}%</strong><br>
                     Based on statistical analysis of this file's data, the recommended null rate threshold for mandatory fields is <strong>{suggested_threshold:.1f}%</strong>. 
                     This is calculated from the average null rate ({avg_null_pct:.2f}%) plus 2 standard deviations, ensuring data quality while accounting for expected variations.
@@ -2144,7 +2132,7 @@ with tab3:
                         st.markdown("#### ⚠️ Fields Requiring Attention")
                         st.markdown("The following mandatory fields have null rates that exceed the recommended threshold:")
                         # Create a clean table-like list
-                        list_items = []
+                        list_items: List[str] = []
                         for field_stat in sorted(fields_exceeding_threshold, key=lambda x: x["null_percentage"], reverse=True):
                             field_name = field_stat["field"]
                             null_pct = field_stat["null_percentage"]
@@ -2159,17 +2147,17 @@ with tab3:
                         This field affects {worst_field['null_count']:,} records ({worst_field['null_percentage']:.2f}% of the file).
                         """)
                     else:
-                        st.success(f"✅ **All mandatory fields meet quality standards.** All {len(required_field_null_stats)} fields have null rates below the recommended {suggested_threshold:.1f}% threshold.")
+                        st.success(f"✅ **All mandatory fields meet quality standards.** All {len(required_field_null_stats)} fields have null rates below the recommended {suggested_threshold:.1f}% threshold.")  # type: ignore[arg-type]
                     # Show all mandatory fields breakdown (using details HTML since expanders can't be nested)
                     st.markdown("<details><summary>📋 View All Mandatory Fields Breakdown</summary>", unsafe_allow_html=True)
                     # Sort by null percentage
-                    sorted_stats = sorted(required_field_null_stats, key=lambda x: x["null_percentage"], reverse=True)
-                    breakdown_items = []
+                    sorted_stats: List[Dict[str, Any]] = sorted(required_field_null_stats, key=lambda x: x["null_percentage"], reverse=True)  # type: ignore[assignment, arg-type]
+                    breakdown_items: List[str] = []
                     for stat in sorted_stats:
-                        field_name = stat["field"]
-                        null_pct = stat["null_percentage"]
-                        null_count = stat["null_count"]
-                        fill_rate = 100 - null_pct
+                        field_name: str = str(stat["field"])  # type: ignore[assignment]
+                        null_pct: float = float(stat["null_percentage"])  # type: ignore[assignment]
+                        null_count: int = int(stat["null_count"])  # type: ignore[assignment]
+                        fill_rate: float = 100 - null_pct
                         status_icon = "✅" if null_pct <= suggested_threshold else "⚠️"
                         breakdown_items.append(f"{status_icon} **{field_name}**: {null_pct:.2f}% null ({fill_rate:.2f}% filled) - {null_count:,} null records")
                     # Use double newlines for proper line breaks in markdown
@@ -2180,7 +2168,7 @@ with tab3:
                 with st.expander("⚠️ Other Mandatory Field Validations", expanded=False):
                     if other_failures:
                         st.markdown("**Critical Issues:**")
-                        failure_list = []
+                        failure_list: List[str] = []
                         for issue in other_failures:
                             check_name = issue.get("check", "Unknown Check")
                             field = issue.get("field", "")
@@ -2192,7 +2180,7 @@ with tab3:
                         st.markdown("\n".join(failure_list))
                     if other_warnings:
                         st.markdown("**Warnings:**")
-                        warning_list = []
+                        warning_list: List[str] = []
                         for issue in other_warnings:
                             check_name = issue.get("check", "Unknown Check")
                             field = issue.get("field", "")
@@ -2203,7 +2191,7 @@ with tab3:
                                 warning_list.append(f"- **{check_name}**: {message}")
                         st.markdown("\n".join(warning_list))
             # File-Level Statistics (Collapsible) - Focus on mandatory fields insights
-            file_level_results = [r for r in validation_results if not r.get("field")]
+            file_level_results = [r for r in validation_results_summary if not r.get("field")]
             if file_level_results:
                 with st.expander("📈 File-Level Summary", expanded=False):
                     # Parse and display meaningful statistics
@@ -2240,7 +2228,7 @@ with tab3:
                     st.markdown(rejection_text)
                     # Additional context if there are other issues
                     if has_critical_issues or has_warnings:
-                        additional_issues = []
+                        additional_issues: List[str] = []
                         if has_critical_issues:
                             additional_issues.append(f"{len(fields_exceeding_threshold)} required field(s) with high null rates")
                         if other_failures:
@@ -2291,7 +2279,7 @@ with tab4:
         # Show last 20 events in reverse chronological order
         recent_events = audit_log[-20:][::-1]
         # Create DataFrame for display
-        log_data = []
+        log_data_list: List[Dict[str, str]] = []
         for event in recent_events:
             event_type = event.get("event_type", "unknown")
             message = event.get("message", "")
@@ -2302,12 +2290,12 @@ with tab4:
                 time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
                 time_str = timestamp
-            log_data.append({
+            log_data_list.append({
                 "Time": time_str,
                 "Type": event_type.upper(),
                 "Message": message
             })
-        log_df = pd.DataFrame(log_data)
+        log_df = pd.DataFrame(log_data_list)
         render_sortable_table(log_df, key="audit_log_table")
         # Clear log button
         if st.button("Clear Activity Log", key="clear_activity_log_tab4"):
@@ -2592,11 +2580,20 @@ with tab5:
         with col1:
             st.metric("Overall Score", f"{quality_score['overall_score']:.1f}/100")
         with col2:
-            st.metric("Completeness", f"{quality_score['breakdown'].get('completeness', 0):.1f}%")
+            breakdown_dict_col2: Any = quality_score.get('breakdown', {})
+            completeness_val: Any = breakdown_dict_col2.get('completeness', 0) if isinstance(breakdown_dict_col2, dict) else 0  # type: ignore[assignment, arg-type, return-value]
+            completeness: float = float(completeness_val) if isinstance(completeness_val, (int, float)) else 0.0
+            st.metric("Completeness", f"{completeness:.1f}%")
         with col3:
-            st.metric("Uniqueness", f"{quality_score['breakdown'].get('uniqueness', 0):.1f}%")
+            breakdown_dict_col3: Any = quality_score.get('breakdown', {})
+            uniqueness_val: Any = breakdown_dict_col3.get('uniqueness', 0) if isinstance(breakdown_dict_col3, dict) else 0  # type: ignore[assignment, arg-type, return-value]
+            uniqueness: float = float(uniqueness_val) if isinstance(uniqueness_val, (int, float)) else 0.0
+            st.metric("Uniqueness", f"{uniqueness:.1f}%")
         with col4:
-            st.metric("Consistency", f"{quality_score['breakdown'].get('consistency', 0):.1f}%")
+            breakdown_dict_col4: Any = quality_score.get('breakdown', {})
+            consistency_val: Any = breakdown_dict_col4.get('consistency', 0) if isinstance(breakdown_dict_col4, dict) else 0  # type: ignore[assignment, arg-type, return-value]
+            consistency: float = float(consistency_val) if isinstance(consistency_val, (int, float)) else 0.0
+            st.metric("Consistency", f"{consistency:.1f}%")
         # Data Profiling
         with st.expander("📈 Data Profile", expanded=False):
             render_tooltip(
@@ -2702,10 +2699,11 @@ with tab5:
             sample_method = st.selectbox("Sampling Method", ["random", "first", "last"], key="sample_method")
             sample_size = st.number_input("Sample Size", 100, min(10000, len(claims_df_tab5)), 1000, key="sample_size")
             if st.button("Generate Sample", key="generate_sample"):
-                sample_df = sample_data(claims_df_tab5, sample_method, sample_size)
+                sample_df: pd.DataFrame = sample_data(claims_df_tab5, sample_method, sample_size)  # type: ignore[assignment]
                 render_lazy_dataframe(sample_df, key="sample_dataframe", max_rows_before_pagination=1000)
+                csv_data: bytes = sample_df.to_csv(index=False).encode('utf-8')  # type: ignore[no-untyped-call]
                 st.download_button("Download Sample", 
-                                 sample_df.to_csv(index=False).encode('utf-8'),
+                                 csv_data,
                                  "sample_data.csv",
                                  "text/csv",
                                  key="download_sample")
@@ -2777,7 +2775,7 @@ with tab6:
         log_type = st.selectbox("Log Type", ["audit", "error", "usage"], key="export_log_type")
         log_format = st.selectbox("Format", ["json", "csv"], key="export_log_format")
         if st.button("Export Logs", key="export_logs"):
-            log_data = export_logs(log_type, log_format)
+            log_data: str = export_logs(log_type, log_format)  # type: ignore[assignment]
             st.download_button("Download", log_data.encode('utf-8'),
                              f"{log_type}_log.{log_format}",
                              "text/plain" if log_format == "json" else "text/csv",
@@ -2842,17 +2840,19 @@ with tab6:
                     test_data_type = st.session_state.get("test_data_type", "claims")
                     if test_data_type == "claims" and claims_df is not None:
                         # Replicate claims file structure with dummy data
-                        test_df = generate_test_data_from_claims(claims_df, test_data_count)
+                        test_df: pd.DataFrame = generate_test_data_from_claims(claims_df, test_data_count)  # type: ignore[assignment]
                     elif test_data_type == "layout" and layout_df is not None:
                         # Replicate layout schema with dummy data
-                        test_df = generate_test_data_from_layout(layout_df, test_data_count)
+                        test_df: pd.DataFrame = generate_test_data_from_layout(layout_df, test_data_count)  # type: ignore[assignment]
                     else:
                         st.error("Unable to generate test data. Please ensure the required file is uploaded.")
                         st.stop()
                     if test_df is not None:
                         render_lazy_dataframe(test_df, key="test_dataframe", max_rows_before_pagination=1000)
+                        test_df_typed: pd.DataFrame = test_df  # type: ignore[assignment]
+                        csv_data: bytes = test_df_typed.to_csv(index=False).encode('utf-8')  # type: ignore[no-untyped-call]
                         st.download_button("Download Test Data",
-                                 test_df.to_csv(index=False).encode('utf-8'),
+                                 csv_data,
                                  f"test_{test_data_type}.csv",
                                  "text/csv",
                                  key="download_test_data")

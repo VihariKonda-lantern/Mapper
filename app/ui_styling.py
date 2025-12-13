@@ -61,11 +61,13 @@ def inject_summary_card_css():
         border-top: none !important;
     }
     
-    /* Modern Buttons - All Blue with White Text */
+    /* Modern Buttons - All Grey with White Text */
     .stButton > button,
     button[data-baseweb="button"],
-    .stDownloadButton > button {
-        background-color: #3b82f6 !important;
+    .stDownloadButton > button,
+    button[type="button"],
+    button[type="submit"] {
+        background-color: #6b7280 !important;
         color: white !important;
         border: none !important;
         border-radius: 6px !important;
@@ -77,8 +79,10 @@ def inject_summary_card_css():
     
     .stButton > button:hover,
     button[data-baseweb="button"]:hover,
-    .stDownloadButton > button:hover {
-        background-color: #2563eb !important;
+    .stDownloadButton > button:hover,
+    button[type="button"]:hover,
+    button[type="submit"]:hover {
+        background-color: #4b5563 !important;
         color: white !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
         transform: translateY(-1px);
@@ -86,20 +90,38 @@ def inject_summary_card_css():
     
     .stButton > button:disabled,
     button[data-baseweb="button"]:disabled,
-    .stDownloadButton > button:disabled {
+    .stDownloadButton > button:disabled,
+    button[type="button"]:disabled,
+    button[type="submit"]:disabled {
         background-color: #9ca3af !important;
         color: white !important;
         cursor: not-allowed !important;
+        opacity: 0.6 !important;
     }
     
     /* Form Submit Buttons */
     .stForm > div > button {
-        background-color: #3b82f6 !important;
+        background-color: #6b7280 !important;
         color: white !important;
     }
     
     .stForm > div > button:hover {
-        background-color: #2563eb !important;
+        background-color: #4b5563 !important;
+        color: white !important;
+    }
+    
+    /* Primary buttons (type="primary") - also grey */
+    .stButton > button[kind="primary"],
+    button[kind="primary"],
+    button[data-baseweb="button"][kind="primary"] {
+        background-color: #6b7280 !important;
+        color: white !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover,
+    button[kind="primary"]:hover,
+    button[data-baseweb="button"][kind="primary"]:hover {
+        background-color: #4b5563 !important;
         color: white !important;
     }
     
@@ -112,8 +134,8 @@ def inject_summary_card_css():
     }
     
     .stTextInput > div > div > input:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        border-color: #6b7280 !important;
+        box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1) !important;
         outline: none !important;
     }
     
@@ -214,8 +236,8 @@ def inject_summary_card_css():
     }
     
     .stFileUploader:hover {
-        border-color: #3b82f6 !important;
-        background-color: #eff6ff !important;
+        border-color: #6b7280 !important;
+        background-color: #f3f4f6 !important;
     }
     
     /* Ensure file uploader inner content is centered */
@@ -292,6 +314,37 @@ def inject_summary_card_css():
         border-radius: 8px !important;
         border-left: 4px solid !important;
         padding: 1rem !important;
+    }
+    
+    /* Info boxes - grey instead of blue */
+    .stInfo {
+        background-color: #f3f4f6 !important;
+        border-left-color: #6b7280 !important;
+    }
+    
+    .stInfo > div {
+        color: #1f2937 !important;
+    }
+    
+    /* Override Streamlit's default notification/alert boxes */
+    div[data-baseweb="notification"] {
+        background-color: #f3f4f6 !important;
+    }
+    
+    /* Info alert boxes specifically - grey */
+    div[data-baseweb="notification"][data-kind="info"],
+    div[data-baseweb="notification"].stAlert[data-baseweb="notification"] {
+        background-color: #f3f4f6 !important;
+        border-left-color: #6b7280 !important;
+    }
+    
+    /* Ensure all info boxes have grey text */
+    .stInfo p,
+    .stInfo div,
+    .stInfo span,
+    div[data-baseweb="notification"][data-kind="info"] p,
+    div[data-baseweb="notification"][data-kind="info"] div {
+        color: #1f2937 !important;
     }
     
     /* Style summary cards wrapper - target all columns */
@@ -510,7 +563,7 @@ def inject_summary_card_css():
     
     .stTabs [aria-selected="true"] {
         background-color: white;
-        color: #3b82f6;
+        color: #6b7280;
         font-weight: 600;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
@@ -540,8 +593,8 @@ def inject_summary_card_css():
     
     /* Modern Container for Tools */
     .streamlit-expanderHeader[aria-expanded="true"] {
-        background-color: #eff6ff !important;
-        border-color: #3b82f6 !important;
+        background-color: #f3f4f6 !important;
+        border-color: #6b7280 !important;
     }
     
     /* Responsive Design - Mobile/Tablet Support */

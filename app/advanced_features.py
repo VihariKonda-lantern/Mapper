@@ -78,21 +78,48 @@ def get_dark_mode_css() -> str:
             color: #e0e0e0 !important;
         }
         
-        /* Buttons */
-        .stButton > button {
-            background-color: #404040 !important;
-            color: #e0e0e0 !important;
-            border-color: #555555 !important;
-        }
-        
-        .stButton > button:hover {
-            background-color: #505050 !important;
-        }
-        
-        /* Primary buttons */
-        .stButton > button[kind="primary"] {
-            background-color: #667eea !important;
+        /* Buttons - All Grey */
+        .stButton > button,
+        button[data-baseweb="button"],
+        .stDownloadButton > button,
+        button[type="button"],
+        button[type="submit"] {
+            background-color: #6b7280 !important;
             color: white !important;
+            border-color: #4b5563 !important;
+        }
+        
+        .stButton > button:hover,
+        button[data-baseweb="button"]:hover,
+        .stDownloadButton > button:hover,
+        button[type="button"]:hover,
+        button[type="submit"]:hover {
+            background-color: #4b5563 !important;
+            color: white !important;
+        }
+        
+        /* Primary buttons - also grey */
+        .stButton > button[kind="primary"],
+        button[kind="primary"],
+        button[data-baseweb="button"][kind="primary"] {
+            background-color: #6b7280 !important;
+            color: white !important;
+        }
+        
+        .stButton > button[kind="primary"]:hover,
+        button[kind="primary"]:hover,
+        button[data-baseweb="button"][kind="primary"]:hover {
+            background-color: #4b5563 !important;
+            color: white !important;
+        }
+        
+        /* Disabled buttons */
+        .stButton > button:disabled,
+        button[data-baseweb="button"]:disabled,
+        .stDownloadButton > button:disabled {
+            background-color: #9ca3af !important;
+            color: white !important;
+            opacity: 0.6 !important;
         }
         
         /* Dataframes */

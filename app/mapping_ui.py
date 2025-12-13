@@ -388,7 +388,7 @@ def render_field_mapping_tab():
                     if selected_clean:
                         st.markdown(f"""
                             <div style='margin-top: 0.25rem;'>
-                                <span style='background-color: #e7f3ff; color: #0066cc; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
+                                <span style='background-color: #f3f4f6; color: #6b7280; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
                                     Mapped to: <strong>{selected_clean}</strong>
                                 </span>
                             </div>
@@ -420,7 +420,7 @@ def render_field_mapping_tab():
                                 sample_display = ["• (no data)"]
                             
                             st.markdown(f"""
-                                <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #667eea; font-size: 0.85rem;'>
+                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
                                     <div style='font-weight: 600; margin-bottom: 0.25rem; color: #000000;'>Sample & Stats</div>
                                     <div style='color: #000000; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
                                     <div style='color: #000000; font-size: 0.8rem;'>
@@ -573,7 +573,7 @@ def render_field_mapping_tab():
                         if field_selected_clean:
                             st.markdown(f"""
                                 <div style='margin-top: 0.25rem;'>
-                                    <span style='background-color: #e7f3ff; color: #0066cc; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
+                                    <span style='background-color: #f3f4f6; color: #6b7280; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500;'>
                                         Mapped to: <strong>{field_selected_clean}</strong>
                                     </span>
                                 </div>
@@ -605,7 +605,7 @@ def render_field_mapping_tab():
                                     sample_display = ["• (no data)"]
                                 
                                 st.markdown(f"""
-                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #667eea; font-size: 0.85rem;'>
+                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
                                         <div style='font-weight: 600; margin-bottom: 0.25rem; color: #495057;'>Sample & Stats</div>
                                         <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
                                         <div style='color: #6c757d; font-size: 0.8rem;'>
