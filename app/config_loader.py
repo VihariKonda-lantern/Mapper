@@ -5,13 +5,6 @@ import json
 import os
 from pathlib import Path
 
-# Optional yaml support
-try:
-    import yaml
-    YAML_AVAILABLE = True
-except ImportError:
-    YAML_AVAILABLE = False
-    yaml = None
 from exceptions import ConfigurationError
 from decorators import log_execution, handle_errors
 
@@ -19,7 +12,7 @@ from decorators import log_execution, handle_errors
 class ConfigLoader:
     """Loader for external configuration files."""
     
-    SUPPORTED_FORMATS = {'.json', '.yaml', '.yml'}
+    SUPPORTED_FORMATS = {'.json'}
     
     @staticmethod
     @log_execution(log_args=False)
@@ -53,16 +46,7 @@ class ConfigLoader:
         
         try:
             with open(path, 'r') as f:
-                if path.suffix == '.json':
-                    return json.load(f)
-                else:
-                    if YAML_AVAILABLE:
-                        return yaml.safe_load(f) or {}
-                    else:
-                        raise ConfigurationError(
-                            "YAML support requires 'pyyaml' package. Install with: pip install pyyaml",
-                            error_code="YAML_NOT_AVAILABLE"
-                        )
+                return json.load(f)
         except Exception as e:
             raise ConfigurationError(
                 f"Error loading configuration: {str(e)}",
