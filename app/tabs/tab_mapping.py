@@ -5,18 +5,18 @@ from typing import Any, List, Dict, Optional
 import json
 import os
 import time
-from state_manager import SessionStateManager
-from config import AI_CONFIDENCE_THRESHOLD
-from improvements_utils import render_empty_state, get_user_friendly_error
-from ui_improvements import show_toast, show_confirmation_dialog, show_undo_redo_feedback
-from mapping_ui import render_field_mapping_tab
-from ui_components import render_progress_bar
-from session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping
-from transformer import transform_claims_data
-from output_generator import generate_all_outputs
+from core.state_manager import SessionStateManager
+from core.config import AI_CONFIDENCE_THRESHOLD
+from utils.improvements_utils import render_empty_state, get_user_friendly_error, DEBOUNCE_DELAY_SECONDS
+from ui.ui_improvements import show_toast, show_confirmation_dialog, show_undo_redo_feedback
+from ui.mapping_ui import render_field_mapping_tab
+from ui.ui_components import render_progress_bar
+from core.session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping
+from data.transformer import transform_claims_data
+from data.output_generator import generate_all_outputs
 from testing_qa import create_mapping_unit_tests, run_unit_tests
-from mapping_engine import get_enhanced_automap
-from mapping_enhancements import (
+from mapping.mapping_engine import get_enhanced_automap
+from mapping.mapping_enhancements import (
     get_mapping_confidence_score,
     validate_mapping_before_processing,
     get_mapping_version,
@@ -24,9 +24,8 @@ from mapping_enhancements import (
     import_mapping_template_from_shareable
 )
 from advanced_features import save_mapping_template, load_mapping_template, list_saved_templates
-from layout_loader import get_required_fields
-from improvements_utils import DEBOUNCE_DELAY_SECONDS
-from audit_logger import log_event
+from file.layout_loader import get_required_fields
+from monitoring.audit_logger import log_event
 
 st: Any = st
 

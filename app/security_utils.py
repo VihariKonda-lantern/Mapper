@@ -5,7 +5,7 @@ import re
 import html
 from datetime import datetime, timedelta
 import time
-from exceptions import ClaimsMapperError
+from core.exceptions import ClaimsMapperError
 
 
 class InputSanitizer:
@@ -158,10 +158,175 @@ class InputSanitizer:
 
 
 class FileValidator:
-    """Utility class for file validation."""
+    """Utility class for file validation with magic number checking."""
     
-    ALLOWED_EXTENSIONS = {'.csv', '.txt', '.xlsx', '.xls', '.parquet', '.json'}
+    # Magic numbers for common file types (first few bytes)
+    MAGIC_NUMBERS = {
+        # CSV/TXT files - no specific magic number, but we can check for text
+        '.csv': None,  # Text-based, check encoding
+        '.txt': None,
+        '.tsv': None,
+        
+        # Excel files
+        '.xlsx': b'PK\x03\x04',  # ZIP signature (XLSX is a ZIP file)
+        '.xls': b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1',  # OLE2 signature
+        
+        # JSON
+        '.json': None,  # Text-based
+        
+        # Parquet
+        '.parquet': b'PAR1',
+        
+        # Compressed files
+        '.gz': b'\x1f\x8b',
+        '.bz2': b'BZ',
+        '.zip': b'PK\x03\x04',
+    }
+    
+    @staticmethod
+    def validate_file_content(file_obj: Any, expected_extension: Optional[str] = None) -> tuple[bool, Optional[str]]:
+        """
+        Validate file content using magic number checking.
+        
+        Args:
+            file_obj: File-like object to validate
+            expected_extension: Expected file extension (e.g., '.csv', '.xlsx')
+        
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        if not hasattr(file_obj, 'read'):
+            return False, "File object does not support reading"
+        
+        try:
+            # Read first few bytes for magic number checking
+            current_pos = file_obj.tell()
+            file_obj.seek(0)
+            magic_bytes = file_obj.read(8)  # Read first 8 bytes
+            file_obj.seek(current_pos)  # Restore position
+            
+            if not magic_bytes:
+                return False, "File appears to be empty"
+            
+            if expected_extension:
+                expected_extension = expected_extension.lower()
+                expected_magic = FileValidator.MAGIC_NUMBERS.get(expected_extension)
+                
+                if expected_magic is not None:
+                    # Check magic number
+                    if not magic_bytes.startswith(expected_magic):
+                        return False, (
+                            f"File content does not match expected format for {expected_extension}. "
+                            f"Expected magic number: {expected_magic.hex()}, "
+                            f"Found: {magic_bytes[:len(expected_magic)].hex()}"
+                        )
+                elif expected_extension in ['.csv', '.txt', '.tsv', '.json']:
+                    # For text files, check if content is valid text
+                    try:
+                        magic_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        # Try other encodings
+                        try:
+                            magic_bytes.decode('latin-1')
+                        except UnicodeDecodeError:
+                            return False, f"File does not appear to be a valid text file ({expected_extension})"
+            
+            # Additional validation based on file type
+            if expected_extension == '.xlsx':
+                # XLSX files should start with ZIP signature
+                if not magic_bytes.startswith(b'PK\x03\x04'):
+                    return False, "File does not appear to be a valid XLSX file (missing ZIP signature)"
+            
+            elif expected_extension == '.xls':
+                # XLS files should start with OLE2 signature
+                if not magic_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+                    return False, "File does not appear to be a valid XLS file (missing OLE2 signature)"
+            
+            elif expected_extension == '.parquet':
+                # Parquet files should start with PAR1
+                if not magic_bytes.startswith(b'PAR1'):
+                    return False, "File does not appear to be a valid Parquet file (missing PAR1 signature)"
+            
+            elif expected_extension in ['.gz']:
+                if not magic_bytes.startswith(b'\x1f\x8b'):
+                    return False, "File does not appear to be a valid GZIP file"
+            
+            elif expected_extension in ['.bz2']:
+                if not magic_bytes.startswith(b'BZ'):
+                    return False, "File does not appear to be a valid BZIP2 file"
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"Error validating file content: {str(e)}"
+    
+    @staticmethod
+    def detect_file_type(file_obj: Any) -> Optional[str]:
+        """
+        Detect file type from magic number.
+        
+        Args:
+            file_obj: File-like object
+        
+        Returns:
+            Detected file extension or None
+        """
+        try:
+            current_pos = file_obj.tell()
+            file_obj.seek(0)
+            magic_bytes = file_obj.read(8)
+            file_obj.seek(current_pos)
+            
+            if not magic_bytes:
+                return None
+            
+            # Check against known magic numbers
+            for ext, magic in FileValidator.MAGIC_NUMBERS.items():
+                if magic and magic_bytes.startswith(magic):
+                    return ext
+            
+            # Check for text files
+            try:
+                magic_bytes.decode('utf-8')
+                # Could be CSV, TXT, TSV, or JSON - need filename or content analysis
+                return None
+            except UnicodeDecodeError:
+                pass
+            
+            return None
+            
+        except Exception:
+            return None
+
+
+class FileValidator:
+    """Utility class for file validation with magic number checking."""
+    
+    ALLOWED_EXTENSIONS = {'.csv', '.txt', '.xlsx', '.xls', '.parquet', '.json', '.tsv'}
     MAX_FILE_SIZE_MB = 500
+    
+    # Magic numbers for common file types (first few bytes)
+    MAGIC_NUMBERS = {
+        # CSV/TXT files - no specific magic number, but we can check for text
+        '.csv': None,  # Text-based, check encoding
+        '.txt': None,
+        '.tsv': None,
+        
+        # Excel files
+        '.xlsx': b'PK\x03\x04',  # ZIP signature (XLSX is a ZIP file)
+        '.xls': b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1',  # OLE2 signature
+        
+        # JSON
+        '.json': None,  # Text-based
+        
+        # Parquet
+        '.parquet': b'PAR1',
+        
+        # Compressed files
+        '.gz': b'\x1f\x8b',
+        '.bz2': b'BZ',
+        '.zip': b'PK\x03\x04',
+    }
     
     @staticmethod
     def validate_file_extension(filename: str) -> tuple[bool, Optional[str]]:
@@ -202,28 +367,119 @@ class FileValidator:
         return True, None
     
     @staticmethod
-    def validate_file_content(file_obj: Any) -> tuple[bool, Optional[str]]:
+    def validate_file_content(file_obj: Any, expected_extension: Optional[str] = None) -> tuple[bool, Optional[str]]:
         """
-        Validate file content (basic check).
+        Validate file content using magic number checking.
         
         Args:
-            file_obj: File object
+            file_obj: File-like object to validate
+            expected_extension: Expected file extension (e.g., '.csv', '.xlsx')
         
         Returns:
             Tuple of (is_valid, error_message)
         """
-        try:
-            # Read first few bytes to check if file is readable
-            if hasattr(file_obj, 'read'):
-                file_obj.seek(0)
-                sample = file_obj.read(1024)
-                file_obj.seek(0)
-                if not sample:
-                    return False, "File appears to be empty"
-        except Exception as e:
-            return False, f"Error reading file: {str(e)}"
+        if not hasattr(file_obj, 'read'):
+            return False, "File object does not support reading"
         
-        return True, None
+        try:
+            # Read first few bytes for magic number checking
+            current_pos = file_obj.tell()
+            file_obj.seek(0)
+            magic_bytes = file_obj.read(8)  # Read first 8 bytes
+            file_obj.seek(current_pos)  # Restore position
+            
+            if not magic_bytes:
+                return False, "File appears to be empty"
+            
+            if expected_extension:
+                expected_extension = expected_extension.lower()
+                expected_magic = FileValidator.MAGIC_NUMBERS.get(expected_extension)
+                
+                if expected_magic is not None:
+                    # Check magic number
+                    if not magic_bytes.startswith(expected_magic):
+                        return False, (
+                            f"File content does not match expected format for {expected_extension}. "
+                            f"Expected magic number: {expected_magic.hex()}, "
+                            f"Found: {magic_bytes[:len(expected_magic)].hex()}"
+                        )
+                elif expected_extension in ['.csv', '.txt', '.tsv', '.json']:
+                    # For text files, check if content is valid text
+                    try:
+                        magic_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        # Try other encodings
+                        try:
+                            magic_bytes.decode('latin-1')
+                        except UnicodeDecodeError:
+                            return False, f"File does not appear to be a valid text file ({expected_extension})"
+            
+            # Additional validation based on file type
+            if expected_extension == '.xlsx':
+                # XLSX files should start with ZIP signature
+                if not magic_bytes.startswith(b'PK\x03\x04'):
+                    return False, "File does not appear to be a valid XLSX file (missing ZIP signature)"
+            
+            elif expected_extension == '.xls':
+                # XLS files should start with OLE2 signature
+                if not magic_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+                    return False, "File does not appear to be a valid XLS file (missing OLE2 signature)"
+            
+            elif expected_extension == '.parquet':
+                # Parquet files should start with PAR1
+                if not magic_bytes.startswith(b'PAR1'):
+                    return False, "File does not appear to be a valid Parquet file (missing PAR1 signature)"
+            
+            elif expected_extension in ['.gz']:
+                if not magic_bytes.startswith(b'\x1f\x8b'):
+                    return False, "File does not appear to be a valid GZIP file"
+            
+            elif expected_extension in ['.bz2']:
+                if not magic_bytes.startswith(b'BZ'):
+                    return False, "File does not appear to be a valid BZIP2 file"
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"Error validating file content: {str(e)}"
+    
+    @staticmethod
+    def detect_file_type(file_obj: Any) -> Optional[str]:
+        """
+        Detect file type from magic number.
+        
+        Args:
+            file_obj: File-like object
+        
+        Returns:
+            Detected file extension or None
+        """
+        try:
+            current_pos = file_obj.tell()
+            file_obj.seek(0)
+            magic_bytes = file_obj.read(8)
+            file_obj.seek(current_pos)
+            
+            if not magic_bytes:
+                return None
+            
+            # Check against known magic numbers
+            for ext, magic in FileValidator.MAGIC_NUMBERS.items():
+                if magic and magic_bytes.startswith(magic):
+                    return ext
+            
+            # Check for text files
+            try:
+                magic_bytes.decode('utf-8')
+                # Could be CSV, TXT, TSV, or JSON - need filename or content analysis
+                return None
+            except UnicodeDecodeError:
+                pass
+            
+            return None
+            
+        except Exception:
+            return None
 
 
 class RateLimiter:

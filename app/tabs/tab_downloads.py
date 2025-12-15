@@ -5,14 +5,14 @@ from typing import Any, List, Dict
 import io
 import zipfile
 import pandas as pd
-from state_manager import SessionStateManager
-from ui_improvements import render_sortable_table
-from error_handling import get_user_friendly_error
-from ui_improvements import show_toast, show_confirmation_dialog
-from output_generator import generate_mapping_table, anonymize_claims_data
-from batch_processor import process_multiple_claims_files
-from ui_components import _notify
-from audit_logger import log_event
+from core.state_manager import SessionStateManager
+from ui.ui_improvements import render_sortable_table, show_toast, show_confirmation_dialog
+from core.error_handling import get_user_friendly_error
+from data.output_generator import generate_mapping_table
+from data.anonymizer import anonymize_claims_data
+from batch.batch_processor import process_multiple_claims_files
+from ui.ui_components import _notify
+from monitoring.audit_logger import log_event
 from datetime import datetime
 
 st: Any = st

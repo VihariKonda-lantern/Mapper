@@ -6,25 +6,25 @@ import hashlib
 import time
 import statistics
 import pandas as pd
-from state_manager import SessionStateManager
-from config import DEFAULT_VALIDATION_PAGE_SIZE, VALIDATION_PAGE_SIZES
-from improvements_utils import (
+from core.state_manager import SessionStateManager
+from core.config import DEFAULT_VALIDATION_PAGE_SIZE, VALIDATION_PAGE_SIZES
+from utils.improvements_utils import (
     render_empty_state,
     render_loading_skeleton,
 )
-from ui_improvements import (
+from ui.ui_improvements import (
     render_sortable_table,
-    render_tooltip
+    render_tooltip,
+    show_toast
 )
-from error_handling import get_user_friendly_error
-from ui_improvements import show_toast
-from validation_engine import run_validations, dynamic_run_validations
-from layout_loader import get_required_fields
-from advanced_validation import track_validation_performance
-from validation_builder import CustomValidationRule, save_custom_rule, load_custom_rules, run_custom_validations
-from performance_utils import paginate_dataframe
-from ui_components import _notify
-from audit_logger import log_event
+from core.error_handling import get_user_friendly_error
+from validation.validation_engine import run_validations, dynamic_run_validations
+from file.layout_loader import get_required_fields
+from validation.advanced_validation import track_validation_performance
+from validation.validation_builder import CustomValidationRule, save_custom_rule, load_custom_rules, run_custom_validations
+from performance.performance_utils import paginate_dataframe
+from ui.ui_components import _notify
+from monitoring.audit_logger import log_event
 
 st: Any = st
 
@@ -83,6 +83,17 @@ def render_validation_tab() -> None:
                 fail_count = len([r for r in validation_results_new if r.get("status") == "Fail"])
                 warning_count = len([r for r in validation_results_new if r.get("status") == "Warning"])
                 pass_count = len([r for r in validation_results_new if r.get("status") == "Pass"])
+                
+                # Track validation history
+                from validation.validation_history import validation_history
+                validation_history.add_validation_result(
+                    validation_results_new,
+                    execution_time,
+                    len(transformed_df),
+                    data_hash,
+                    metadata={"layout_file": SessionStateManager.get("layout_file_obj")}
+                )
+                
                 try:
                     log_event("validation", f"Validation completed: {pass_count} passed, {warning_count} warnings, {fail_count} failed")
                 except NameError:
@@ -107,6 +118,23 @@ def render_validation_tab() -> None:
         st.metric(label="✅ Passes", value=len(passes))
     with col3:
         st.metric(label="⚠️ Warnings / ❌ Fails", value=len(warnings) + len(fails))
+
+    # Validation Results Visualization
+    if validation_results_summary:
+        st.markdown("### 📊 Validation Results Visualization")
+        from ui.chart_utils import render_validation_results_chart, render_validation_dashboard
+        
+        chart_option = st.radio(
+            "View",
+            ["Summary Chart", "Full Dashboard"],
+            horizontal=True,
+            key="validation_chart_option"
+        )
+        
+        if chart_option == "Summary Chart":
+            render_validation_results_chart(validation_results_summary)
+        else:
+            render_validation_dashboard(validation_results_summary)
 
     st.divider()
 
@@ -212,12 +240,16 @@ def render_validation_tab() -> None:
     # --- Final Verdict Block with Threshold Analysis ---
     st.markdown("#### File Status & Validation Summary")
 
+    # Initialize variables
+    is_rejected = False
+    unmapped_required_fields_tab3: List[str] = []
+
     if not validation_results_summary:
         st.info("No validations have been run yet.")
     else:
         # Analyze validation results to calculate thresholds and stats
         if layout_df is None:
-            required_fields_tab3: List[str] = []
+            required_fields_tab3 = []
         else:
             cache_key_tab3 = f"required_fields_{id(layout_df)}"
             if cache_key_tab3 in st.session_state:
@@ -231,7 +263,8 @@ def render_validation_tab() -> None:
         for field in required_fields_tab3:
             mapping = final_mapping.get(field)
             if not mapping or not mapping.get("value") or str(mapping.get("value")).strip() == "":
-                unmapped_required_fields_tab3.append(field)
+                if field not in unmapped_required_fields_tab3:
+                    unmapped_required_fields_tab3.append(field)
         
         total_records = len(transformed_df) if transformed_df is not None else 0
         required_field_null_stats: List[Dict[str, Any]] = []
@@ -452,6 +485,58 @@ def render_validation_tab() -> None:
                             st.warning(f"⚠️ **{check_name}**: {message}")
                         else:
                             st.error(f"❌ **{check_name}**: {message}")
+    
+    # Validation History Section
+    with st.expander("📈 Validation History & Trends", expanded=False):
+        from validation.validation_history import validation_history
+        from ui.chart_utils import render_trend_analysis
+        
+        trends = validation_history.get_trends()
+        
+        if trends.get("available"):
+            st.markdown("#### Validation Trends")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Validations", trends["total_validations"])
+            with col2:
+                st.metric("Avg Pass Rate", f"{trends['avg_pass_rate']:.1f}%")
+            with col3:
+                st.metric("Avg Fail Rate", f"{trends['avg_fail_rate']:.1f}%")
+            with col4:
+                st.metric("Avg Execution Time", f"{trends['avg_execution_time']:.2f}s")
+            
+            # Show trend chart
+            history_entries = trends.get("entries", [])
+            if len(history_entries) > 1:
+                st.markdown("#### Pass Rate Trend")
+                trend_data = [
+                    {
+                        "timestamp": entry["timestamp"],
+                        "pass_rate": (entry["passes"] / entry["total_checks"] * 100) if entry["total_checks"] > 0 else 0,
+                        "fail_rate": (entry["fails"] / entry["total_checks"] * 100) if entry["total_checks"] > 0 else 0
+                    }
+                    for entry in history_entries
+                ]
+                render_trend_analysis(
+                    trend_data,
+                    x_field="timestamp",
+                    y_field="pass_rate",
+                    title="Validation Pass Rate Over Time"
+                )
+            
+            # Export history
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Export History", key="export_validation_history"):
+                    export_path = validation_history.export_history()
+                    show_toast(f"History exported to {export_path}", "💾")
+            with col2:
+                if st.button("Clear History", key="clear_validation_history"):
+                    validation_history.clear_history()
+                    show_toast("Validation history cleared", "🗑️")
+                    st.rerun()
+        else:
+            st.info(trends.get("message", "No validation history available. Run validations to see trends."))
         
         if is_rejected:
             with st.expander("❌ Rejection Explanation", expanded=False):

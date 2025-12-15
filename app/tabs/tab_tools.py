@@ -3,22 +3,21 @@
 import streamlit as st
 from typing import Any
 import pandas as pd
-from state_manager import SessionStateManager
-from improvements_utils import (
+from core.state_manager import SessionStateManager
+from utils.improvements_utils import (
     render_empty_state,
-    DEBOUNCE_DELAY_SECONDS
+    DEBOUNCE_DELAY_SECONDS,
+    get_memory_usage
 )
-from performance_utils import render_lazy_dataframe
-from ui_improvements import render_tooltip
-from ui_improvements import show_toast, show_confirmation_dialog
-from monitoring_logging import (
+from performance.performance_utils import render_lazy_dataframe
+from ui.ui_improvements import render_tooltip, show_toast, show_confirmation_dialog
+from monitoring.monitoring_logging import (
     get_system_health,
     get_error_statistics,
     export_logs,
     get_usage_statistics
 )
-from advanced_validation import get_validation_performance_stats
-from improvements_utils import get_memory_usage
+from validation.advanced_validation import get_validation_performance_stats
 from testing_qa import create_mapping_unit_tests, run_unit_tests
 import time
 

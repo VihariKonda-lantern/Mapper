@@ -2,16 +2,16 @@
 """Setup tab handler - file upload and preview."""
 import streamlit as st
 from typing import Any, List, Dict, Callable, cast
-from upload_ui import (
+from ui.upload_ui import (
     render_upload_and_claims_preview,
     render_lookup_summary_section,
 )
-from utils import render_claims_file_summary
-from layout_loader import render_layout_summary_section
-from ui_styling import inject_summary_card_css
-from monitoring_logging import track_feature_usage
-from user_experience import add_recent_file
-from state_manager import SessionStateManager
+from utils.utils import render_claims_file_summary
+from file.layout_loader import render_layout_summary_section
+from ui.ui_styling import inject_summary_card_css
+from monitoring.monitoring_logging import track_feature_usage
+from ui.user_experience import add_recent_file
+from core.state_manager import SessionStateManager
 
 st: Any = st
 
@@ -28,7 +28,7 @@ def render_setup_tab() -> None:
             last_logged_layout = SessionStateManager.get("last_logged_layout_file")
             if last_logged_layout != layout_file_name.name:
                 try:
-                    from audit_logger import log_event
+                    from monitoring.audit_logger import log_event
                     log_event("file_upload", f"Layout file loaded: {layout_file_name.name}")
                     track_feature_usage("file_upload", "layout_file_uploaded", {"file": layout_file_name.name})
                 except (NameError, ImportError, AttributeError):
@@ -45,7 +45,7 @@ def render_setup_tab() -> None:
                 row_count = len(claims_df) if claims_df is not None else 0
                 col_count = len(claims_df.columns) if claims_df is not None else 0
                 try:
-                    from audit_logger import log_event
+                    from monitoring.audit_logger import log_event
                     log_event("file_upload", f"Claims file loaded: {claims_file_name.name} ({row_count:,} rows, {col_count} columns)")
                     track_feature_usage("file_upload", "claims_file_uploaded", {"file": claims_file_name.name, "rows": row_count})
                 except (NameError, ImportError, AttributeError):
@@ -61,7 +61,7 @@ def render_setup_tab() -> None:
                 msk_count = len(SessionStateManager.get("msk_codes", set()))
                 bar_count = len(SessionStateManager.get("bar_codes", set()))
                 try:
-                    from audit_logger import log_event
+                    from monitoring.audit_logger import log_event
                     log_event("file_upload", f"Lookup file loaded: {lookup_file_name.name} (MSK: {msk_count}, BAR: {bar_count})")
                     track_feature_usage("file_upload", "lookup_file_uploaded", {"file": lookup_file_name.name})
                 except (NameError, ImportError, AttributeError):

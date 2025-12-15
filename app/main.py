@@ -23,41 +23,41 @@ pd: Any = pd  # type: ignore[assignment]
 st.set_page_config(page_title="Claims Mapper and Validator", layout="wide")
 
 # --- Configuration ---
-from config import (
+from core.config import (
     AI_CONFIDENCE_THRESHOLD,
     DEFAULT_VALIDATION_PAGE_SIZE,
     VALIDATION_PAGE_SIZES
 )
 
 # --- App Modules ---
-from layout_loader import (
+from file.layout_loader import (
     get_required_fields,
     render_layout_summary_section
 )
-from mapping_engine import get_enhanced_automap
-from utils import render_claims_file_summary
-from transformer import transform_claims_data
-from validation_engine import (
+from mapping.mapping_engine import get_enhanced_automap
+from utils.utils import render_claims_file_summary
+from data.transformer import transform_claims_data
+from validation.validation_engine import (
     run_validations,
     dynamic_run_validations,
 )
-from anonymizer import anonymize_claims_data
+from data.anonymizer import anonymize_claims_data
 
 # --- UI Modules ---
-from ui_styling import inject_summary_card_css, inject_ux_javascript, inject_main_layout_css  # type: ignore[import-untyped]
-from ui_components import render_progress_bar, _notify, confirm_action  # type: ignore[import-untyped]
-from upload_ui import (  # type: ignore[import-untyped]
+from ui.ui_styling import inject_summary_card_css, inject_ux_javascript, inject_main_layout_css  # type: ignore[import-untyped]
+from ui.ui_components import render_progress_bar, _notify, confirm_action  # type: ignore[import-untyped]
+from ui.upload_ui import (  # type: ignore[import-untyped]
     render_upload_and_claims_preview,
     render_lookup_summary_section,
 )
-from mapping_ui import (  # type: ignore[import-untyped]
+from ui.mapping_ui import (  # type: ignore[import-untyped]
     render_field_mapping_tab,
     generate_mapping_table
 )
-from output_generator import generate_all_outputs  # type: ignore[import-untyped]
-from session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping  # type: ignore[import-untyped]
-from cache_utils import load_layout_cached, load_lookups_cached  # type: ignore[import-untyped]
-from upload_handlers import capture_claims_file_metadata  # type: ignore[import-untyped]
+from data.output_generator import generate_all_outputs  # type: ignore[import-untyped]
+from core.session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping  # type: ignore[import-untyped]
+from performance.cache_utils import load_layout_cached, load_lookups_cached  # type: ignore[import-untyped]
+from file.upload_handlers import capture_claims_file_metadata  # type: ignore[import-untyped]
 from advanced_features import (  # type: ignore[import-untyped]
     init_dark_mode,
     toggle_dark_mode,
@@ -67,8 +67,8 @@ from advanced_features import (  # type: ignore[import-untyped]
     load_mapping_template,
     list_saved_templates,
 )
-from performance_utils import paginate_dataframe, get_data_hash, render_lazy_dataframe  # type: ignore[import-untyped]
-from validation_builder import (  # type: ignore[import-untyped]
+from performance.performance_utils import paginate_dataframe, get_data_hash, render_lazy_dataframe  # type: ignore[import-untyped]
+from validation.validation_builder import (  # type: ignore[import-untyped]
     CustomValidationRule,
     save_custom_rule,
     load_custom_rules,
@@ -76,7 +76,7 @@ from validation_builder import (  # type: ignore[import-untyped]
 )
 
 # --- New Feature Modules ---
-from data_quality import (  # type: ignore[import-untyped]
+from data.data_quality import (  # type: ignore[import-untyped]
     calculate_data_quality_score,
     detect_duplicates,
     get_column_statistics,
@@ -85,14 +85,14 @@ from data_quality import (  # type: ignore[import-untyped]
     create_completeness_matrix,
     generate_data_profile
 )
-from mapping_enhancements import (  # type: ignore[import-untyped]
+from mapping.mapping_enhancements import (  # type: ignore[import-untyped]
     get_mapping_confidence_score,
     validate_mapping_before_processing,  # type: ignore[assignment]
     get_mapping_version,
     export_mapping_template_for_sharing,
     import_mapping_template_from_shareable
 )
-from user_experience import (  # type: ignore[import-untyped]
+from ui.user_experience import (  # type: ignore[import-untyped]
     init_user_preferences,
     add_recent_file,
     get_notifications,
@@ -101,11 +101,11 @@ from user_experience import (  # type: ignore[import-untyped]
     get_help_content,
     global_search
 )
-from advanced_validation import (  # type: ignore[import-untyped]
+from validation.advanced_validation import (  # type: ignore[import-untyped]
     track_validation_performance,
     get_validation_performance_stats,
 )
-from monitoring_logging import (  # type: ignore[import-untyped]
+from monitoring.monitoring_logging import (  # type: ignore[import-untyped]
     get_error_statistics,
     track_feature_usage,
     get_usage_statistics,
@@ -120,7 +120,7 @@ from testing_qa import (  # type: ignore[import-untyped]
 )
 
 # --- Improvement Modules ---
-from improvements_utils import (  # type: ignore[import-untyped]
+from utils.improvements_utils import (  # type: ignore[import-untyped]
     render_empty_state,  # type: ignore[assignment]
     render_loading_skeleton,
     get_user_friendly_error,
@@ -128,7 +128,7 @@ from improvements_utils import (  # type: ignore[import-untyped]
     update_activity_time,
     get_memory_usage,
 )
-from ui_improvements import (  # type: ignore[import-untyped]
+from ui.ui_improvements import (  # type: ignore[import-untyped]
     show_confirmation_dialog,  # type: ignore[assignment]
     show_toast,
     show_undo_redo_feedback,
@@ -136,7 +136,10 @@ from ui_improvements import (  # type: ignore[import-untyped]
     show_onboarding_tour,
     render_sortable_table,
 )
-from performance_utils import render_lazy_dataframe  # type: ignore[import-untyped]
+from performance.performance_utils import render_lazy_dataframe  # type: ignore[import-untyped]
+from ui.progress_indicators import render_workflow_progress  # type: ignore[import-untyped]
+from ui.wizard_mode import WizardMode, render_quick_actions  # type: ignore[import-untyped]
+from core.state_manager import SessionStateManager  # type: ignore[import-untyped]
 
 # --- Audit Log Helper Function (using State Manager) ---
 def log_event(event_type: str, message: str) -> None:
@@ -146,7 +149,7 @@ def log_event(event_type: str, message: str) -> None:
         event_type: Type of event (e.g., "file_upload", "mapping", "validation", "output")
         message: Descriptive message about the event
     """
-    from state_manager import SessionStateManager
+    from core.state_manager import SessionStateManager
     try:
         SessionStateManager.add_audit_event(event_type, message)
     except Exception as e:
@@ -218,14 +221,23 @@ inject_keyboard_shortcuts()
 # Inject UX JavaScript and CSS
 inject_ux_javascript()
 
-# --- Sticky Top Bar with Title and Breadcrumb ---
+# --- Sticky Top Bar with Title and Workflow Progress ---
+# Determine current workflow step
+current_workflow_step = 0
+if SessionStateManager.get_transformed_df() is not None:
+    current_workflow_step = 3
+elif SessionStateManager.get_final_mapping() and len(SessionStateManager.get_final_mapping()) > 0:
+    current_workflow_step = 2
+elif SessionStateManager.get_layout_df() is not None and SessionStateManager.get_claims_df() is not None:
+    current_workflow_step = 1
+
 st.markdown("""
     <div style='
         position: sticky;
         top: 0;
         z-index: 1000;
         background: #f0f0f0;
-            color: #000000;
+        color: #000000;
         padding: 0.5rem 1rem;
         margin: -1rem -1rem 1rem -1rem;
         box-shadow: 0 1px 2px rgba(0,0,0,0.1);
@@ -233,15 +245,20 @@ st.markdown("""
     '>
         <div style='display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto;'>
             <div style='font-size: 14px; font-weight: 600;'>Claims Mapper & Validator</div>
-            <div style='font-size: 11px; opacity: 0.8;'>
-                <span>1) Setup</span> <span style='margin: 0 4px;'>→</span>
-                <span>2) Mapping</span> <span style='margin: 0 4px;'>→</span>
-                <span>3) Preview & Validate</span> <span style='margin: 0 4px;'>→</span>
-                <span>4) Outputs</span>
-            </div>
         </div>
     </div>
 """, unsafe_allow_html=True)
+
+# Show workflow progress
+render_workflow_progress(current_workflow_step, 4)
+
+# Show wizard mode if enabled
+WizardMode.render_wizard_header()
+
+# Show quick actions in sidebar
+with st.sidebar:
+    st.divider()
+    render_quick_actions()
 
 # --- Main Content Container with Optimized Layout ---
 # CSS moved to ui_styling.py inject_main_layout_css()

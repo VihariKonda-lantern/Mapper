@@ -2,9 +2,9 @@
 """Service for mapping operations."""
 from typing import Any, Dict, List, Optional
 import pandas as pd
-from models import Mapping, MappingMode
-from mapping_engine import get_enhanced_automap
-from transformer import transform_claims_data
+from core.models import Mapping, MappingMode
+from mapping.mapping_engine import get_enhanced_automap
+from data.transformer import transform_claims_data
 from decorators import log_execution, handle_errors, cache_result
 
 

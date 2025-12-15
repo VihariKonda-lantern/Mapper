@@ -2,8 +2,8 @@
 """Service for validation operations."""
 from typing import Any, Dict, List
 import pandas as pd
-from models import ValidationResult, ValidationStatus
-from validation_engine import run_validations, dynamic_run_validations
+from core.models import ValidationResult, ValidationStatus
+from validation.validation_engine import run_validations, dynamic_run_validations
 from decorators import log_execution, handle_errors
 
 

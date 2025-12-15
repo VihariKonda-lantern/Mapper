@@ -3,19 +3,20 @@
 import streamlit as st
 from typing import Any
 import pandas as pd
-from state_manager import SessionStateManager
-from improvements_utils import (
+from datetime import datetime
+from core.state_manager import SessionStateManager
+from utils.improvements_utils import (
     render_empty_state,
     render_loading_skeleton,
 )
-from ui_improvements import (
+from ui.ui_improvements import (
     render_tooltip,
     render_sortable_table,
     render_filterable_table,
 )
-from performance_utils import render_lazy_dataframe
-from error_handling import get_user_friendly_error
-from data_quality import (
+from performance.performance_utils import render_lazy_dataframe
+from core.error_handling import get_user_friendly_error
+from data.data_quality import (
     calculate_data_quality_score,
     detect_duplicates,
     get_column_statistics,
@@ -54,6 +55,17 @@ def render_data_quality_tab() -> None:
         try:
             with st.spinner("Calculating data quality score..."):
                 quality_score = calculate_data_quality_score(claims_df_tab5, required_fields_tab5)
+                
+                # Track quality trends
+                from data.quality_trends import quality_trends
+                import hashlib
+                data_hash = hashlib.md5(str(claims_df_tab5.columns.tolist()).encode()).hexdigest()
+                quality_trends.add_quality_score(
+                    quality_score,
+                    len(claims_df_tab5),
+                    data_hash,
+                    metadata={"file": SessionStateManager.get("claims_file_obj")}
+                )
         except Exception as e:
             error_msg = get_user_friendly_error(e)
             st.error(f"Error calculating data quality score: {error_msg}")
@@ -77,6 +89,19 @@ def render_data_quality_tab() -> None:
             consistency_val: Any = breakdown_dict_col4.get('consistency', 0) if isinstance(breakdown_dict_col4, dict) else 0
             consistency: float = float(consistency_val) if isinstance(consistency_val, (int, float)) else 0.0
             st.metric("Consistency", f"{consistency:.1f}%")
+        
+        # Data Quality Visualization
+        st.markdown("### 📊 Quality Metrics Visualization")
+        breakdown = quality_score.get('breakdown', {})
+        if breakdown:
+            from ui.chart_utils import render_data_quality_chart
+            chart_type = st.radio(
+                "Chart Type",
+                ["bar", "radar"],
+                horizontal=True,
+                key="quality_chart_type"
+            )
+            render_data_quality_chart(breakdown, chart_type=chart_type)
         
         # Data Profiling
         with st.expander("📈 Data Profile", expanded=False):
@@ -175,6 +200,15 @@ def render_data_quality_tab() -> None:
                         message="Unable to generate completeness matrix."
                     )
                 else:
+                    # Show heatmap visualization if available
+                    from ui.chart_utils import create_heatmap
+                    try:
+                        # Convert completeness matrix to numeric for heatmap
+                        numeric_matrix = completeness_matrix.select_dtypes(include=['number'])
+                        if not numeric_matrix.empty:
+                            create_heatmap(numeric_matrix, title="Data Completeness Heatmap")
+                    except Exception:
+                        pass  # Fallback to table if chart fails
                     render_sortable_table(completeness_matrix, key="completeness_table")
             except Exception as e:
                 error_msg = get_user_friendly_error(e)

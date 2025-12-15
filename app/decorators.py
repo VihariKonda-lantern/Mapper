@@ -3,10 +3,10 @@
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, TypeVar, cast
 import time
-from cache_manager import CacheManager
-from structured_logging import StructuredLogger
-from error_context import error_context
-from exceptions import ClaimsMapperError
+from performance.cache_manager import CacheManager
+from monitoring.structured_logging import StructuredLogger
+from core.error_context import error_context
+from core.exceptions import ClaimsMapperError
 
 logger = StructuredLogger("decorators")
 cache = CacheManager()
