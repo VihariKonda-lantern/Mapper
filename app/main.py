@@ -44,7 +44,8 @@ from validation.validation_engine import (
 from data.anonymizer import anonymize_claims_data
 
 # --- UI Modules ---
-from ui.ui_styling import inject_summary_card_css, inject_ux_javascript, inject_main_layout_css  # type: ignore[import-untyped]
+from ui.ui_styling import inject_ux_javascript  # type: ignore[import-untyped]
+from ui.design_system import inject_unified_design_system  # type: ignore[import-untyped]
 from ui.ui_components import render_progress_bar, _notify, confirm_action  # type: ignore[import-untyped]
 from ui.upload_ui import (  # type: ignore[import-untyped]
     render_upload_and_claims_preview,
@@ -261,8 +262,8 @@ with st.sidebar:
     render_quick_actions()
 
 # --- Main Content Container with Optimized Layout ---
-# CSS moved to ui_styling.py inject_main_layout_css()
-inject_main_layout_css()
+# Unified Design System - Golden Rules of UI/UX
+inject_unified_design_system()
 
 # --- Sidebar: Activity Log Panel ---
 # --- Sidebar with Settings ---

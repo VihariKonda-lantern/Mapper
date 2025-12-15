@@ -22,14 +22,28 @@ def render_status_indicator(status: str) -> str:
     return f'<span class="status-indicator {status_class}"></span>'
 
 
-def render_progress_bar(percent: int, label: str = "", text_color: str = "#000000") -> str:
-    """Generate HTML for animated progress bar."""
-    return f'<div class="progress-container" style="margin-top: 0.75rem; margin-bottom: 0.5rem; background-color: rgba(0,0,0,0.1); border-radius: 4px; height: 8px; overflow: hidden;"><div style="width: {percent}%; background: #007bff !important; height: 100%; border-radius: 4px; transition: width 0.5s ease;"></div></div><small style="color: {text_color}; font-size: 0.9rem; display: block; margin-top: 0.5rem;">{label}</small>'
+def render_progress_bar(percent: int, label: str = "", text_color: Optional[str] = None) -> str:
+    """Generate HTML for animated progress bar with consistent styling."""
+    from ui.design_system import DesignTokens
+    tokens = DesignTokens
+    text_color = text_color or tokens.COLORS['text']
+    return (
+        f'<div class="progress-container" style="margin-top: {tokens.SPACING['sm']}; margin-bottom: {tokens.SPACING['sm']}; '
+        f'background-color: {tokens.COLORS['background-alt']}; border-radius: {tokens.RADIUS['full']}; '
+        f'height: 8px; overflow: hidden;"><div style="width: {percent}%; background: {tokens.COLORS['primary']} !important; '
+        f'height: 100%; border-radius: {tokens.RADIUS['full']}; transition: width 0.5s ease;"></div></div>'
+        f'<small style="color: {text_color}; font-size: {tokens.FONT_SIZES['sm']}; display: block; margin-top: {tokens.SPACING['sm']};">{label}</small>'
+    )
 
 
 def render_title():
-    """Renders the app title."""
-    st.markdown("<div style='font-size: 22px; font-weight: 600; margin-bottom: 10px;'>Claims File Mapper and Validator</div>", unsafe_allow_html=True)
+    """Renders the app title with consistent styling."""
+    from ui.design_system import DesignTokens
+    tokens = DesignTokens
+    st.markdown(
+        f"<div style='font-size: {tokens.FONT_SIZES['2xl']}; font-weight: {tokens.FONT_WEIGHTS['semibold']}; margin-bottom: {tokens.SPACING['md']}; color: {tokens.COLORS['text']};'>Claims File Mapper and Validator</div>",
+        unsafe_allow_html=True
+    )
 
 
 def _notify(msg: str) -> None:

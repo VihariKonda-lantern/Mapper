@@ -8,7 +8,7 @@ from ui.upload_ui import (
 )
 from utils.utils import render_claims_file_summary
 from file.layout_loader import render_layout_summary_section
-from ui.ui_styling import inject_summary_card_css
+from ui.design_system import inject_unified_design_system
 from monitoring.monitoring_logging import track_feature_usage
 from ui.user_experience import add_recent_file
 from core.state_manager import SessionStateManager
@@ -69,8 +69,7 @@ def render_setup_tab() -> None:
                 SessionStateManager.set("last_logged_lookup_file", lookup_file_name.name)
                 add_recent_file(lookup_file_name.name, "lookup", {"msk": msk_count, "bar": bar_count})
     
-    # Inject CSS for modern cards
-    inject_summary_card_css()
+    # Unified design system is already injected in main.py
     
     # Dynamic summary cards based on upload order
     upload_order = cast(List[str], SessionStateManager.get("upload_order", []))
