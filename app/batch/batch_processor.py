@@ -9,7 +9,8 @@ import io
 
 # Import enhanced parallel processing
 from performance.parallel_processing import ParallelProcessor, process_files_parallel_enhanced
-from file.file_handler import FileHandler
+from file.file_strategies import FileStrategyFactory
+from file.file_handler import load_claims_file
 from data.transformer import transform_claims_data
 from core.exceptions import FileError
 
@@ -45,9 +46,12 @@ def process_multiple_claims_files(
         try:
             file_name = file_obj.name
             
-            # Load file
-            file_handler = FileHandler()
-            claims_df = file_handler.load_file(file_obj)
+            # Load file using FileStrategyFactory or load_claims_file
+            try:
+                claims_df, _ = load_claims_file(file_obj)
+            except Exception:
+                # Fallback to FileStrategyFactory
+                claims_df = FileStrategyFactory.load_file(file_obj)
             
             # Transform using mapping
             transformed_df = transform_claims_data(

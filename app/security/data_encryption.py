@@ -1,5 +1,5 @@
 """Data encryption utilities for sensitive data at rest."""
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from pathlib import Path
 import base64
 import json

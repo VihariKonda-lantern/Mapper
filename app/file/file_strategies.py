@@ -1,7 +1,7 @@
 # --- file_strategies.py ---
 """Strategy pattern for different file types."""
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, List, Optional
 import pandas as pd
 import io
 import gzip

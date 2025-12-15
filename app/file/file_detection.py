@@ -1,10 +1,16 @@
 """Enhanced file detection: encoding, delimiter, header detection."""
 from typing import Any, Dict, List, Optional, Tuple
-import chardet
 import csv
 import io
 import pandas as pd
 from pathlib import Path
+
+try:
+    import chardet
+    CHARDET_AVAILABLE = True
+except ImportError:
+    CHARDET_AVAILABLE = False
+    chardet = None  # type: ignore
 
 
 class FileDetector:
@@ -27,15 +33,19 @@ class FileDetector:
         sample = file_obj.read(sample_size)
         file_obj.seek(position)
         
-        # Use chardet
-        result = chardet.detect(sample)
-        
-        encoding = result.get('encoding', 'utf-8')
-        confidence = result.get('confidence', 0.0)
-        
-        # Fallback to utf-8 if confidence is low
-        if confidence < 0.7:
+        # Use chardet if available
+        if CHARDET_AVAILABLE and chardet:
+            result = chardet.detect(sample)
+            encoding = result.get('encoding', 'utf-8')
+            confidence = result.get('confidence', 0.0)
+            
+            # Fallback to utf-8 if confidence is low
+            if confidence < 0.7:
+                encoding = 'utf-8'
+        else:
+            # Fallback to utf-8 if chardet not available
             encoding = 'utf-8'
+            confidence = 0.5
         
         return encoding, confidence
     

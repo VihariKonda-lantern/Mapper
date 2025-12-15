@@ -25,8 +25,8 @@ class MappingSuggester:
     ):
         """
         Initialize mapping suggester.
-        
-        Args:
+    
+    Args:
             use_embeddings: Whether to use word embeddings (requires sklearn)
             use_context: Whether to consider field context
             top_n: Number of top suggestions to return
@@ -153,8 +153,8 @@ class MappingSuggester:
     ) -> List[Dict[str, Any]]:
         """
         Get multiple mapping suggestions for a field.
-        
-        Args:
+    
+    Args:
             internal_field: Internal field name
             source_columns: Available source columns
             field_descriptions: Optional field descriptions
@@ -162,7 +162,7 @@ class MappingSuggester:
             field_types: Optional field types
             sample_values: Optional sample values for each column
         
-        Returns:
+    Returns:
             List of suggestions with confidence scores
         """
         suggestions: Dict[str, float] = {}
@@ -357,12 +357,12 @@ class MappingLearner:
     ) -> float:
         """
         Get confidence boost from learning.
-        
-        Args:
+    
+    Args:
             internal_field: Internal field name
             column: Column name
         
-        Returns:
+    Returns:
             Confidence boost (0.0 to 1.0)
         """
         if internal_field not in self.patterns:
@@ -375,3 +375,82 @@ class MappingLearner:
         # Normalize boost (max 0.3 boost)
         count = field_patterns[column]
         return min(0.3, count / 10.0)
+
+
+# Convenience functions for backward compatibility
+def get_mapping_confidence_score(mapping: Dict[str, Any]) -> float:
+    """
+    Get confidence score for a mapping.
+    
+    Args:
+        mapping: Mapping dictionary with confidence field
+        
+    Returns:
+        Confidence score (0.0 to 1.0)
+    """
+    return mapping.get('confidence', 0.0)
+
+
+def validate_mapping_before_processing(mapping: Dict[str, Dict[str, Any]]) -> tuple[bool, Optional[str]]:
+    """
+    Validate mapping before processing.
+    
+    Args:
+        mapping: Mapping dictionary
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not mapping:
+        return False, "Mapping is empty"
+    
+    for field, mapping_info in mapping.items():
+        if 'value' not in mapping_info:
+            return False, f"Missing 'value' for field: {field}"
+    
+    return True, None
+
+
+def get_mapping_version(mapping: Dict[str, Any]) -> str:
+    """
+    Get mapping version.
+    
+    Args:
+        mapping: Mapping dictionary
+        
+    Returns:
+        Version string
+    """
+    return mapping.get('version', '1.0')
+
+
+def export_mapping_template_for_sharing(mapping: Dict[str, Dict[str, Any]], metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Export mapping template for sharing.
+    
+    Args:
+        mapping: Mapping dictionary
+        metadata: Optional metadata
+        
+    Returns:
+        Shareable mapping template
+    """
+    return {
+        'mapping': mapping,
+        'metadata': metadata or {},
+        'version': get_mapping_version(mapping),
+        'exported_at': __import__('datetime').datetime.now().isoformat()
+    }
+
+
+def import_mapping_template_from_shareable(template: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """
+    Import mapping template from shareable format.
+    
+    Args:
+        template: Shareable mapping template
+        
+    Returns:
+        Mapping dictionary
+    """
+    return template.get('mapping', {})
