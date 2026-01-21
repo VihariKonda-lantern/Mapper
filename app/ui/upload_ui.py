@@ -9,8 +9,8 @@ from typing import Any, List, Dict, Set, Union, cast
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
 
-from performance.cache_utils import load_layout_cached, load_lookups_cached
-from file.file_handler import (
+from utils.cache_manager import load_layout_cached, load_lookups_cached
+from data.file_handler import (
     read_claims_with_header_option,
     detect_delimiter,
     has_header,
@@ -18,7 +18,7 @@ from file.file_handler import (
     infer_fixed_width_positions,
     parse_header_specification_file,
 )
-from file.upload_handlers import capture_claims_file_metadata
+from data.upload_handlers import capture_claims_file_metadata
 
 # Import improvement utilities
 try:
@@ -30,7 +30,7 @@ try:
         compress_dataframe,
         MAX_FILE_SIZE_MB,
     )
-    from ui.ui_improvements import (
+    from ui.ui_components import (
         render_file_preview,
         show_toast,
     )
@@ -92,10 +92,12 @@ def render_lookup_summary_section():
 
 def render_upload_and_claims_preview():
     """
-    Upload Section for Layout, Lookup, Claims, and Headerless detection.
+    Upload Section for Layout, Lookup, Source, and Headerless detection.
     Allows proper external header upload if needed.
     """
-    st.markdown("### Step 1: Upload Files and Confirm Claims File Headers")
+    from core.ui_labels import get_ui_labels
+    ui_labels = get_ui_labels()
+    st.markdown(f"### Step 1: Upload Files and Confirm {ui_labels.source_file_label} Headers")
 
     # Check if header file uploader should be shown (only when headerless file detected)
     show_header_uploader = False
@@ -128,7 +130,12 @@ def render_upload_and_claims_preview():
     
     # Layout File Upload (always in col1)
     with col1:
-        layout_file = st.file_uploader("📄 Upload CDM Layout File", type=["xlsx"], key="layout_file", help="Excel file (.xlsx) containing internal field definitions and requirements. Drag and drop or click to upload.")
+        layout_file = st.file_uploader(
+            f"📄 Upload {ui_labels.target_layout_label}", 
+            type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"], 
+            key="layout_file", 
+            help=f"{ui_labels.target_layout_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
+        )
         if layout_file:
             # Validate file
             is_valid, error_msg = validate_file_upload(layout_file, MAX_FILE_SIZE_MB)
@@ -165,7 +172,12 @@ def render_upload_and_claims_preview():
 
     # Lookup File Upload (always in col2)
     with col2:
-        lookup_file = st.file_uploader("📋 Upload Lookup File", type=["xlsx"], key="lookup_file", help="Excel file (.xlsx) containing MSK and BAR diagnosis codes. Drag and drop or click to upload.")
+        lookup_file = st.file_uploader(
+            f"Upload {ui_labels.lookup_file_label}", 
+            type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"], 
+            key="lookup_file", 
+            help=f"{ui_labels.lookup_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
+        )
         if lookup_file:
             # Validate file
             is_valid, error_msg = validate_file_upload(lookup_file, MAX_FILE_SIZE_MB)
@@ -206,20 +218,22 @@ def render_upload_and_claims_preview():
     if show_header_uploader:
         with col3:
             header_file = st.file_uploader(
-                "📝 Upload Header File (Required)", 
+                "Upload Header File (Required)", 
                 type=["csv", "txt", "tsv", "xlsx", "xls"], 
                 key="external_header_upload", 
                 help="Required for files without headers. Supports: (1) Simple format: one column (vertical) or one row (horizontal) with column names only. (2) Specification format: file with Column Name, Start Position, End Position, and Size columns (for fixed-width files)."
             )
             st.session_state.header_file_obj = header_file if header_file else None
-        # Claims File Upload (in col4 when header is shown)
+        # Source File Upload (in col4 when header is shown)
         if col4 is not None:
             with col4:
-                claims_file = st.file_uploader("📊 Upload Claims File", 
-                                              type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
-                                              key="claims_file_upload",
-                                              help="Main claims data file (.csv, .txt, .tsv, .xlsx, .xls, .json, .parquet) to be mapped and validated. Drag and drop or click to upload.")
-                # Handle claims file upload (inside column context)
+                claims_file = st.file_uploader(
+                    f"Upload {ui_labels.source_file_label}", 
+                    type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
+                    key="claims_file_upload",
+                    help=f"{ui_labels.source_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
+                )
+                # Handle source file upload (inside column context)
                 if claims_file:
                     # Validate file
                     is_valid, error_msg = validate_file_upload(claims_file, MAX_FILE_SIZE_MB)
@@ -246,10 +260,10 @@ def render_upload_and_claims_preview():
                         last_loaded = st.session_state.get("last_loaded_file")
                         if claims_df_loaded is not None and last_loaded == claims_file.name:
                             # File is already loaded
-                            st.success("✅ **Claims file loaded successfully!**")
+                            st.success(f"✅ **{ui_labels.source_file_label} loaded successfully!**")
                         else:
                             # File just uploaded, processing will happen
-                            st.success("✅ **Claims file uploaded successfully!** Processing...")
+                            st.success(f"✅ **{ui_labels.source_file_label} uploaded successfully!** Processing...")
                 elif claims_file is None and "claims_upload_attempted" not in st.session_state:
                     # Track that user has interacted with uploader (even if no file selected)
                     pass
@@ -262,12 +276,14 @@ def render_upload_and_claims_preview():
         else:
             claims_file = None
     else:
-        # Claims File Upload (in col3 when header is not shown)
+        # Source File Upload (in col3 when header is not shown)
         with col3:
-            claims_file = st.file_uploader("📊 Upload Claims File", 
-                                          type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
-                                          key="claims_file_upload",
-                                          help="Main claims data file (.csv, .txt, .tsv, .xlsx, .xls, .json, .parquet) to be mapped and validated. Drag and drop or click to upload.")
+            claims_file = st.file_uploader(
+                f"📊 Upload {ui_labels.source_file_label}", 
+                type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
+                key="claims_file_upload",
+                help=f"{ui_labels.source_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
+            )
             # Handle claims file upload (inside column context)
             if claims_file:
                 # Validate file
@@ -295,10 +311,10 @@ def render_upload_and_claims_preview():
                     last_loaded = st.session_state.get("last_loaded_file")
                     if claims_df_loaded is not None and last_loaded == claims_file.name:
                         # File is already loaded
-                        st.success("✅ **Claims file loaded successfully!**")
+                        st.success(f"✅ **{ui_labels.source_file_label} loaded successfully!**")
                     else:
                         # File just uploaded, processing will happen
-                        st.success("✅ **Claims file uploaded successfully!** Processing...")
+                        st.success(f"✅ **{ui_labels.source_file_label} uploaded successfully!** Processing...")
             elif claims_file is None and "claims_upload_attempted" not in st.session_state:
                 # Track that user has interacted with uploader (even if no file selected)
                 pass
@@ -488,10 +504,10 @@ def render_upload_and_claims_preview():
                             st.session_state.header_uploader_shown = True
                             st.stop()  # Stop processing until header file is uploaded
 
-                    # --- Read full claims file
+                    # --- Read full source file
                     progress.update(70, "Loading claims data...")
                     
-                    with st.spinner("Loading claims file..."):
+                    with st.spinner(f"Loading {ui_labels.source_file_label.lower()}..."):
                         claims_file.seek(0)
                         header_file = st.session_state.get("header_file_obj")
                         # Use header file if provided (allows override), otherwise use detected status
@@ -540,7 +556,7 @@ def render_upload_and_claims_preview():
 
         except Exception as e:
             error_msg = get_user_friendly_error(e)
-            st.error(f"Error processing claims file: {error_msg}")
+            st.error(f"Error processing {ui_labels.source_file_label.lower()}: {error_msg}")
             st.session_state.claims_df = None
             # Show retry option
             if st.button("🔄 Retry Loading File", key="retry_claims_load"):
@@ -551,10 +567,12 @@ def render_upload_and_claims_preview():
 
 def render_claims_file_deep_dive():
     """
-    Displays the deep dive summary of the claims file after mapping:
+    Displays the deep dive summary of the source file after mapping:
     showing all internal fields, mapped columns, data types, fill rates, required flag, and pass/fail status.
     """
-    st.markdown("#### Claims File Deep Dive (Mapped Columns Analysis)")
+    from core.ui_labels import get_ui_labels
+    ui_labels = get_ui_labels()
+    st.markdown(f"#### {ui_labels.source_file_label} Deep Dive (Mapped Columns Analysis)")
 
     claims_df = st.session_state.get("claims_df")
     final_mapping = st.session_state.get("final_mapping", {})
@@ -562,7 +580,7 @@ def render_claims_file_deep_dive():
     transformed_df = st.session_state.get("transformed_df")
 
     if claims_df is None or final_mapping is None or layout_df is None or transformed_df is None:
-        st.info("Upload claims file, complete mappings, and preview transformed data first.")
+        st.info(f"Upload {ui_labels.source_file_label.lower()}, complete mappings, and preview transformed data first.")
         return
 
     deep_dive_rows: List[Dict[str, Any]] = []

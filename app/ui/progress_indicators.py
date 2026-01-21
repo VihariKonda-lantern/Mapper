@@ -159,13 +159,13 @@ def render_workflow_progress(
         with col:
             if i < current_step:
                 status = "✅"
-                color = "#4CAF50"
+                color = "#6b7280"  # Medium grey
             elif i == current_step:
                 status = "🔄"
-                color = "#FF9800"
+                color = "#9ca3af"  # Light grey
             else:
                 status = "⏸️"
-                color = "#9E9E9E"
+                color = "#d1d5db"  # Very light grey
             
             st.markdown(
                 f'<div style="text-align: center; color: {color}; font-weight: {"600" if i == current_step else "400"};">'

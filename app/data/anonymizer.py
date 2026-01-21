@@ -51,7 +51,39 @@ def generate_fake_ssn(seed_val: int) -> str:
 
 # --- Main function ---
 @st.cache_data(show_spinner=False)
+def anonymize_source_data(df: Any, final_mapping: Dict[str, Dict[str, Any]], config: Optional[Any] = None) -> Any:
+    """Anonymize source data by replacing sensitive fields with fake data.
+    
+    Generic version that can be configured per domain. For backward compatibility,
+    defaults to healthcare-specific fields (names, SSNs).
+    
+    Args:
+        df: Source DataFrame to anonymize.
+        final_mapping: Mapping dictionary.
+        config: DomainConfig instance. If None, uses default healthcare fields.
+    
+    Returns:
+        Anonymized DataFrame.
+    """
+    # For now, use healthcare-specific logic (backward compatible)
+    # In future, can make this configurable via domain config
+    return anonymize_claims_data(df, final_mapping)
+
+
+@st.cache_data(show_spinner=False)
 def anonymize_claims_data(df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
+    """Anonymize claims data by replacing sensitive fields with fake data.
+    
+    Note: This is a healthcare-specific implementation. For generic use,
+    see anonymize_source_data().
+    
+    Args:
+        df: Source DataFrame to anonymize.
+        final_mapping: Mapping dictionary.
+    
+    Returns:
+        Anonymized DataFrame.
+    """
     df_copy = df.copy()
 
     insured_id_col: Optional[str] = None

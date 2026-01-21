@@ -114,16 +114,48 @@ class SessionStateManager:
         if key in st.session_state:
             del st.session_state[key]
     
-    # Typed getters for common values
+    # Generic getters (domain-agnostic)
+    @staticmethod
+    def get_source_df(config: Optional[Any] = None) -> Optional[Any]:
+        """Get source DataFrame (domain-agnostic).
+        
+        Args:
+            config: DomainConfig instance. If None, uses default.
+        
+        Returns:
+            Source DataFrame or None.
+        """
+        if config is None:
+            from core.domain_config import get_domain_config
+            config = get_domain_config()
+        key = config.source_dataframe_key
+        return st.session_state.get(key)
+    
+    @staticmethod
+    def get_target_layout_df() -> Optional[Any]:
+        """Get target layout DataFrame (domain-agnostic).
+        
+        Returns:
+            Target layout DataFrame or None.
+        """
+        return st.session_state.get("layout_df")
+    
+    # Typed getters for common values (backward compatibility - claims-specific)
     @staticmethod
     def get_claims_df() -> Optional[Any]:
-        """Get claims DataFrame."""
-        return st.session_state.get("claims_df")
+        """Get claims DataFrame (backward compatibility).
+        
+        Note: This is an alias for get_source_df() for backward compatibility.
+        """
+        return SessionStateManager.get_source_df()
     
     @staticmethod
     def get_layout_df() -> Optional[Any]:
-        """Get layout DataFrame."""
-        return st.session_state.get("layout_df")
+        """Get layout DataFrame (backward compatibility).
+        
+        Note: This is an alias for get_target_layout_df() for backward compatibility.
+        """
+        return SessionStateManager.get_target_layout_df()
     
     @staticmethod
     def get_final_mapping() -> Dict[str, Dict[str, Any]]:
@@ -209,4 +241,54 @@ class SessionStateManager:
         """Clear refresh flag."""
         if SessionStateManager.needs_refresh():
             st.session_state["needs_refresh"] = False
+
+
+# --- Undo/Redo Functions (migrated from session_state.py) ---
+
+def initialize_undo_redo() -> None:
+    """Initialize undo/redo history for mappings."""
+    if "mapping_history" not in st.session_state:
+        st.session_state.mapping_history = []
+    if "history_index" not in st.session_state:
+        st.session_state.history_index = -1
+
+
+def save_to_history(final_mapping: Dict[str, Dict[str, Any]]) -> None:
+    """Save current mapping state to history.
+    
+    Uses shallow copy for performance - mapping structure is dict[str, dict[str, Any]]
+    which doesn't require deep copying since inner dicts are simple value containers.
+    """
+    from core.config_loader import MAPPING_HISTORY_MAX_SIZE
+    initialize_undo_redo()
+    # Remove any future history if we're not at the end
+    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
+        st.session_state.mapping_history = st.session_state.mapping_history[:st.session_state.history_index + 1]
+    # Add new state - use dict comprehension for shallow copy (faster than deepcopy)
+    # This works because mapping structure is dict[str, dict[str, Any]] where inner dicts
+    # only contain simple values (strings, not nested objects)
+    st.session_state.mapping_history.append({k: dict(v) if isinstance(v, dict) else v for k, v in final_mapping.items()})
+    st.session_state.history_index = len(st.session_state.mapping_history) - 1
+    # Limit history size
+    if len(st.session_state.mapping_history) > MAPPING_HISTORY_MAX_SIZE:
+        st.session_state.mapping_history.pop(0)
+        st.session_state.history_index -= 1
+
+
+def undo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
+    """Undo last mapping change."""
+    initialize_undo_redo()
+    if st.session_state.history_index > 0:
+        st.session_state.history_index -= 1
+        return st.session_state.mapping_history[st.session_state.history_index]
+    return None
+
+
+def redo_mapping() -> Optional[Dict[str, Dict[str, Any]]]:
+    """Redo last undone mapping change."""
+    initialize_undo_redo()
+    if st.session_state.history_index < len(st.session_state.mapping_history) - 1:
+        st.session_state.history_index += 1
+        return st.session_state.mapping_history[st.session_state.history_index]
+    return None
 

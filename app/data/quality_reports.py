@@ -101,7 +101,7 @@ class QualityReportGenerator:
         Args:
             report: Report dictionary from generate_report
         """
-        st.markdown("## 📋 Data Quality Report")
+        st.markdown("## Data Quality Report")
         
         # Summary section
         st.markdown("### Summary")

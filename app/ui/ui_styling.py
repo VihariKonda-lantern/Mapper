@@ -1052,13 +1052,13 @@ def inject_main_layout_css():
             border-left-style: solid !important;
         }
         .stSuccess {
-            border-left-color: #28a745 !important;
+            border-left-color: #6b7280 !important;
         }
         .stError {
-            border-left-color: #dc3545 !important;
+            border-left-color: #374151 !important;
         }
         .stWarning {
-            border-left-color: #ffc107 !important;
+            border-left-color: #9ca3af !important;
         }
         .stInfo {
             border-left-color: #6b7280 !important;
@@ -1176,13 +1176,13 @@ def inject_main_layout_css():
         }
         /* 34. Clear Visual States for Validation */
         [data-testid="stDataFrame"] tr[data-status="error"] {
-            background-color: #fff5f5 !important;
+            background-color: #f3f4f6 !important;
         }
         [data-testid="stDataFrame"] tr[data-status="warning"] {
-            background-color: #fffbf0 !important;
+            background-color: #f3f4f6 !important;
         }
         [data-testid="stDataFrame"] tr[data-status="success"] {
-            background-color: #f0fff4 !important;
+            background-color: #f3f4f6 !important;
         }
         /* 35. Better Mobile Responsiveness */
         @media (max-width: 768px) {
@@ -1210,18 +1210,18 @@ def inject_main_layout_css():
         }
         /* 39. Better Error Message Styling */
         .stError {
-            background-color: #fff5f5 !important;
-            border-left-color: #dc3545 !important;
+            background-color: #f3f4f6 !important;
+            border-left-color: #374151 !important;
         }
         /* 40. Improved Success Message Styling */
         .stSuccess {
-            background-color: #f0fff4 !important;
-            border-left-color: #28a745 !important;
+            background-color: #f3f4f6 !important;
+            border-left-color: #6b7280 !important;
         }
         /* 41. Better Warning Message Styling */
         .stWarning {
-            background-color: #fffbf0 !important;
-            border-left-color: #ffc107 !important;
+            background-color: #f3f4f6 !important;
+            border-left-color: #9ca3af !important;
         }
         /* 42. Improved Info Message Styling - All Grey */
         .stInfo {

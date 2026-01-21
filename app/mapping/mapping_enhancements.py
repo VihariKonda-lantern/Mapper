@@ -378,17 +378,46 @@ class MappingLearner:
 
 
 # Convenience functions for backward compatibility
-def get_mapping_confidence_score(mapping: Dict[str, Any]) -> float:
+def get_mapping_confidence_score(
+    final_mapping: Dict[str, Any],
+    ai_suggestions: Optional[Dict[str, Any]] = None
+) -> Dict[str, float]:
     """
-    Get confidence score for a mapping.
+    Get confidence scores for mappings by comparing final mapping with AI suggestions.
     
     Args:
-        mapping: Mapping dictionary with confidence field
+        final_mapping: Final mapping dictionary {field: {"value": col, ...}}
+        ai_suggestions: Optional AI suggestions dictionary {field: {"value": col, "confidence": float, ...}}
         
     Returns:
-        Confidence score (0.0 to 1.0)
+        Dictionary of {field: confidence_score} where confidence is 0.0 to 1.0
     """
-    return mapping.get('confidence', 0.0)
+    confidence_scores = {}
+    
+    if ai_suggestions:
+        # Compare final mapping with AI suggestions
+        for field, mapping_data in final_mapping.items():
+            if field in ai_suggestions:
+                # Get confidence from AI suggestions
+                ai_data = ai_suggestions[field]
+                if isinstance(ai_data, dict):
+                    confidence = ai_data.get('confidence', 0.0)
+                else:
+                    confidence = 0.0
+                confidence_scores[field] = confidence
+            else:
+                # Field not in AI suggestions, default to 0.0
+                confidence_scores[field] = 0.0
+    else:
+        # No AI suggestions, extract confidence from mapping if available
+        for field, mapping_data in final_mapping.items():
+            if isinstance(mapping_data, dict):
+                confidence = mapping_data.get('confidence', 0.0)
+            else:
+                confidence = 0.0
+            confidence_scores[field] = confidence
+    
+    return confidence_scores
 
 
 def validate_mapping_before_processing(mapping: Dict[str, Dict[str, Any]]) -> tuple[bool, Optional[str]]:
@@ -454,3 +483,72 @@ def import_mapping_template_from_shareable(template: Dict[str, Any]) -> Dict[str
         Mapping dictionary
     """
     return template.get('mapping', {})
+
+
+# --- Learning Helper Functions ---
+# These functions help record mapping corrections for learning
+
+def record_mapping_correction(
+    internal_field: str,
+    suggested_column: Optional[str],
+    corrected_column: str,
+    context: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Record a mapping correction for learning.
+    
+    This should be called whenever a user manually changes a mapping,
+    especially when they override an AI suggestion.
+    
+    Args:
+        internal_field: The internal field name
+        suggested_column: The originally suggested column (from AI or previous mapping)
+        corrected_column: The column the user actually selected
+        context: Optional context (field type, group, etc.)
+    """
+    # Skip if no suggestion (first-time mapping)
+    if not suggested_column:
+        return
+    
+    # Skip if user selected the same as suggested (no correction)
+    if suggested_column == corrected_column:
+        return
+    
+    # Get or create learner instance (requires streamlit)
+    try:
+        import streamlit as st
+        if "mapping_learner" not in st.session_state:
+            st.session_state.mapping_learner = MappingLearner()
+        
+        learner = st.session_state.mapping_learner
+        learner.record_correction(internal_field, suggested_column, corrected_column, context)
+    except ImportError:
+        # Streamlit not available (e.g., in tests)
+        pass
+
+
+def record_bulk_mapping_changes(
+    old_mapping: Dict[str, Dict[str, Any]],
+    new_mapping: Dict[str, Dict[str, Any]]
+) -> None:
+    """
+    Record corrections when mappings are changed in bulk.
+    
+    Args:
+        old_mapping: Previous mapping state
+        new_mapping: New mapping state
+    """
+    for field, new_info in new_mapping.items():
+        new_col = new_info.get("value")
+        if not new_col:
+            continue
+        
+        old_info = old_mapping.get(field, {})
+        old_col = old_info.get("value")
+        
+        # Record correction if column changed
+        if old_col and old_col != new_col:
+            mode = new_info.get("mode", "manual")
+            # Only record if it was an AI suggestion that was overridden
+            if old_info.get("mode") == "auto" or mode == "manual":
+                record_mapping_correction(field, old_col, new_col)

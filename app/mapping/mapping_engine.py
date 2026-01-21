@@ -66,25 +66,26 @@ def match_known_patterns(values: List[str]) -> str:
             return "zip"
     return "unknown"
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, hash_funcs={pd.DataFrame: lambda x: hash(str(x.values.tobytes())) if hasattr(x.values, 'tobytes') else id(x)})  # type: ignore[arg-type]
 def get_enhanced_automap(layout_df: Any, claims_df: Any, threshold: float = 0.6) -> Dict[str, Dict[str, Any]]:
-    """Suggest source columns for internal fields using multiple heuristics.
-
-    Combines fuzzy string matching, sample value inspection, known pattern
-    detection, and coarse type guessing to propose mappings with confidence.
-
+    """
+    Suggests best source column for each internal field using enhanced heuristics:
+    fuzzy match, sample value matching, regex pattern detection, and type guessing.
+    
+    This is the original, simpler mapping logic from the reference project.
+    
     Args:
         layout_df: Internal layout DataFrame-like, including "Internal Field".
         claims_df: Source claims DataFrame-like.
         threshold: Minimum fuzzy match ratio to consider a candidate.
 
     Returns:
-        Mapping suggestions as a dict: {internal_field: {"value": col, "confidence": float}}.
+        Mapping suggestions as a dict: {internal_field: {"value": col, "score": float}}.
     """
     suggestions: Dict[str, Dict[str, Any]] = {}
-    internal_fields: List[str] = [str(x) for x in layout_df["Internal Field"].dropna().tolist()]  # type: ignore[no-untyped-call]
+    internal_fields = layout_df["Internal Field"].dropna().unique().tolist()  # type: ignore[no-untyped-call]
     examples = dict(zip(layout_df["Internal Field"], layout_df.get("Example Value", "")))  # type: ignore[no-untyped-call]
-    source_columns: List[str] = claims_df.columns.tolist()
+    source_columns = claims_df.columns.tolist()
 
     for internal in internal_fields:
         best_match = None
@@ -100,7 +101,7 @@ def get_enhanced_automap(layout_df: Any, claims_df: Any, threshold: float = 0.6)
             name_score = difflib.SequenceMatcher(None, internal.lower(), source.lower()).ratio()
 
             # Step 2: Sample value related boosts
-            sample_values: List[str] = claims_df[source].dropna().astype(str).head(5).tolist()  # type: ignore[no-untyped-call]
+            sample_values = claims_df[source].dropna().astype(str).head(5).tolist()  # type: ignore[no-untyped-call]
 
             # Example match boost
             example_boost = 0
@@ -132,8 +133,9 @@ def get_enhanced_automap(layout_df: Any, claims_df: Any, threshold: float = 0.6)
         if best_match:
             suggestions[internal] = {
                 "value": best_match,
-                "score": round(best_score * 100, 2)
+                "score": round(best_score * 100, 2),
+                "confidence": best_score,
+                "source": "algorithmic"
             }
 
     return suggestions
-

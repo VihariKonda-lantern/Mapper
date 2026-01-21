@@ -1,20 +1,22 @@
 # --- tab_mapping.py ---
 """Field Mapping tab handler."""
 import streamlit as st
+import pandas as pd
 from typing import Any, List, Dict, Optional
 import json
 import os
 import time
 from core.state_manager import SessionStateManager
-from core.config import AI_CONFIDENCE_THRESHOLD
+from core.config_loader import AI_CONFIDENCE_THRESHOLD
 from utils.improvements_utils import render_empty_state, get_user_friendly_error, DEBOUNCE_DELAY_SECONDS
-from ui.ui_improvements import show_toast, show_confirmation_dialog, show_undo_redo_feedback
+from ui.ui_components import show_toast, show_confirmation_dialog, show_undo_redo_feedback
 from ui.mapping_ui import render_field_mapping_tab
+from mapping.manual_llm_workflow import generate_batch_payload, parse_llm_response
 from ui.ui_components import render_progress_bar
-from core.session_state import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping
+from core.state_manager import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping
 from data.transformer import transform_claims_data
 from data.output_generator import generate_all_outputs
-from testing_qa import create_mapping_unit_tests, run_unit_tests
+# Testing QA removed - optional feature
 from mapping.mapping_engine import get_enhanced_automap
 from mapping.mapping_enhancements import (
     get_mapping_confidence_score,
@@ -24,14 +26,18 @@ from mapping.mapping_enhancements import (
     import_mapping_template_from_shareable
 )
 from advanced_features import save_mapping_template, load_mapping_template, list_saved_templates
-from file.layout_loader import get_required_fields
-from monitoring.audit_logger import log_event
+from data.layout_loader import get_required_fields
+from utils.audit_logger import log_event
 
 st: Any = st
 
 
 def render_mapping_tab() -> None:
     """Render the Field Mapping tab content."""
+    # Inject tight spacing CSS
+    from ui.design_system import inject_tight_spacing_css
+    inject_tight_spacing_css()
+    
     # Cache frequently accessed session state values
     layout_df = SessionStateManager.get_layout_df()
     claims_df = SessionStateManager.get_claims_df()
@@ -41,7 +47,7 @@ def render_mapping_tab() -> None:
         render_empty_state(
             icon="📁",
             title="Files Required",
-            message="Please upload both layout and claims files to begin mapping.",
+            message="Please start from the Setup tab to upload both layout and claims files before mapping.",
             action_label="Go to Setup Tab",
             action_callback=lambda: SessionStateManager.set("active_tab", "Setup")
         )
@@ -71,201 +77,199 @@ def render_mapping_tab() -> None:
         unsafe_allow_html=True
     )
 
-    # --- UX Tools (Collapsible Container) ---
-    with st.expander("⚙️ Tools & Actions", expanded=False):
-        # Search field at the top of the container with debouncing
-        raw_search_tools = st.text_input("🔍 Search Fields", placeholder="Type to filter fields... (Ctrl+F)", key="field_search_tools_raw")
-        # Debounce search input
-        current_time = time.time()
-        last_search_time = st.session_state.get("field_search_tools_last_time", 0)
-        debounced_search = st.session_state.get("field_search_tools", "")
-        if raw_search_tools != st.session_state.get("field_search_tools_raw_prev", ""):
-            st.session_state.field_search_tools_raw_prev = raw_search_tools
-            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
-                debounced_search = raw_search_tools
-                st.session_state.field_search_tools = debounced_search
-                st.session_state.field_search_tools_last_time = current_time
-            else:
-                st.session_state.field_search_tools_pending = raw_search_tools
-        if "field_search_tools_pending" in st.session_state:
-            if current_time - last_search_time >= DEBOUNCE_DELAY_SECONDS:
-                debounced_search = st.session_state.field_search_tools_pending
-                st.session_state.field_search_tools = debounced_search
-                st.session_state.field_search_tools_last_time = current_time
-                del st.session_state.field_search_tools_pending
-        search_query = debounced_search
-        st.markdown("<br>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
+    # --- Manual LLM Workflow Section (outside form to allow buttons) ---
+    with st.expander("🤖 Manual LLM Mapping (Copy & Paste Workflow)", expanded=False):
+        st.markdown("""
+        **How to use:**
+        1. Click "Generate Payload" to create the JSON payload
+        2. Copy the generated payload
+        3. Paste it into your Copilot Studio agent
+        4. Copy the response from Copilot Studio
+        5. Paste it in the response box below and click "Apply Mappings"
+        """)
+        
+        col1, col2 = st.columns([1, 1])
+        
         with col1:
-            st.markdown("**History**")
-            initialize_undo_redo()
-            if len(st.session_state.mapping_history) == 0:
-                if final_mapping:
-                    save_to_history(final_mapping)
-                else:
-                    save_to_history({})
-            can_undo = st.session_state.history_index > 0
-            can_redo = st.session_state.history_index < len(st.session_state.mapping_history) - 1
-            if st.button("↶ Undo", key="undo_btn", use_container_width=True, disabled=not can_undo, help="Undo last mapping change (Ctrl+Z)"):
-                undone = undo_mapping()
-                if undone is not None:
-                    st.session_state.final_mapping = {k: dict(v) for k, v in undone.items()}
-                    if "auto_mapping" in st.session_state:
-                        del st.session_state.auto_mapping
-                    undone_field_name: Optional[str] = list(undone.keys())[0] if undone else None
-                    show_undo_redo_feedback("Undone", undone_field_name or "")
-                    st.session_state.needs_refresh = True
-            if st.button("↷ Redo", key="redo_btn", use_container_width=True, disabled=not can_redo, help="Redo last undone change (Ctrl+Y)"):
-                redone = redo_mapping()
-                if redone is not None:
-                    st.session_state.final_mapping = {k: dict(v) for k, v in redone.items()}
-                    if "auto_mapping" in st.session_state:
-                        del st.session_state.auto_mapping
-                    redone_field_name: Optional[str] = list(redone.keys())[0] if redone else None
-                    show_undo_redo_feedback("Redone", redone_field_name or "")
-                    st.session_state.needs_refresh = True
-        with col2:
-            st.markdown("**Bulk Actions**")
-            ai_suggestions = st.session_state.get("auto_mapping", {})
-            if st.button("✅ Accept All AI (≥80%)", key="bulk_accept_ai", use_container_width=True):
-                accepted = 0
-                for field, info in ai_suggestions.items():
-                    score = info.get("score", 0)
-                    if score >= AI_CONFIDENCE_THRESHOLD and (field not in final_mapping or not final_mapping[field].get("value")):
-                        final_mapping[field] = {"mode": "auto", "value": info["value"]}
-                        accepted += 1
-                if accepted > 0:
-                    st.session_state.final_mapping = final_mapping
-                    save_to_history(final_mapping)
-                    show_toast(f"Accepted {accepted} AI suggestions!", "✅")
-                    st.session_state.needs_refresh = True
-            if st.button("🔄 Clear All", key="bulk_clear", use_container_width=True):
-                if show_confirmation_dialog(
-                    "Clear All Mappings",
-                    "⚠️ Are you sure you want to clear all mappings? This action cannot be undone.",
-                    confirm_label="Yes, Clear All",
-                    cancel_label="Cancel",
-                    key="clear_all_confirm"
-                ):
-                    final_mapping.clear()
-                    st.session_state.final_mapping = {}
-                    save_to_history({})
-                    show_toast("All mappings cleared!", "🔄")
-                    log_event("mapping", "Cleared all mappings")
-                    st.session_state.needs_refresh = True
-        with col3:
-            st.markdown("**Utilities**")
-            if st.button("📋 Copy Mapping", key="bulk_copy", use_container_width=True):
-                mapping_str = json.dumps(final_mapping, indent=2)
-                st.code(mapping_str, language="json")
-                st.info("Right-click and copy the JSON above")
-            if final_mapping:
-                mapping_json = json.dumps(final_mapping, indent=2).encode('utf-8')
-                st.download_button(
-                    label="💾 Export Mapping (JSON)",
-                    data=mapping_json,
-                    file_name="mapping_template.json",
-                    mime="application/json",
-                    key="export_mapping_json",
-                    use_container_width=True,
-                    help="Download current mapping as JSON template"
-                )
-            st.markdown("**Mapping Templates**")
-            template_col1, template_col2 = st.columns(2)
-            with template_col1:
-                if st.button("💾 Save Template", key="save_template", use_container_width=True):
-                    if final_mapping:
-                        filename = save_mapping_template(final_mapping)
-                        st.success(f"Template saved: {os.path.basename(filename)}")
-                        log_event("template", f"Saved mapping template: {os.path.basename(filename)}")
-                    else:
-                        st.warning("No mapping to save")
-            with template_col2:
-                saved_templates = list_saved_templates()
-                if saved_templates:
-                    template_names = [os.path.basename(t) for t in saved_templates]
-                    selected_template = st.selectbox(
-                        "Load Template",
-                        options=[""] + template_names,
-                        key="load_template_select",
-                        help="Select a saved template to load"
-                    )
-                    if selected_template and selected_template != "":
-                        template_path = os.path.join("templates", selected_template)
-                        loaded_mapping = load_mapping_template(template_path)
-                        if loaded_mapping:
-                            st.session_state.final_mapping = loaded_mapping
-                            save_to_history(loaded_mapping)
-                            show_toast(f"Template loaded: {selected_template}", "✅")
-                            log_event("template", f"Loaded mapping template: {selected_template}")
-                            st.session_state.needs_refresh = True
-                else:
-                    st.info("No saved templates")
-
-    # --- Mapping Enhancements Section ---
-    with st.expander("🔧 Mapping Tools & Enhancements", expanded=False):
-        if st.button("Validate Mapping Before Processing", key="validate_mapping_btn"):
-            is_valid, errors = validate_mapping_before_processing(final_mapping, layout_df, claims_df)
-            if is_valid:
-                st.success("✅ Mapping is valid and ready for processing!")
-            else:
-                st.error("❌ Mapping validation failed:")
-                for error in errors:
-                    st.error(f"- {error}")
-        ai_suggestions_tab2 = st.session_state.get("auto_mapping", {})
-        if ai_suggestions_tab2:
-            confidence_scores = get_mapping_confidence_score(final_mapping, ai_suggestions_tab2)
-            st.markdown("#### Mapping Confidence Scores")
-            import pandas as pd
-            confidence_df = pd.DataFrame(list(confidence_scores.items()), columns=["Field", "Confidence"])
-            confidence_df["Confidence"] = (confidence_df["Confidence"] * 100).round(1)
-            if confidence_df.empty:
-                render_empty_state(
-                    icon="🎯",
-                    title="No Confidence Scores",
-                    message="AI mapping suggestions will appear here once available."
-                )
-            else:
-                from ui_improvements import render_tooltip, render_sortable_table
-                render_tooltip(
-                    "AI mapping confidence scores",
-                    "Higher scores indicate better matches. Scores above 80% are considered high confidence."
-                )
-                render_sortable_table(confidence_df, key="confidence_table")
-        st.markdown("#### Mapping Version Control")
-        mapping_version = get_mapping_version(final_mapping)
-        st.code(f"Current Version: {mapping_version}")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Export Mapping for Sharing", key="export_mapping_share"):
-                shareable = export_mapping_template_for_sharing(final_mapping, {
-                    "name": "Current Mapping",
-                    "description": "Exported mapping",
-                    "author": "User"
-                })
-                st.download_button("Download Shareable Template",
-                                 json.dumps(shareable, indent=2).encode('utf-8'),
-                                 "mapping_template_shareable.json",
-                                 "application/json",
-                                 key="download_shareable")
-        with col2:
-            uploaded_template = st.file_uploader("Import Shareable Template",
-                                                type=["json"],
-                                                key="import_shareable_template")
-            if uploaded_template:
+            generate_minimal = st.checkbox("Generate minimal payload (smaller size)", key="minimal_payload_check", value=True, help="Reduces payload size by limiting sample values and removing optional fields")
+            st.caption("ℹ️ Only mandatory fields will be included in the payload")
+            if st.button("📋 Generate Payload", key="generate_payload_btn"):
                 try:
-                    template_data = json.load(uploaded_template)
-                    imported_mapping, metadata = import_mapping_template_from_shareable(template_data)
-                    if st.button("Apply Imported Mapping", key="apply_imported"):
-                        st.session_state.final_mapping = imported_mapping
-                        show_toast(f"Imported mapping from: {metadata.get('name', 'Unknown')}", "✅")
-                        st.session_state.needs_refresh = True
+                    existing_mappings = {
+                        field: info.get("value") 
+                        for field, info in final_mapping.items()
+                        if info.get("value")
+                    }
+                    minimal_mode = st.session_state.get("minimal_payload_check", True)
+                    payload = generate_batch_payload(layout_df, claims_df, existing_mappings, minimal=minimal_mode)
+                    
+                    # Count mandatory fields included
+                    mandatory_count = len(payload.get("internal_fields", []))
+                    total_cols = len(payload.get("source_columns", []))
+                    
+                    payload_json = json.dumps(payload, indent=2)
+                    payload_size_kb = len(payload_json.encode('utf-8')) / 1024
+                    st.session_state.llm_payload = payload_json
+                    st.session_state.llm_payload_size = payload_size_kb
+                    st.success(f"✅ Payload generated! Size: {payload_size_kb:.1f} KB ({mandatory_count} mandatory fields, {total_cols} source columns). Copy it from the box below.")
+                    st.rerun()
                 except Exception as e:
-                    error_msg = get_user_friendly_error(e)
-                    st.error(f"Error importing template: {error_msg}")
+                    st.error(f"Error generating payload: {e}")
+        
+        with col2:
+            if st.button("🔄 Clear Payload", key="clear_payload_btn"):
+                if "llm_payload" in st.session_state:
+                    del st.session_state.llm_payload
+                if "llm_response_text" in st.session_state:
+                    del st.session_state.llm_response_text
+                st.success("Cleared!")
+                st.rerun()
+        
+        # Show payload if generated (collapsible using details/summary HTML)
+        if "llm_payload" in st.session_state:
+            st.markdown("---")
+            payload_size = st.session_state.get("llm_payload_size", 0)
+            size_info = f" ({payload_size:.1f} KB)" if payload_size > 0 else ""
+            st.markdown(f"""
+            <details open style="margin: 0.5rem 0;">
+                <summary style="cursor: pointer; font-weight: 600; padding: 0.5rem 0; user-select: none; font-size: 14px;">
+                    📋 Generated Payload{size_info} (Click to expand/collapse)
+                </summary>
+            </details>
+            """, unsafe_allow_html=True)
+            
+            # Show warning if payload is too large
+            if payload_size > 50:  # More than 50 KB
+                st.warning(f"⚠️ Payload size is {payload_size:.1f} KB. If Copilot Studio has paste limits, try reducing sample values or splitting the request.")
+            
+            # Copy button and payload display
+            col_copy, col_info = st.columns([1, 4])
+            with col_copy:
+                copy_clicked = st.button("📋 Copy Payload", key="copy_payload_btn", use_container_width=True)
+                if copy_clicked:
+                    st.session_state.copy_payload_clicked = True
+                    st.rerun()
+            
+            with col_info:
+                st.caption("💡 Click 'Copy Payload' button or select all text in the box below (Ctrl/Cmd+A) and copy (Ctrl/Cmd+C)")
+            
+            # Display payload in a text area for easy selection and copying
+            st.text_area(
+                "Payload JSON (Select all and copy)",
+                value=st.session_state.llm_payload,
+                height=300,
+                key="payload_display_textarea",
+                help="Select all text (Ctrl/Cmd+A) and copy (Ctrl/Cmd+C). The copy button above also works.",
+                label_visibility="visible"
+            )
+            
+            # Handle copy button click with JavaScript
+            if st.session_state.get("copy_payload_clicked", False):
+                payload_escaped = json.dumps(st.session_state.llm_payload)
+                st.markdown(
+                    f"""
+                    <script>
+                        (function() {{
+                            const text = {payload_escaped};
+                            const textarea = document.createElement('textarea');
+                            textarea.value = text;
+                            textarea.style.position = 'fixed';
+                            textarea.style.opacity = '0';
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            textarea.setSelectionRange(0, 99999); // For mobile devices
+                            
+                            try {{
+                                const successful = document.execCommand('copy');
+                                if (successful) {{
+                                    console.log('Payload copied to clipboard');
+                                }} else {{
+                                    // Fallback to modern API
+                                    navigator.clipboard.writeText(text).then(function() {{
+                                        console.log('Payload copied via clipboard API');
+                                    }}).catch(function(err) {{
+                                        console.error('Failed to copy: ', err);
+                                    }});
+                                }}
+                            }} catch (err) {{
+                                // Try modern API
+                                navigator.clipboard.writeText(text).then(function() {{
+                                    console.log('Payload copied via clipboard API');
+                                }}).catch(function(err) {{
+                                    console.error('Failed to copy: ', err);
+                                }});
+                            }}
+                            
+                            document.body.removeChild(textarea);
+                        }})();
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.session_state.copy_payload_clicked = False
+                st.success("✅ Payload copied to clipboard!")
+        
+        st.divider()
+        
+        # Response input
+        st.markdown("**Paste Copilot Studio Response:**")
+        response_text = st.text_area(
+            "LLM Response",
+            value=st.session_state.get("llm_response_text", ""),
+            height=200,
+            key="llm_response_text",
+            placeholder="Paste the JSON response from Copilot Studio here...",
+            help="Paste the complete response from your Copilot Studio agent"
+        )
+        
+        if st.button("✅ Apply Mappings", key="apply_llm_mappings_btn", type="primary"):
+            if not response_text.strip():
+                st.warning("Please paste the response from Copilot Studio first.")
+            else:
+                try:
+                    # Parse the response
+                    parsed_mappings = parse_llm_response(response_text)
+                    
+                    if not parsed_mappings:
+                        st.warning("No mappings found in the response. Please check the format.")
+                    else:
+                        # Apply mappings to final_mapping
+                        if "final_mapping" not in st.session_state:
+                            st.session_state.final_mapping = {}
+                        
+                        applied_count = 0
+                        for field, mapping_info in parsed_mappings.items():
+                            column = mapping_info.get("value")
+                            if column and column in claims_df.columns:
+                                st.session_state.final_mapping[field] = {
+                                    "mode": "llm_manual",
+                                    "value": column,
+                                    "confidence": mapping_info.get("confidence", 1.0),
+                                    "source": "llm"
+                                }
+                                applied_count += 1
+                        
+                        # Clear the response text after successful application
+                        st.session_state.llm_response_text = ""
+                        
+                        # Refresh auto-mapping to reflect new mappings
+                        if "auto_mapping" in st.session_state:
+                            del st.session_state.auto_mapping
+                        
+                        st.success(f"✅ Applied {applied_count} mapping(s) from LLM response!")
+                        st.rerun()
+                        
+                except ValueError as e:
+                    st.error(f"Error parsing response: {e}")
+                except Exception as e:
+                    st.error(f"Unexpected error: {e}")
     
     # --- Main Mapping Section ---
-    st.markdown("#### Manual Field Mapping")
+    st.markdown("""
+        <div style='margin-top: 0.5rem; margin-bottom: 0.125rem;'>
+            <h4 style='margin: 0; padding: 0;'>Manual Field Mapping</h4>
+        </div>
+    """, unsafe_allow_html=True)
     with st.form("mapping_form"):
         render_field_mapping_tab()
         apply_mappings = st.form_submit_button("Apply Mappings")
@@ -281,176 +285,14 @@ def render_mapping_tab() -> None:
                     except NameError:
                         pass
                 try:
-                    tests = create_mapping_unit_tests(final_mapping, claims_df, layout_df)
-                    test_results = run_unit_tests(tests)
-                    st.session_state.unit_test_results = test_results
-                except Exception:
+                    # Testing QA removed - optional feature
                     pass
 
-    st.divider()
-    
-    # --- Test Mapping Section ---
+    # --- Test Mapping Section (silent, no UI) ---
     if st.session_state.get("mappings_ready") and final_mapping:
         mapping_hash = str(hash(str(final_mapping)))
         last_hash = st.session_state.get("last_mapping_hash")
         if last_hash != mapping_hash or not st.session_state.get("unit_test_results"):
-            try:
-                tests = create_mapping_unit_tests(final_mapping, claims_df, layout_df)
-                test_results = run_unit_tests(tests)
-                st.session_state.unit_test_results = test_results
+            # Testing QA removed - optional feature
                 st.session_state.last_mapping_hash = mapping_hash
-            except Exception:
-                pass
-
-    # --- Review & Adjust Mappings Section ---
-    if st.session_state.get("mappings_ready") and final_mapping:
-        st.markdown("#### Review & Adjust Mappings")
-        st.caption("Review and edit your mappings in the table below. Click 'Apply Edited Mappings' to save changes.")
-        all_internal_fields = layout_df["Internal Field"].dropna().unique().tolist()
-        required_fields_df = get_required_fields(layout_df)
-        required_fields_list: List[str] = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
-        required_fields_set: set = set(required_fields_list)
-        available_source_columns = claims_df.columns.tolist()
-        review_data: List[Dict[str, Any]] = []
-        for field in all_internal_fields:
-            mapping_info = final_mapping.get(field, {})
-            source_col = mapping_info.get("value", "")
-            is_required = "Yes" if field in required_fields_set else "No"
-            review_data.append({
-                "Internal Field": field,
-                "Source Column": source_col,
-                "Is Required": is_required
-            })
-        import pandas as pd
-        review_df = pd.DataFrame(review_data)
-        review_df["_sort_key"] = review_df["Is Required"].apply(lambda x: 0 if x == "Yes" else 1)
-        review_df = review_df.sort_values(by=["_sort_key", "Internal Field"]).drop(columns=["_sort_key"])
-        column_config = {
-            "Internal Field": st.column_config.TextColumn("Internal Field", disabled=True, help="Internal field name (cannot be edited)"),
-            "Source Column": st.column_config.TextColumn("Source Column", help="Type or edit the source column name. Available columns: " + ", ".join(available_source_columns[:10]) + ("..." if len(available_source_columns) > 10 else ""), required=False),
-            "Is Required": st.column_config.TextColumn("Is Required", disabled=True, help="Whether this field is mandatory")
-        }
-        edited_df = st.data_editor(review_df, column_config=column_config, use_container_width=True, num_rows="fixed", key="mapping_review_editor", hide_index=True)
-        if st.button("Apply Edited Mappings", key="apply_edited_mappings", use_container_width=True, type="primary"):
-            updated_mapping: Dict[str, Dict[str, Any]] = dict(final_mapping)
-            for row in edited_df.itertuples(index=False):
-                internal_field = str(row[0])
-                source_col = str(row[1]).strip() if pd.notna(row[1]) else ""
-                if source_col and source_col != "":
-                    existing_mapping = updated_mapping.get(internal_field, {})
-                    mode = existing_mapping.get("mode", "manual")
-                    if existing_mapping.get("value") != source_col:
-                        mode = "manual"
-                    updated_mapping[internal_field] = {"mode": mode, "value": source_col}
-                elif internal_field in updated_mapping:
-                    del updated_mapping[internal_field]
-            st.session_state.final_mapping = updated_mapping
-            if updated_mapping:
-                save_to_history(updated_mapping)
-            if claims_df is not None and updated_mapping:
-                st.session_state.transformed_df = transform_claims_data(claims_df, updated_mapping)
-                generate_all_outputs()
-                try:
-                    tests = create_mapping_unit_tests(updated_mapping, claims_df, layout_df)
-                    test_results = run_unit_tests(tests)
-                    st.session_state.unit_test_results = test_results
-                    st.session_state.last_mapping_hash = str(hash(str(updated_mapping)))
-                except Exception:
-                    pass
-            st.success("✅ Mappings updated successfully!")
-            manual_mapped_count = len([f for f in updated_mapping.keys() 
-                                     if updated_mapping[f].get("value") and updated_mapping[f].get("mode") == "manual"])
-            if manual_mapped_count > 0:
-                try:
-                    log_event("mapping", f"Manual mappings updated via review table ({manual_mapped_count} fields mapped)")
-                except NameError:
-                    pass
-            show_toast("Mappings updated successfully!", "✅")
-            st.session_state.needs_refresh = True
-
-    st.divider()
-
-    # --- AI Suggestions Section ---
-    st.markdown("#### AI Auto-Mapping Suggestions")
-    if "auto_mapping" not in st.session_state and st.session_state.get("mappings_ready"):
-        with st.spinner("Running AI mapping suggestions..."):
-            st.session_state.auto_mapping = get_enhanced_automap(layout_df, claims_df)
-
-    ai_suggestions = st.session_state.get("auto_mapping", {})
-    auto_mapped_fields = st.session_state.get("auto_mapped_fields", [])
-
-    if ai_suggestions:
-        auto_mapped_high_confidence = [
-            (field, info) for field, info in ai_suggestions.items()
-            if field in auto_mapped_fields and info.get("score", 0) >= 80
-        ]
-        if auto_mapped_high_confidence:
-            st.info("Fields with AI confidence ≥ 80% have already been auto-mapped. You can override them manually below.")
-            with st.expander("📋 Auto-Mapped Fields (≥80% confidence) - Click to Override", expanded=False):
-                st.caption("These fields were automatically mapped. You can change them in the mapping form below.")
-                for field, info in auto_mapped_high_confidence:
-                    col1, col2, col3 = st.columns([3, 3, 2])
-                    with col1:
-                        st.markdown(f"**{field}**")
-                    with col2:
-                        mapped_value = final_mapping.get(field, {}).get("value", "")
-                        st.code(mapped_value if mapped_value else "Not mapped", language="plaintext")
-                        if "score" in info:
-                            st.caption(f"AI Confidence: {info['score']}%")
-                    with col3:
-                        if st.button("Override", key=f"override_{field}", use_container_width=True):
-                            if field in final_mapping:
-                                final_mapping[field] = {"mode": "manual", "value": ""}
-                                st.session_state.final_mapping = final_mapping
-                                show_toast(f"Override applied for {field}", "✅")
-                                st.session_state.needs_refresh = True
-                st.divider()
-
-        with st.expander("🔍 View and Commit Additional Suggestions", expanded=False):
-            selected_fields_tab2: List[str] = []
-            for field, info in ai_suggestions.items():
-                if field in auto_mapped_fields:
-                    continue
-                col1, col2, col3 = st.columns([3, 3, 1])
-                with col1:
-                    st.markdown(f"**{field}**")
-                with col2:
-                    st.code(info["value"], language="plaintext")
-                    if "score" in info:
-                        st.caption(f"Confidence: {info['score']}%")
-                with col3:
-                    selected = st.checkbox("Accept", key=f"ai_accept_{field}")
-                    if selected:
-                        selected_fields_tab2.append(field)
-
-            if selected_fields_tab2 and st.button("✅ Commit Selected Suggestions"):
-                for field in selected_fields_tab2:
-                    st.session_state.final_mapping[field] = {
-                        "mode": "auto",
-                        "value": ai_suggestions[field]["value"]
-                    }
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                try:
-                    status_text.text("Applying selected suggestions...")
-                    progress_bar.progress(0.3)
-                    generate_all_outputs()
-                    progress_bar.progress(1.0)
-                    status_text.empty()
-                    progress_bar.empty()
-                    st.success(f"Committed {len(selected_fields_tab2)} suggestion(s).")
-                except Exception as e:
-                    progress_bar.empty()
-                    status_text.empty()
-                    error_msg = get_user_friendly_error(e)
-                    st.error(f"Error applying suggestions: {error_msg}")
-                    if claims_df is not None and final_mapping:
-                        st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping)
-                        st.session_state["transformed_ready"] = True
-    else:
-        render_empty_state(
-            icon="🤖",
-            title="No AI Suggestions",
-            message="No additional AI mapping suggestions available. All fields may already be mapped or AI confidence is below threshold."
-        )
 

@@ -3,9 +3,9 @@
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, TypeVar, cast
 import time
-from performance.cache_manager import CacheManager
-from monitoring.structured_logging import StructuredLogger
-from core.error_context import error_context
+from utils.cache_manager import CacheManager
+from utils.structured_logging import StructuredLogger
+from core.error_handling import error_context
 from core.exceptions import ClaimsMapperError
 
 logger = StructuredLogger("decorators")
@@ -40,7 +40,7 @@ def handle_errors(
             except Exception as e:
                 msg = error_message or f"Error in {func.__name__}"
                 if log_error:
-                    logger.log_error(msg, {"function": func.__name__, "error": str(e)})
+                    logger.error(msg, function=func.__name__, error=str(e))
                 if return_value is not None:
                     return return_value
                 raise
@@ -83,14 +83,14 @@ def log_execution(
                 if log_result:
                     log_data["result"] = str(result)[:200]
                 
-                logger.log_info(f"Function {func.__name__} executed successfully", log_data)
+                logger.info(f"Function {func.__name__} executed successfully", **log_data)
                 return result
             except Exception as e:
                 execution_time = time.time() - start_time
                 log_data["execution_time"] = execution_time
                 log_data["status"] = "error"
                 log_data["error"] = str(e)
-                logger.log_error(f"Function {func.__name__} failed", log_data)
+                logger.error(f"Function {func.__name__} failed", **log_data)
                 raise
         return cast(F, wrapper)
     return decorator
@@ -127,13 +127,13 @@ def cache_result(
             # Try to get from cache
             cached_result = cache.get(cache_key)
             if cached_result is not None:
-                logger.log_debug(f"Cache hit for {func.__name__}", {"cache_key": cache_key})
+                logger.debug(f"Cache hit for {func.__name__}", cache_key=cache_key)
                 return cached_result
             
             # Execute function and cache result
             result = func(*args, **kwargs)
             cache.set(cache_key, result, ttl=ttl)
-            logger.log_debug(f"Cached result for {func.__name__}", {"cache_key": cache_key})
+            logger.debug(f"Cached result for {func.__name__}", cache_key=cache_key)
             return result
         return cast(F, wrapper)
     return decorator
@@ -163,25 +163,21 @@ def measure_performance(
                 result = func(*args, **kwargs)
                 execution_time = time.time() - start_time
                 
-                logger.log_info(
+                logger.info(
                     f"Performance: {op_name}",
-                    {
-                        "operation": op_name,
-                        "execution_time": execution_time,
-                        "status": "success"
-                    }
+                    operation=op_name,
+                    execution_time=execution_time,
+                    status="success"
                 )
                 return result
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.log_error(
+                logger.error(
                     f"Performance: {op_name} failed",
-                    {
-                        "operation": op_name,
-                        "execution_time": execution_time,
-                        "status": "error",
-                        "error": str(e)
-                    }
+                    operation=op_name,
+                    execution_time=execution_time,
+                    status="error",
+                    error=str(e)
                 )
                 raise
         return cast(F, wrapper)
@@ -259,16 +255,18 @@ def retry_on_failure(
                 except exceptions as e:
                     last_exception = e
                     if attempt < max_retries - 1:
-                        logger.log_warning(
+                        logger.warning(
                             f"Retry {attempt + 1}/{max_retries} for {func.__name__}",
-                            {"attempt": attempt + 1, "error": str(e)}
+                            attempt=attempt + 1,
+                            error=str(e)
                         )
                         time.sleep(current_delay)
                         current_delay *= backoff
                     else:
-                        logger.log_error(
+                        logger.error(
                             f"All retries exhausted for {func.__name__}",
-                            {"max_retries": max_retries, "error": str(e)}
+                            max_retries=max_retries,
+                            error=str(e)
                         )
             
             if last_exception:

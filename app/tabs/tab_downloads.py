@@ -6,21 +6,107 @@ import io
 import zipfile
 import pandas as pd
 from core.state_manager import SessionStateManager
-from ui.ui_improvements import render_sortable_table, show_toast, show_confirmation_dialog
+from ui.ui_components import render_sortable_table, show_toast, show_confirmation_dialog
 from core.error_handling import get_user_friendly_error
 from data.output_generator import generate_mapping_table
 from data.anonymizer import anonymize_claims_data
-from batch.batch_processor import process_multiple_claims_files
+from utils.batch_processor import process_multiple_claims_files
 from ui.ui_components import _notify
-from monitoring.audit_logger import log_event
+from utils.audit_logger import log_event
 from datetime import datetime
+from utils.improvements_utils import render_empty_state
 
 st: Any = st
 
 
 def render_downloads_tab() -> None:
     """Render the Downloads tab content."""
-    st.markdown("#### Final Outputs and Downloads")
+    # Inject tight spacing CSS
+    from ui.design_system import inject_tight_spacing_css
+    inject_tight_spacing_css()
+    
+    # Check for files first
+    layout_df = SessionStateManager.get_layout_df()
+    claims_df = SessionStateManager.get_claims_df()
+    
+    if layout_df is None or claims_df is None:
+        render_empty_state(
+            icon="📁",
+            title="Files Required",
+            message="Please start from the Setup tab to upload both layout and claims files before generating outputs.",
+            action_label="Go to Setup Tab",
+            action_callback=lambda: SessionStateManager.set("active_tab", "Setup")
+        )
+        st.stop()
+    
+    # Check for mappings and outputs
+    final_mapping = SessionStateManager.get_final_mapping()
+    anonymized_df = SessionStateManager.get("anonymized_df")
+    mapping_table = SessionStateManager.get("mapping_table")
+    
+    if not final_mapping or (anonymized_df is None and mapping_table is None):
+        render_empty_state(
+            icon="📋",
+            title="Mapping Required",
+            message="Please complete field mappings to generate downloadable outputs.",
+            action_label="Go to Field Mapping Tab",
+            action_callback=lambda: SessionStateManager.set("active_tab", "Field Mapping")
+        )
+        st.stop()
+    
+    st.markdown("""
+        <div style='margin-top: 0.5rem; margin-bottom: 0.125rem;'>
+            <h4 style='margin: 0; padding: 0;'>Final Outputs and Downloads</h4>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # --- Generate Test Data Section ---
+    st.markdown("""
+        <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+            <h3 style='margin: 0; padding: 0;'>Generate Test Data</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Optional imports for test data generation
+    try:
+        from test_data_generator import generate_test_data_from_claims, generate_test_data_from_layout
+    except ImportError:
+        generate_test_data_from_claims = None
+        generate_test_data_from_layout = None
+    
+    with st.expander("Generate Test Data", expanded=False):
+        claims_df = SessionStateManager.get_claims_df()
+        layout_df = SessionStateManager.get_layout_df()
+        if claims_df is None and layout_df is None:
+            st.info("Please upload a claims file or layout file first to generate test data based on its structure.")
+        else:
+            test_data_type = st.selectbox("Data Type", 
+                [opt for opt in ["claims", "layout"] if (opt == "claims" and claims_df is not None) or (opt == "layout" and layout_df is not None)],
+                key="test_data_type")
+        test_data_count = st.number_input("Record Count", 10, 10000, 100, key="test_data_count")
+        if st.button("Generate Test Data", key="generate_test_data"):
+            if generate_test_data_from_claims is None or generate_test_data_from_layout is None:
+                st.error("Test data generator is not available. Please install the test_data_generator module.")
+                st.stop()
+            test_df = None
+            test_data_type = st.session_state.get("test_data_type", "claims")
+            if test_data_type == "claims" and claims_df is not None:
+                test_df = generate_test_data_from_claims(claims_df, test_data_count)
+            elif test_data_type == "layout" and layout_df is not None:
+                test_df = generate_test_data_from_layout(layout_df, test_data_count)
+            else:
+                st.error("Unable to generate test data. Please ensure the required file is uploaded.")
+                st.stop()
+            if test_df is not None:
+                from utils.performance_utils import render_lazy_dataframe
+                render_lazy_dataframe(test_df, key="test_dataframe", max_rows_before_pagination=1000)
+                csv_data: bytes = test_df.to_csv(index=False).encode('utf-8')
+                st.download_button("Download Test Data",
+                             csv_data,
+                             f"test_{test_data_type}.csv",
+                             "text/csv",
+                             key="download_test_data")
+    
     
     # --- Batch Processing Section ---
     with st.expander("📦 Batch Processing (Multiple Files)", expanded=False):
@@ -52,7 +138,11 @@ def render_downloads_tab() -> None:
             st.warning("Please complete field mappings first before batch processing")
 
     # --- Activity Log Section ---
-    st.markdown("### 📋 Activity Log")
+    st.markdown("""
+        <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+            <h3 style='margin: 0; padding: 0;'>Activity Log</h3>
+        </div>
+    """, unsafe_allow_html=True)
     audit_log = SessionStateManager.get_audit_log()
     if audit_log:
         recent_events = audit_log[-20:][::-1]
@@ -86,7 +176,6 @@ def render_downloads_tab() -> None:
                 st.session_state.needs_refresh = True
     else:
         st.info("No activity logged yet. Events will appear here as you use the app.")
-    st.divider()
 
     final_mapping = SessionStateManager.get_final_mapping()
     if not final_mapping:
@@ -229,7 +318,11 @@ def render_downloads_tab() -> None:
                                 st.error(f"Error regenerating mapping table: {error_msg}")
 
             # --- Optional Attachments Section ---
-            st.markdown("### Optional Attachments to Include in ZIP")
+            st.markdown("""
+                <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+                    <h3 style='margin: 0; padding: 0;'>Optional Attachments to Include in ZIP</h3>
+                </div>
+            """, unsafe_allow_html=True)
             uploaded_attachments = st.file_uploader(
                 "Attach any additional files (e.g., header file, original claims, notes)",
                 accept_multiple_files=True,
@@ -237,12 +330,19 @@ def render_downloads_tab() -> None:
             )
 
             # --- Custom Notes Section ---
-            st.markdown("### Add Custom Notes (Optional)")
+            st.markdown("""
+                <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+                    <h3 style='margin: 0; padding: 0;'>Add Custom Notes (Optional)</h3>
+                </div>
+            """, unsafe_allow_html=True)
             notes_text = st.text_area("Include any notes or instructions to be added in the README file:", key="readme_notes")
 
             # --- Download All as ZIP ---
-            st.divider()
-            st.markdown("### Download All Outputs as ZIP")
+            st.markdown("""
+                <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+                    <h3 style='margin: 0; padding: 0;'>Download All Outputs as ZIP</h3>
+                </div>
+            """, unsafe_allow_html=True)
 
             readme_text = notes_text.strip() if notes_text else "No additional notes provided."
             anon_file_name = st.session_state.get("anonymized_filename", "anonymized_claims.csv")

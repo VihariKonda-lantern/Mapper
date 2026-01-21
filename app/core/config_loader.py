@@ -1,10 +1,51 @@
 # --- config_loader.py ---
 """Configuration loader with external file support and validation."""
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 import json
 import os
 from pathlib import Path
 from datetime import datetime
+
+# --- Application Configuration Constants ---
+# These constants are used throughout the application
+
+# Audit & History Settings
+AUDIT_LOG_MAX_SIZE: int = 100
+MAPPING_HISTORY_MAX_SIZE: int = 50
+
+# AI & Validation Settings
+AI_CONFIDENCE_THRESHOLD: int = 80
+VALIDATION_PAGE_SIZES: List[int] = [25, 50, 100, 200]
+DEFAULT_VALIDATION_PAGE_SIZE: int = 50
+
+# LLM Settings
+LLM_ENABLED: bool = os.getenv("LLM_ENABLED", "false").lower() == "true"
+LLM_API_ENDPOINT: Optional[str] = os.getenv("LLM_API_ENDPOINT")  # Custom Copilot Studio endpoint URL
+LLM_CONFIDENCE_THRESHOLD: float = float(os.getenv("LLM_CONFIDENCE_THRESHOLD", "0.8"))  # Only use LLM below this confidence
+MIN_MAPPING_CONFIDENCE: float = float(os.getenv("MIN_MAPPING_CONFIDENCE", "0.9"))  # Only map if confidence >= 90%
+LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "10"))
+LLM_MAX_RETRIES: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
+
+# File Processing Settings
+MAX_FILE_SIZE_MB: int = 100  # Maximum file size in MB
+SUPPORTED_FILE_FORMATS: List[str] = ['.csv', '.txt', '.tsv', '.xlsx', '.xls', '.json', '.parquet']
+
+# UI Settings
+DEFAULT_PAGE_SIZE: int = 50
+MAX_PREVIEW_ROWS: int = 1000
+
+# Performance Settings
+CACHE_TTL_SECONDS: int = 3600  # Cache time-to-live in seconds
+LAZY_LOAD_THRESHOLD: int = 1000  # Number of rows before lazy loading kicks in
+
+# Data Quality Settings
+DATA_QUALITY_THRESHOLD: float = 80.0  # Minimum acceptable data quality score
+NULL_RATE_THRESHOLD: float = 15.0  # Default null rate threshold for mandatory fields
+COMPLETENESS_THRESHOLD: float = 85.0  # Completeness threshold percentage
+
+# Session Settings
+SESSION_TIMEOUT_MINUTES: int = 30  # Session timeout in minutes
+ACTIVITY_CHECK_INTERVAL: int = 60  # Activity check interval in seconds
 
 try:
     from watchdog.observers import Observer
@@ -197,13 +238,7 @@ class ConfigManager:
         if configs:
             self.config = ConfigLoader.merge_configs(*configs)
         else:
-            # Fallback to defaults from config.py
-            from config import (
-                MAX_FILE_SIZE_MB,
-                SUPPORTED_FILE_FORMATS,
-                DEFAULT_PAGE_SIZE,
-                CACHE_TTL_SECONDS
-            )
+            # Fallback to defaults (constants defined at top of this file)
             self.config = {
                 "max_file_size_mb": MAX_FILE_SIZE_MB,
                 "supported_file_formats": SUPPORTED_FILE_FORMATS,

@@ -8,67 +8,55 @@ import json
 pd = cast(Any, pd)
 st = cast(Any, st)
 
-# Lazy import of transformation pipeline
-_transformation_pipeline = None
-
-def get_transformation_pipeline():
-    """Get or create transformation pipeline instance."""
-    global _transformation_pipeline
-    if _transformation_pipeline is None:
-        from data.transformation_pipeline import transformation_pipeline
-        _transformation_pipeline = transformation_pipeline
-    return _transformation_pipeline
-
 @st.cache_data(show_spinner=False)
-def transform_claims_data(
-    claims_df: Any, 
-    final_mapping: Dict[str, Dict[str, Any]],
-    use_pipeline: bool = True
+def transform_source_data(
+    source_df: Any, 
+    final_mapping: Dict[str, Dict[str, Any]]
 ) -> Any:
-    """Transform claims data into internal layout columns using mappings.
+    """Transform source data into target layout columns using mappings.
 
     Copies mapped columns, fills missing columns with `None`, and applies
     simple cleaning rules: trim strings, standardize date-like columns,
-    and normalize ID-like fields (e.g., SSN/NPI/ZIP/CPT/HCPCS).
+    and normalize ID-like fields.
 
+    Args:
+        source_df: Source DataFrame-like.
+        final_mapping: Mapping dict `{target_field: {"value": source_col}}`.
+
+    Returns:
+        Transformed DataFrame-like aligned to target fields.
+    """
+    return _transform_source_data_internal(source_df, final_mapping)
+
+
+def transform_claims_data(
+    claims_df: Any, 
+    final_mapping: Dict[str, Dict[str, Any]]
+) -> Any:
+    """Transform claims data into internal layout columns using mappings.
+    
+    Note: This is an alias for transform_source_data() for backward compatibility.
+    
     Args:
         claims_df: Source claims DataFrame-like.
         final_mapping: Mapping dict `{internal_field: {"value": source_col}}`.
-        use_pipeline: Whether to use transformation pipeline for history tracking.
 
     Returns:
         Transformed DataFrame-like aligned to internal fields.
     """
-    # Use pipeline if enabled
-    if use_pipeline:
-        pipeline = get_transformation_pipeline()
-        
-        # Wrap the transformation function
-        def transform_func(df: pd.DataFrame, params: Dict[str, Any]) -> pd.DataFrame:
-            return _transform_claims_data_internal(df, params.get("final_mapping", {}))
-        
-        # Add transformation step to pipeline
-        return pipeline.add_step(
-            transformation_name="transform_claims_data",
-            transform_func=transform_func,
-            df=claims_df,
-            parameters={"final_mapping": final_mapping}
-        )
-    else:
-        # Direct transformation without pipeline
-        return _transform_claims_data_internal(claims_df, final_mapping)
+    return transform_source_data(claims_df, final_mapping)
 
 
-def _transform_claims_data_internal(claims_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
+def _transform_source_data_internal(source_df: Any, final_mapping: Dict[str, Dict[str, Any]]) -> Any:
     """Internal transformation function (without pipeline)."""
     transformed: Any = pd.DataFrame()
 
-    for internal_field, mapping in final_mapping.items():
+    for target_field, mapping in final_mapping.items():
         source_column = mapping.get("value")
-        if source_column and source_column in claims_df.columns:
-            transformed[internal_field] = claims_df[source_column]
+        if source_column and source_column in source_df.columns:
+            transformed[target_field] = source_df[source_column]
         else:
-            transformed[internal_field] = None
+            transformed[target_field] = None
 
     # --- Basic Cleaning Rules ---
     for col in transformed.columns:

@@ -617,9 +617,27 @@ def dynamic_run_validations(transformed_df: Any, final_mapping: Dict[str, Dict[s
             file_result["severity"] = result.severity
         results.append(file_result)
 
-    # 4. Diagnosis Code Summary
+    # 4. Diagnosis Code Summary (only if lookups are available or config allows skipping)
+    # Get domain config to check validation settings
+    from core.domain_config import get_domain_config
+    config = get_domain_config()
+    
+    # Check if lookups are available
+    from core.state_manager import SessionStateManager
+    has_lookups = (
+        SessionStateManager.has("msk_codes") and 
+        SessionStateManager.has("bar_codes") and
+        len(SessionStateManager.get("msk_codes", set())) > 0
+    )
+    
+    # Skip lookup-based validation if lookups unavailable and config allows it
+    skip_lookup_validation = (
+        not has_lookups and 
+        config.validation_config.get("skip_if_no_lookups", True)
+    )
+    
     dx_fields = [col for col in transformed_df.columns if col.lower().startswith("dx_code")]
-    if dx_fields:
+    if dx_fields and not skip_lookup_validation:
         rule = DiagnosisCodeCoverageRule({
             "rule_name": "Diagnosis Code Presence (MSK/BAR)",
             "validation_inputs": {"dx_fields": dx_fields}
@@ -633,5 +651,12 @@ def dynamic_run_validations(transformed_df: Any, final_mapping: Dict[str, Dict[s
         if result.severity:
             file_result["severity"] = result.severity
         results.append(file_result)
+    elif dx_fields and skip_lookup_validation:
+        # Lookups unavailable but validation should pass
+        results.append({
+            "check": "Diagnosis Code Presence (MSK/BAR)",
+            "status": "passed",
+            "message": "Skipped: Lookup codes not available (validation passes as configured)"
+        })
 
     return results
