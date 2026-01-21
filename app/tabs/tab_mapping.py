@@ -267,32 +267,40 @@ def render_mapping_tab() -> None:
     # --- Main Mapping Section ---
     st.markdown("""
         <div style='margin-top: 0.5rem; margin-bottom: 0.125rem;'>
-            <h4 style='margin: 0; padding: 0;'>Manual Field Mapping</h4>
+            <h4 style='margin: 0; padding: 0;'>Field Mapping</h4>
         </div>
     """, unsafe_allow_html=True)
-    with st.form("mapping_form"):
-        render_field_mapping_tab()
-        apply_mappings = st.form_submit_button("Apply Mappings")
-        if apply_mappings:
-            st.session_state["mappings_ready"] = True
-            if final_mapping:
-                save_to_history(final_mapping)
-                manual_mapped_count = len([f for f in final_mapping.keys() 
-                                         if final_mapping[f].get("value") and final_mapping[f].get("mode") == "manual"])
-                if manual_mapped_count > 0:
-                    try:
-                        log_event("mapping", f"Manual field mappings committed via form ({manual_mapped_count} fields mapped)")
-                    except NameError:
-                        pass
+    
+    # Render mapping UI (no form wrapper - mappings update automatically)
+    render_field_mapping_tab()
+    
+    # Auto-save mappings and generate outputs when mappings change
+    current_mapping = SessionStateManager.get_final_mapping()
+    if current_mapping:
+        # Set mappings_ready flag
+        st.session_state["mappings_ready"] = True
+        
+        # Save to history (debounced to avoid too many saves)
+        mapping_hash = str(hash(str(current_mapping)))
+        last_saved_hash = st.session_state.get("last_saved_mapping_hash")
+        if last_saved_hash != mapping_hash:
+            save_to_history(current_mapping)
+            st.session_state.last_saved_mapping_hash = mapping_hash
+            
+            # Log event
+            manual_mapped_count = len([f for f in current_mapping.keys() 
+                                     if f in current_mapping and current_mapping[f].get("value") and current_mapping[f].get("mode") == "manual"])
+            if manual_mapped_count > 0:
                 try:
-                    # Testing QA removed - optional feature
+                    log_event("mapping", f"Field mappings updated ({manual_mapped_count} manual fields mapped)")
+                except NameError:
                     pass
 
     # --- Test Mapping Section (silent, no UI) ---
-    if st.session_state.get("mappings_ready") and final_mapping:
+    if st.session_state.get("mappings_ready") and current_mapping:
         mapping_hash = str(hash(str(final_mapping)))
         last_hash = st.session_state.get("last_mapping_hash")
         if last_hash != mapping_hash or not st.session_state.get("unit_test_results"):
             # Testing QA removed - optional feature
-                st.session_state.last_mapping_hash = mapping_hash
+            st.session_state.last_mapping_hash = mapping_hash
 

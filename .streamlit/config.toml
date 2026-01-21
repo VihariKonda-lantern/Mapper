@@ -1,0 +1,28 @@
+[server]
+# Use polling file watcher instead of native watcher to avoid PyTorch compatibility issues
+fileWatcherType = "poll"
+runOnSave = true
+# Disable file watcher entirely if PyTorch issues persist
+# fileWatcherType = "none"
+
+[watcher]
+# Ignore PyTorch and other ML libraries that cause issues with file watching
+ignorePaths = [
+    "**/torch/**",
+    "**/torchvision/**",
+    "**/torchaudio/**",
+    "**/site-packages/torch/**",
+    "**/site-packages/torchvision/**",
+    "**/site-packages/torchaudio/**",
+    "**/site-packages/**",
+    "**/__pycache__/**",
+    "**/.git/**",
+    "**/node_modules/**"
+]
+
+# Additional settings to reduce file watcher issues
+[runner]
+# Fast reruns
+fastReruns = true
+# Magic commands enabled
+magicEnabled = true

@@ -914,7 +914,7 @@ def process_header_file(header_bytes: bytes, header_ext: str) -> List[str]:
         raise ValueError(f"Error reading header file: {e}") from e
 
 @st.cache_data(show_spinner=False)
-def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless: bool, header_bytes: Optional[bytes], delimiter: Optional[str], header_ext: Optional[str] = None, colspecs: Optional[List[Tuple[int, int]]] = None, header_names: Optional[List[str]] = None) -> Any:
+def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless: bool, header_bytes: Optional[bytes], delimiter: Optional[str], header_ext: Optional[str] = None, colspecs: Optional[List[Tuple[int, int]]] = None, header_names: Optional[List[str]] = None, skiprows: Optional[int] = None) -> Any:
     """Parse claims data with optional header handling and caching.
 
     Reads the claims file according to its extension and applies an external
@@ -929,15 +929,50 @@ def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless:
         header_ext: Extension of the header file (for format detection).
         colspecs: Optional list of (start, end) tuples for fixed-width files.
         header_names: Optional list of column names (from header spec file).
+        skiprows: Number of rows to skip at the beginning of the file.
 
     Returns:
         Parsed DataFrame-like object, or empty DataFrame on error.
     """
     file_like = io.BytesIO(content)
+    
+    # Track preprocessing steps
+    try:
+        from data.preprocessing_tracker import track_preprocessing_step
+        
+        # Detect encoding once for both tracking and use
+        encoding = detect_encoding(content)
+        track_preprocessing_step("detect_encoding", {"encoding": encoding})
+        
+        # Track delimiter detection
+        if delimiter:
+            track_preprocessing_step("detect_delimiter", {"delimiter": delimiter})
+        
+        # Track header handling
+        if headerless:
+            track_preprocessing_step("headerless_file", {"headerless": True})
+        
+        if header_bytes:
+            track_preprocessing_step("external_header", {"header_file": "external"})
+        
+        # Track fixed-width
+        if colspecs:
+            track_preprocessing_step("fixed_width", {"colspecs": colspecs})
+        
+        # Track row skipping
+        if skiprows and skiprows > 0:
+            track_preprocessing_step("skip_rows", {"num_rows": skiprows})
+    except ImportError:
+        # Preprocessing tracker not available, detect encoding for use only
+        encoding = detect_encoding(content)
+    except Exception:
+        # Don't fail if tracking fails, detect encoding for use
+        encoding = detect_encoding(content)
+    
     try:
         if ext.endswith(('.csv', '.txt', '.tsv')):
             # Intelligent reading with multiple fallback strategies
-            encoding = detect_encoding(content)
+            # encoding already detected above
             encodings_to_try = [encoding] + [e for e in ENCODING_FALLBACKS if e != encoding]
             last_error = None
             last_df = None
@@ -952,10 +987,14 @@ def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless:
                 for enc in encodings_to_try:
                     try:
                         file_like.seek(0)
+                        read_options = {"colspecs": colspecs, "encoding": enc, "dtype": str}
+                        if skiprows:
+                            read_options["skiprows"] = skiprows
                         if headerless:
-                            claims_df = pd.read_fwf(file_like, colspecs=colspecs, header=None, encoding=enc, dtype=str)  # type: ignore[no-untyped-call]
+                            read_options["header"] = None
                         else:
-                            claims_df = pd.read_fwf(file_like, colspecs=colspecs, header=0, encoding=enc, dtype=str)  # type: ignore[no-untyped-call]
+                            read_options["header"] = 0
+                        claims_df = pd.read_fwf(file_like, **read_options)  # type: ignore[no-untyped-call]
                         break  # Success, exit loop
                     except (UnicodeDecodeError, UnicodeError) as e:
                         last_error = e
@@ -1007,6 +1046,9 @@ def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless:
                             for options in read_options:
                                 try:
                                     file_like.seek(0)
+                                    # Add skiprows if specified
+                                    if skiprows:
+                                        options["skiprows"] = skiprows
                                     claims_df = pd.read_csv(file_like, **options)  # type: ignore[no-untyped-call]
                                     
                                     # Validate DataFrame is reasonable
@@ -1050,7 +1092,14 @@ def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless:
                         st.error("Error reading claims file: Could not determine file encoding or format. Please check the file format.")
                     return pd.DataFrame()
         elif ext.endswith(('.xlsx', '.xls')):
-            claims_df = pd.read_excel(file_like, header=None if headerless else 0)  # type: ignore[no-untyped-call]
+            read_options = {}
+            if skiprows:
+                read_options["skiprows"] = skiprows
+            if headerless:
+                read_options["header"] = None
+            else:
+                read_options["header"] = 0
+            claims_df = pd.read_excel(file_like, **read_options)  # type: ignore[no-untyped-call]
         else:
             st.error("Unsupported file format for claims file.")
             return pd.DataFrame()
@@ -1106,7 +1155,7 @@ def _read_claims_with_header_option_cached(ext: str, content: bytes, headerless:
 
     return claims_df
 
-def read_claims_with_header_option(file: Any, headerless: bool = False, header_file: Optional[Any] = None, delimiter: Optional[str] = None, colspecs: Optional[List[Tuple[int, int]]] = None, header_names: Optional[List[str]] = None) -> Any:
+def read_claims_with_header_option(file: Any, headerless: bool = False, header_file: Optional[Any] = None, delimiter: Optional[str] = None, colspecs: Optional[List[Tuple[int, int]]] = None, header_names: Optional[List[str]] = None, skiprows: Optional[int] = None) -> Any:
     """Read claims file, optionally applying an external header.
 
     Convenience wrapper that reads the file and forwards to the cached parser.
@@ -1119,6 +1168,7 @@ def read_claims_with_header_option(file: Any, headerless: bool = False, header_f
         delimiter: Optional delimiter override for text formats.
         colspecs: Optional list of (start, end) tuples for fixed-width files.
         header_names: Optional list of column names (from header spec file).
+        skiprows: Number of rows to skip at the beginning of the file.
 
     Returns:
         Parsed DataFrame-like object.
@@ -1139,6 +1189,6 @@ def read_claims_with_header_option(file: Any, headerless: bool = False, header_f
         header_bytes = header_file.read()
         header_ext = os.path.splitext(header_file.name)[-1].lower()
         header_file.seek(0)  # Reset for potential future use
-    return _read_claims_with_header_option_cached(ext, content, headerless, header_bytes, delimiter, header_ext, colspecs, header_names)
+    return _read_claims_with_header_option_cached(ext, content, headerless, header_bytes, delimiter, header_ext, colspecs, header_names, skiprows)
 
 

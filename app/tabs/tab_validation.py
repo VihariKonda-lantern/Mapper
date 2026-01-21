@@ -50,73 +50,80 @@ def render_validation_tab() -> None:
         st.stop()
     
     # Check for mappings
-    transformed_df = SessionStateManager.get_transformed_df()
     final_mapping = SessionStateManager.get_final_mapping()
-
-    if transformed_df is None or not final_mapping:
+    
+    if not final_mapping:
         render_empty_state(
             icon="📋",
             title="Mapping Required",
-            message="Please complete field mappings and preview transformed data first.",
+            message="Please complete field mappings first.",
             action_label="Go to Field Mapping Tab",
             action_callback=lambda: SessionStateManager.set("active_tab", "Field Mapping")
         )
         st.stop()
     
-        # --- Auto-run validation (cached to avoid re-running on every rerun) ---
-        data_hash = hashlib.md5(
-            (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
-        ).hexdigest()
-        cached_hash = st.session_state.get("validation_data_hash")
-        validation_results_cached: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
+    # Generate transformed_df if it doesn't exist but mappings do
+    transformed_df = SessionStateManager.get_transformed_df()
+    if transformed_df is None:
+        # Auto-generate transformed_df from mappings
+        from data.transformer import transform_claims_data
+        transformed_df = transform_claims_data(claims_df, final_mapping)
+        if transformed_df is not None:
+            SessionStateManager.set_transformed_df(transformed_df)
+        else:
+            render_empty_state(
+                icon="⚠️",
+                title="Transformation Error",
+                message="Could not transform data. Please check your mappings.",
+                action_label="Go to Field Mapping Tab",
+                action_callback=lambda: SessionStateManager.set("active_tab", "Field Mapping")
+            )
+            st.stop()
     
-        if cached_hash != data_hash or not validation_results_cached:
-            render_loading_skeleton(rows=3, cols=4)
-            with st.spinner("Running validation checks..."):
-                if layout_df is not None:
-                    required_fields_df = get_required_fields(layout_df)
-                    required_fields: List[str] = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
-                else:
-                    required_fields = list(final_mapping.keys())
-                all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
-                start_time = time.time()
-                try:
-                    with st.spinner("Running field-level validations..."):
-                        field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
-                except Exception as e:
-                    error_msg = get_user_friendly_error(e)
-                    st.error(f"Error during field-level validation: {error_msg}")
-                    field_level_results = []
-                try:
-                    with st.spinner("Running file-level validations..."):
-                        file_level_results = dynamic_run_validations(transformed_df, final_mapping)
-                except Exception as e:
-                    error_msg = get_user_friendly_error(e)
-                    st.error(f"Error during file-level validation: {error_msg}")
-                    file_level_results = []
-                validation_results_new: List[Dict[str, Any]] = field_level_results + file_level_results
-                execution_time = time.time() - start_time
-                track_validation_performance("full_validation", execution_time, len(transformed_df), len(validation_results_new))
-                st.session_state.validation_results = validation_results_new
-                st.session_state.validation_data_hash = data_hash
-                fail_count = len([r for r in validation_results_new if r.get("status") == "Fail"])
-                warning_count = len([r for r in validation_results_new if r.get("status") == "Warning"])
-                pass_count = len([r for r in validation_results_new if r.get("status") == "Pass"])
-                
-                # Track validation history
-                from validation.validation_history import validation_history
-                validation_history.add_validation_result(
-                    validation_results_new,
-                    execution_time,
-                    len(transformed_df),
-                    data_hash,
-                    metadata={"layout_file": SessionStateManager.get("layout_file_obj")}
-                )
-                
-                try:
-                    log_event("validation", f"Validation completed: {pass_count} passed, {warning_count} warnings, {fail_count} failed")
-                except NameError:
-                    pass
+    # --- Auto-run validation (cached to avoid re-running on every rerun) ---
+    data_hash = hashlib.md5(
+        (str(final_mapping) + str(transformed_df.shape) + str(transformed_df.columns.tolist())).encode()
+    ).hexdigest()
+    cached_hash = st.session_state.get("validation_data_hash")
+    validation_results_cached: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
+    
+    if cached_hash != data_hash or not validation_results_cached:
+        render_loading_skeleton(rows=3, cols=4)
+        with st.spinner("Running validation checks..."):
+            if layout_df is not None:
+                required_fields_df = get_required_fields(layout_df)
+                required_fields: List[str] = required_fields_df["Internal Field"].tolist() if isinstance(required_fields_df, pd.DataFrame) else []
+            else:
+                required_fields = list(final_mapping.keys())
+            all_mapped_internal_fields = [field for field in final_mapping.keys() if final_mapping[field].get("value")]
+            start_time = time.time()
+            try:
+                with st.spinner("Running field-level validations..."):
+                    field_level_results = run_validations(transformed_df, required_fields, all_mapped_internal_fields)
+            except Exception as e:
+                error_msg = get_user_friendly_error(e)
+                st.error(f"Error during field-level validation: {error_msg}")
+                field_level_results = []
+            try:
+                with st.spinner("Running file-level validations..."):
+                    file_level_results = dynamic_run_validations(transformed_df, final_mapping)
+            except Exception as e:
+                error_msg = get_user_friendly_error(e)
+                st.error(f"Error during file-level validation: {error_msg}")
+                file_level_results = []
+            validation_results_new: List[Dict[str, Any]] = field_level_results + file_level_results
+            execution_time = time.time() - start_time
+            track_validation_performance("full_validation", execution_time, len(transformed_df), len(validation_results_new))
+            st.session_state.validation_results = validation_results_new
+            st.session_state.validation_data_hash = data_hash
+            fail_count = len([r for r in validation_results_new if r.get("status") == "Fail"])
+            warning_count = len([r for r in validation_results_new if r.get("status") == "Warning"])
+            pass_count = len([r for r in validation_results_new if r.get("status") == "Pass"])
+            
+            try:
+                log_event("validation", f"Validation completed: {pass_count} passed, {warning_count} warnings, {fail_count} failed")
+            except NameError:
+                pass
 
     # Get validation results
     validation_results_summary: List[Dict[str, Any]] = st.session_state.get("validation_results", [])
@@ -296,23 +303,23 @@ def render_validation_tab() -> None:
         
         if other_failures or other_warnings:
             st.markdown("---")
-                if other_failures:
-                    st.markdown("**Critical Issues:**")
-                    for issue in other_failures:
-                        check_name = issue.get("check", "Unknown Check")
-                        field = issue.get("field", "")
-                        message = issue.get("message", "")
-                        if field:
+            if other_failures:
+                st.markdown("**Critical Issues:**")
+                for issue in other_failures:
+                    check_name = issue.get("check", "Unknown Check")
+                    field = issue.get("field", "")
+                    message = issue.get("message", "")
+                    if field:
                         st.error(f"- **{check_name}** ({field}): {message}")
-                        else:
+                    else:
                         st.error(f"- **{check_name}**: {message}")
-                if other_warnings:
-                    st.markdown("**Warnings:**")
-                    for issue in other_warnings:
-                        check_name = issue.get("check", "Unknown Check")
-                        field = issue.get("field", "")
-                        message = issue.get("message", "")
-                        if field:
+            if other_warnings:
+                st.markdown("**Warnings:**")
+                for issue in other_warnings:
+                    check_name = issue.get("check", "Unknown Check")
+                    field = issue.get("field", "")
+                    message = issue.get("message", "")
+                    if field:
                         st.warning(f"- **{check_name}** ({field}): {message}")
                     else:
                         st.warning(f"- **{check_name}**: {message}")
@@ -384,8 +391,8 @@ def render_validation_tab() -> None:
                 except Exception as e:
                     error_msg = get_user_friendly_error(e)
                     st.error(f"Error calculating column statistics: {error_msg}")
-                        else:
-            st.info("No source data available for quality analysis.")
+                else:
+                    st.info("No source data available for quality analysis.")
     
     # --- Tab 3: Advanced Analysis ---
     with tab3:
@@ -405,7 +412,7 @@ def render_validation_tab() -> None:
                             if not duplicates.empty:
                                 render_filterable_table(duplicates, key="duplicates_table")
                                 st.info(f"Found {len(duplicates)} duplicate records")
-                        else:
+                            else:
                                 st.success("No duplicates found!")
                         except Exception as e:
                             error_msg = get_user_friendly_error(e)
@@ -461,53 +468,6 @@ def render_validation_tab() -> None:
                                      "sample_data.csv",
                                      "text/csv",
                                      key="download_sample")
-                        else:
-            st.info("No source data available for advanced analysis.")
+                else:
+                    st.info("No source data available for advanced analysis.")
     
-    # ============================================
-    # VALIDATION HISTORY (Collapsible)
-    # ============================================
-    with st.expander("📈 Validation History & Trends", expanded=False):
-        from validation.validation_history import validation_history
-        # Chart utils removed - using simple display instead
-        
-        trends = validation_history.get_trends()
-        
-        if trends.get("available"):
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Validations", trends["total_validations"])
-            with col2:
-                st.metric("Avg Pass Rate", f"{trends['avg_pass_rate']:.1f}%")
-            with col3:
-                st.metric("Avg Fail Rate", f"{trends['avg_fail_rate']:.1f}%")
-            with col4:
-                st.metric("Avg Execution Time", f"{trends['avg_execution_time']:.2f}s")
-            
-            # Show trend chart
-            history_entries = trends.get("entries", [])
-            if len(history_entries) > 1:
-                trend_data = [
-                    {
-                        "timestamp": entry["timestamp"],
-                        "pass_rate": (entry["passes"] / entry["total_checks"] * 100) if entry["total_checks"] > 0 else 0,
-                        "fail_rate": (entry["fails"] / entry["total_checks"] * 100) if entry["total_checks"] > 0 else 0
-                    }
-                    for entry in history_entries
-                ]
-                # Trend analysis chart removed - showing data as table instead
-                st.dataframe(pd.DataFrame(trend_data))
-            
-            # Export/Clear buttons
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Export History", key="export_validation_history"):
-                    export_path = validation_history.export_history()
-                    show_toast(f"History exported to {export_path}", "💾")
-            with col2:
-                if st.button("Clear History", key="clear_validation_history"):
-                    validation_history.clear_history()
-                    show_toast("Validation history cleared", "🗑️")
-                    st.rerun()
-        else:
-            st.info(trends.get("message", "No validation history available. Run validations to see trends."))

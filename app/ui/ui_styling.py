@@ -1586,6 +1586,36 @@ def inject_ux_javascript():
                 }
             });
         }, 500);
+        
+        // Move Activity Log expander outside main app container
+        function moveActivityLogExpander() {
+            // Find the Activity Log expander by looking for the stVerticalBlock containing it
+            const activityLogBlock = document.querySelector('div.stVerticalBlock.st-emotion-cache-vlxhtx.e1lln2w83');
+            if (activityLogBlock) {
+                // Find the withScreencast container (parent of stApp)
+                const screencastContainer = document.querySelector('div.withScreencast');
+                const stApp = document.querySelector('div.stApp');
+                
+                if (screencastContainer && stApp && activityLogBlock) {
+                    // Only move if not already in the correct position
+                    if (activityLogBlock.parentElement !== screencastContainer) {
+                        // Move the element to be a sibling of stApp (before stApp)
+                        screencastContainer.insertBefore(activityLogBlock, stApp);
+                    }
+                }
+            }
+        }
+        
+        // Run on page load and after a delay to ensure DOM is ready
+        setTimeout(moveActivityLogExpander, 100);
+        setTimeout(moveActivityLogExpander, 500);
+        setTimeout(moveActivityLogExpander, 1000);
+        
+        // Watch for DOM changes and move if needed
+        const activityLogObserver = new MutationObserver(function(mutations) {
+            moveActivityLogExpander();
+        });
+        activityLogObserver.observe(document.body, { childList: true, subtree: true });
     })();
     </script>
     """, unsafe_allow_html=True)

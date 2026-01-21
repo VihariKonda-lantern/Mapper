@@ -96,33 +96,84 @@ def _sort_columns_by_confidence(
     return [(col, algo_score, llm_score) for col, _, algo_score, llm_score in column_scores]
 
 
-def dual_input_field(field_label: str, options: List[str], key_prefix: str, col_name_map: Optional[Dict[str, str]] = None) -> Optional[str]:
+def dual_input_field(field_label: str, options: List[str], key_prefix: str, col_name_map: Optional[Dict[str, str]] = None, default_value: Optional[str] = None, allow_manual_input: bool = False) -> Optional[str]:
     """
-    Renders a dropdown only (removed manual text input to avoid empty blocks).
-    Returns the selected value.
+    Renders a dropdown with optional manual text input.
+    Returns the selected value or manual input.
     
     Args:
         field_label: Label for the field
         options: List of dropdown options (may include confidence scores)
         key_prefix: Unique key prefix for the widget
         col_name_map: Optional mapping from display text to actual column name
+        default_value: Optional default column name to select
+        allow_manual_input: If True, shows a text input field for manual entry
     """
-    dropdown_selection = st.selectbox(
-        "", 
-        options=[""] + options,
-        key=f"{key_prefix}_dropdown",
-        label_visibility="collapsed"
-    )
+    # Find the index of the default value if provided
+    select_idx = 0  # Default to empty (unmapped)
+    if default_value and col_name_map:
+        # Reverse lookup: find display text for the actual column name
+        for display_text, actual_col in col_name_map.items():
+            if actual_col == default_value:
+                # Find index in options
+                for idx, option in enumerate(options):
+                    if option == display_text:
+                        select_idx = idx + 1  # +1 because options list has "" prepended
+                        break
+                break
     
-    # Extract column name from selected option (remove confidence scores)
-    if dropdown_selection and dropdown_selection != "":
-        if col_name_map and dropdown_selection in col_name_map:
-            return col_name_map[dropdown_selection]
-        elif " (" in dropdown_selection:
-            return dropdown_selection.split(" (")[0]
-        else:
-            return dropdown_selection.strip()
-    return None
+    if allow_manual_input:
+        # Show both dropdown and text input for manual entry
+        col_dropdown, col_input = st.columns([2, 1])
+        
+        with col_dropdown:
+            dropdown_selection = st.selectbox(
+                "Select column", 
+                options=[""] + options,
+                index=select_idx,
+                key=f"{key_prefix}_dropdown",
+                label_visibility="collapsed"
+            )
+        
+        with col_input:
+            manual_input = st.text_input(
+                "Or type manually",
+                value="",
+                key=f"{key_prefix}_manual",
+                placeholder="Type value...",
+                label_visibility="collapsed"
+            )
+        
+        # Prioritize manual input if provided, otherwise use dropdown
+        if manual_input and manual_input.strip():
+            return manual_input.strip()
+        elif dropdown_selection and dropdown_selection != "":
+            if col_name_map and dropdown_selection in col_name_map:
+                return col_name_map[dropdown_selection]
+            elif " (" in dropdown_selection:
+                return dropdown_selection.split(" (")[0]
+            else:
+                return dropdown_selection.strip()
+        return None
+    else:
+        # Dropdown only (for Client_Name)
+        dropdown_selection = st.selectbox(
+            "Select column", 
+            options=[""] + options,
+            index=select_idx,
+            key=f"{key_prefix}_dropdown",
+            label_visibility="collapsed"
+        )
+        
+        # Extract column name from selected option (remove confidence scores)
+        if dropdown_selection and dropdown_selection != "":
+            if col_name_map and dropdown_selection in col_name_map:
+                return col_name_map[dropdown_selection]
+            elif " (" in dropdown_selection:
+                return dropdown_selection.split(" (")[0]
+            else:
+                return dropdown_selection.strip()
+        return None
 
 
 def generate_mapping_table(layout_df: Any, final_mapping: Dict[str, Dict[str, Any]], claims_df: Any) -> Any:
@@ -252,17 +303,21 @@ def render_field_mapping_tab():
 
     ai_suggestions = st.session_state.get("auto_mapping", {})
 
-    # --- Auto-Apply High Confidence Suggestions (≥60%) ---
+    # --- Auto-Apply High Confidence Suggestions (≥80%) ---
+    from core.config_loader import AI_CONFIDENCE_THRESHOLD
     if "final_mapping" not in st.session_state:
         st.session_state.final_mapping = {}
 
     auto_mapped: List[str] = []
     for field, info in ai_suggestions.items():
         score = info.get("score", 0)
-        if score >= 60 and field not in final_mapping:
+        # Only auto-apply if confidence >= 80% (AI_CONFIDENCE_THRESHOLD)
+        if score >= AI_CONFIDENCE_THRESHOLD and field not in final_mapping:
             final_mapping[field] = {
                 "mode": "auto",
-                "value": info["value"]
+                "value": info["value"],
+                "confidence": score,
+                "source": info.get("source", "algorithmic")
             }
             auto_mapped.append(field)
 
@@ -470,19 +525,48 @@ def render_field_mapping_tab():
                         widget_counter += 1
                         key_prefix = f"req_{group}_{field_name}_{widget_counter}"
                         key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                        selected = dual_input_field(field_name, field_col_options, key_prefix=key_prefix, col_name_map=field_col_name_map)
+                        # Allow manual input for Plan_Sponsor_Name and Insurance_Plan_Name
+                        allow_manual = field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]
+                        # Pass the default value so it shows the mapped column
+                        selected = dual_input_field(field_name, field_col_options, key_prefix=key_prefix, col_name_map=field_col_name_map, default_value=req_default_label, allow_manual_input=allow_manual)
                         selected_clean = selected.strip() if selected else None
+                        # For dual_input_field, also read current value from session state for immediate preview
+                        if not selected_clean and allow_manual:
+                            # Check manual input first
+                            manual_key = f"{key_prefix}_manual"
+                            manual_value = st.session_state.get(manual_key, "")
+                            if manual_value and manual_value.strip():
+                                selected_clean = manual_value.strip()
+                        if not selected_clean:
+                            dropdown_key = f"{key_prefix}_dropdown"
+                            current_selection = st.session_state.get(dropdown_key, "")
+                            if current_selection and current_selection != "":
+                                selected_clean = field_col_name_map.get(current_selection, current_selection.split(" (")[0] if " (" in current_selection else current_selection) if field_col_name_map else current_selection.strip()
                     else:
                         # Find index by matching column name (before confidence scores)
-                        select_idx = 0
+                        # Need to account for the empty string prepended to options
+                        select_idx = 0  # Default to empty (unmapped)
                         if req_default_label:
-                            for idx, option in enumerate(field_col_options):
-                                if option.startswith(req_default_label + " (") or option == req_default_label:
-                                    select_idx = idx
+                            # First try to find in the column name map (reverse lookup)
+                            for display_text, actual_col in field_col_name_map.items():
+                                if actual_col == req_default_label:
+                                    # Found the mapped column, now find its index in options
+                                    for idx, option in enumerate(field_col_options):
+                                        if option == display_text:
+                                            select_idx = idx + 1  # +1 because options list has "" prepended
+                                            break
                                     break
+                            
+                            # Fallback: try direct matching if not found in map
+                            if select_idx == 0:
+                                for idx, option in enumerate(field_col_options):
+                                    # Check if option starts with the mapped column name
+                                    if option.startswith(req_default_label + " (") or option == req_default_label:
+                                        select_idx = idx + 1  # +1 because options list has "" prepended
+                                        break
                         
                         selected = st.selectbox(
-                            "",
+                            "Select column mapping",
                             options=[""] + field_col_options,
                             index=select_idx,
                             key=unique_key,
@@ -491,46 +575,60 @@ def render_field_mapping_tab():
                         )
                         
                         # Extract column name from selected option (remove confidence scores)
-                        if selected and selected != "":
-                            selected_clean = field_col_name_map.get(selected, selected.split(" (")[0] if " (" in selected else selected)
+                        # Also read from session state for immediate preview (works even inside form)
+                        current_selection = st.session_state.get(unique_key, selected)
+                        if current_selection and current_selection != "":
+                            selected_clean = field_col_name_map.get(current_selection, current_selection.split(" (")[0] if " (" in current_selection else current_selection)
                         else:
                             selected_clean = None
                     
-                    # Preview panel (only when mapped)
-                    if selected_clean and selected_clean in claims_df.columns:
-                        try:
-                            col_data = claims_df[selected_clean]
-                            samples = col_data.dropna().head(3).tolist()
-                            fill_rate = (col_data.notna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0.0
-                            
-                            # Format samples for display
-                            sample_display = []
-                            for sample in samples[:3]:
-                                sample_str = str(sample)
-                                if len(sample_str) > 30:
-                                    sample_str = sample_str[:27] + "..."
-                                sample_display.append(f"• {sample_str}")
-                            
-                            if not sample_display:
-                                sample_display = ["• (no data)"]
-                            
+                    # Preview panel (only when mapped) - shows immediately based on current dropdown selection
+                    # For manual inputs, show a simple indicator instead of data preview
+                    if selected_clean:
+                        if selected_clean in claims_df.columns:
+                            try:
+                                col_data = claims_df[selected_clean]
+                                samples = col_data.dropna().head(3).tolist()
+                                fill_rate = (col_data.notna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0.0
+                                
+                                # Format samples for display
+                                sample_display = []
+                                for sample in samples[:3]:
+                                    sample_str = str(sample)
+                                    if len(sample_str) > 30:
+                                        sample_str = sample_str[:27] + "..."
+                                    sample_display.append(f"• {sample_str}")
+                                
+                                if not sample_display:
+                                    sample_display = ["• (no data)"]
+                                
+                                st.markdown(f"""
+                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
+                                        <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                        <div style='color: #6c757d; font-size: 0.8rem;'>
+                                            <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            except Exception:
+                                pass
+                        elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
+                            # For manual inputs, show a simple indicator
                             st.markdown(f"""
-                                <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
-                                    <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
-                                    <div style='color: #6c757d; font-size: 0.8rem;'>
-                                        <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                <div style='background-color: #e8f5e9; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 0.85rem;'>
+                                    <div style='color: #2e7d32;'>
+                                        <span>✓ Manual value: <strong>{selected_clean[:50]}{'...' if len(selected_clean) > 50 else ''}</strong></span>
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
-                        except Exception:
-                            pass
 
                 if selected_clean:
                     final_mapping[field_name] = {
                             "mode": "manual" if selected_clean != suggested_column else "auto",
                             "value": selected_clean
                         }
-                    # Don't save to history here - wait for form submission
+                    # Update session state immediately for automatic saving
+                    st.session_state["final_mapping"] = final_mapping.copy()
 
     # --- Show Unmapped Required Fields ---
     unmapped = [
@@ -677,19 +775,56 @@ def render_field_mapping_tab():
                             widget_counter += 1
                             key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
                             key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
-                            selected = dual_input_field(field_name, opt_col_options, key_prefix=key_prefix, col_name_map=opt_col_name_map)
+                            # Allow manual input for Plan_Sponsor_Name and Insurance_Plan_Name
+                            allow_manual = field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]
+                            # Get default value for optional fields too
+                            opt_default_value = final_mapping.get(field_name, {}).get("value", None)
+                            opt_default_label = str(opt_default_value) if opt_default_value else None
+                            selected = dual_input_field(field_name, opt_col_options, key_prefix=key_prefix, col_name_map=opt_col_name_map, default_value=opt_default_label, allow_manual_input=allow_manual)
                             field_selected_clean = selected.strip() if selected else None
+                            # For dual_input_field, also read current value from session state for immediate preview
+                            if not field_selected_clean and allow_manual:
+                                # Check manual input first
+                                manual_key = f"{key_prefix}_manual"
+                                manual_value = st.session_state.get(manual_key, "")
+                                if manual_value and manual_value.strip():
+                                    field_selected_clean = manual_value.strip()
+                            if not field_selected_clean:
+                                dropdown_key = f"{key_prefix}_dropdown"
+                                current_selection = st.session_state.get(dropdown_key, "")
+                                if current_selection and current_selection != "":
+                                    field_selected_clean = opt_col_name_map.get(current_selection, current_selection.split(" (")[0] if " (" in current_selection else current_selection) if opt_col_name_map else current_selection.strip()
+                            # For dual_input_field, also read current value from session state for immediate preview
+                            if not field_selected_clean:
+                                dropdown_key = f"{key_prefix}_dropdown"
+                                current_selection = st.session_state.get(dropdown_key, "")
+                                if current_selection and current_selection != "":
+                                    field_selected_clean = opt_col_name_map.get(current_selection, current_selection.split(" (")[0] if " (" in current_selection else current_selection) if opt_col_name_map else current_selection.strip()
                         else:
                             # Find index by matching column name (before confidence scores)
-                            select_idx = 0
+                            # Need to account for the empty string prepended to options
+                            select_idx = 0  # Default to empty (unmapped)
                             if default_label:
-                                for idx, option in enumerate(opt_col_options):
-                                    if option.startswith(default_label + " (") or option == default_label:
-                                        select_idx = idx
+                                # First try to find in the column name map (reverse lookup)
+                                for display_text, actual_col in opt_col_name_map.items():
+                                    if actual_col == default_label:
+                                        # Found the mapped column, now find its index in options
+                                        for idx, option in enumerate(opt_col_options):
+                                            if option == display_text:
+                                                select_idx = idx + 1  # +1 because options list has "" prepended
+                                                break
                                         break
+                                
+                                # Fallback: try direct matching if not found in map
+                                if select_idx == 0:
+                                    for idx, option in enumerate(opt_col_options):
+                                        # Check if option starts with the mapped column name
+                                        if option.startswith(default_label + " (") or option == default_label:
+                                            select_idx = idx + 1  # +1 because options list has "" prepended
+                                            break
                             
                             selected = st.selectbox(
-                                "",
+                                "Select column mapping",
                                 options=[""] + opt_col_options,
                                 index=select_idx,
                                 key=unique_key,
@@ -697,39 +832,52 @@ def render_field_mapping_tab():
                             )
                             
                             # Extract column name from selected option (remove confidence scores)
-                            if selected and selected != "":
-                                field_selected_clean = opt_col_name_map.get(selected, selected.split(" (")[0] if " (" in selected else selected)
+                            # Also read from session state for immediate preview (works even inside form)
+                            current_selection = st.session_state.get(unique_key, selected)
+                            if current_selection and current_selection != "":
+                                field_selected_clean = opt_col_name_map.get(current_selection, current_selection.split(" (")[0] if " (" in current_selection else current_selection)
                             else:
                                 field_selected_clean = None
                         
-                        # Preview panel (only when mapped)
-                        if field_selected_clean and field_selected_clean in claims_df.columns:
-                            try:
-                                col_data = claims_df[field_selected_clean]
-                                samples = col_data.dropna().head(3).tolist()
-                                fill_rate = (col_data.notna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0.0
-                                
-                                # Format samples for display
-                                sample_display = []
-                                for sample in samples[:3]:
-                                    sample_str = str(sample)
-                                    if len(sample_str) > 30:
-                                        sample_str = sample_str[:27] + "..."
-                                    sample_display.append(f"• {sample_str}")
-                                
-                                if not sample_display:
-                                    sample_display = ["• (no data)"]
-                                
+                        # Preview panel (only when mapped) - shows immediately based on current dropdown selection
+                        # For manual inputs, show a simple indicator instead of data preview
+                        if field_selected_clean:
+                            if field_selected_clean in claims_df.columns:
+                                try:
+                                    col_data = claims_df[field_selected_clean]
+                                    samples = col_data.dropna().head(3).tolist()
+                                    fill_rate = (col_data.notna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0.0
+                                    
+                                    # Format samples for display
+                                    sample_display = []
+                                    for sample in samples[:3]:
+                                        sample_str = str(sample)
+                                        if len(sample_str) > 30:
+                                            sample_str = sample_str[:27] + "..."
+                                        sample_display.append(f"• {sample_str}")
+                                    
+                                    if not sample_display:
+                                        sample_display = ["• (no data)"]
+                                    
+                                    st.markdown(f"""
+                                        <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
+                                            <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                            <div style='color: #6c757d; font-size: 0.8rem;'>
+                                                <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                            </div>
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                except Exception:
+                                    pass
+                            elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
+                                # For manual inputs, show a simple indicator
                                 st.markdown(f"""
-                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
-                                        <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
-                                        <div style='color: #6c757d; font-size: 0.8rem;'>
-                                            <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                    <div style='background-color: #e8f5e9; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 0.85rem;'>
+                                        <div style='color: #2e7d32;'>
+                                            <span>✓ Manual value: <strong>{field_selected_clean[:50]}{'...' if len(field_selected_clean) > 50 else ''}</strong></span>
                                         </div>
                                     </div>
                                 """, unsafe_allow_html=True)
-                            except Exception:
-                                pass
 
                     if field_selected_clean:
                         # Record correction if user overrode AI suggestion
@@ -748,17 +896,27 @@ def render_field_mapping_tab():
                             "mode": "manual" if field_selected_clean != suggested_column else "auto",
                             "value": field_selected_clean
                         }
+                        # Update session state immediately for automatic saving
+                        st.session_state["final_mapping"] = final_mapping.copy()
 
-    # --- After ALL mappings, refresh transformed_df ---
+    # --- After ALL mappings, refresh transformed_df and generate outputs automatically ---
     claims_df = st.session_state.get("claims_df")
-    final_mapping = st.session_state.get("final_mapping", {})
+    
+    # Ensure final_mapping is saved to session state
+    st.session_state["final_mapping"] = final_mapping.copy()
 
     if claims_df is not None and final_mapping:
-        st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping)
-        st.session_state.final_mapping = final_mapping
+        try:
+            st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping, layout_df)
+        except Exception:
+            pass  # Don't fail if transformation fails
 
-    if st.session_state.get("final_mapping"):
+    # Generate outputs automatically when mappings exist
+    if final_mapping and any(info.get("value") for info in final_mapping.values()):
         # Import here to avoid circular dependency
         from data.output_generator import generate_all_outputs
-        generate_all_outputs()
+        try:
+            generate_all_outputs()
+        except Exception:
+            pass  # Don't fail if output generation fails
 

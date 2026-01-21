@@ -236,35 +236,33 @@ def render_enhanced_search(
 
 
 def show_onboarding_tour() -> None:
-    """Show first-time user onboarding tour."""
-    if "onboarding_completed" not in st.session_state:
-        st.session_state.onboarding_completed = False
-    
-    if not st.session_state.onboarding_completed:
-        with st.expander("Welcome! Quick Tour", expanded=False):
+    """Show onboarding tour in the sidebar."""
+    with st.sidebar:
+        with st.expander("Welcome! Quick Tour", expanded=True):
             st.markdown("""
-            ### Welcome to Claims Mapper & Validator!
+            ### 🚀 Welcome to Claims Mapper & Validator!
             
-            **Getting Started:**
-            1. **Setup Tab**: Upload your Layout, Lookup, and Claims files
-            2. **Field Mapping Tab**: Map your source columns to required fields
-            3. **Preview & Validate Tab**: Review validation results
-            4. **Downloads Tab**: Download your processed files
+            **Transform your claims data with intelligent mapping and validation.**
             
-            **Tips:**
-            - Use AI suggestions (≥80% confidence) for faster mapping
-            - Review validation results before downloading
-            - Save mapping templates for reuse
+            **📋 Your Workflow:**
             
-            **Keyboard Shortcuts:**
-            - `Ctrl+Z`: Undo
-            - `Ctrl+Y`: Redo
-            - `Ctrl+F`: Search fields
+            **1️⃣ Setup** → Upload your Layout, Lookup, and Claims files to get started
+            
+            **2️⃣ Field Mapping** → Let AI suggest mappings (≥80% confidence) or map manually. Our intelligent engine learns from your patterns.
+            
+            **3️⃣ Preview & Validate** → Review data quality, catch errors early, and ensure compliance before processing
+            
+            **4️⃣ Downloads** → Export anonymized claims, mapping tables, test data, and onboarding scripts in one click
+            
+            **💡 Pro Tips:**
+            - **AI-Powered Mapping**: Accept suggestions with ≥80% confidence for instant mapping
+            - **Batch Processing**: Process multiple files with the same mapping configuration
+            - **Test Data Generation**: Create realistic test scenarios for validation
+            
+            **⌨️ Quick Actions:**
+            - `Ctrl+Z` / `Ctrl+Y` → Undo/Redo your mapping changes
+            - `Ctrl+F` → Quick search across fields
             """)
-            
-            if st.button("Got it! Start using the app", key="complete_onboarding"):
-                st.session_state.onboarding_completed = True
-                st.session_state.needs_refresh = True
 
 
 def show_contextual_help(context: str) -> None:

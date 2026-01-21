@@ -241,13 +241,20 @@ def render_upload_and_claims_preview():
                         st.error(error_msg)
                     else:
                         st.session_state.claims_upload_attempted = True
-                        # Reset session if file changed
-                        if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
-                            st.session_state.pop("claims_df", None)
-                            st.session_state.pop("final_mapping", None)
-                            st.session_state.pop("auto_mapping", None)
-                            st.session_state.pop("auto_mapped_fields", None)
-                        # Track upload order if this is a new file
+                    # Reset session if file changed
+                    if "claims_file_obj" in st.session_state and st.session_state.claims_file_obj.name != claims_file.name:
+                        st.session_state.pop("claims_df", None)
+                        st.session_state.pop("final_mapping", None)
+                        st.session_state.pop("auto_mapping", None)
+                        st.session_state.pop("auto_mapped_fields", None)
+                        # Clear preprocessing steps for new file
+                        try:
+                            from data.preprocessing_tracker import clear_preprocessing_steps
+                            clear_preprocessing_steps()
+                        except ImportError:
+                            pass
+                        st.session_state.pop("preprocessing_skiprows", None)
+                    # Track upload order if this is a new file
                         if "claims_file_obj" not in st.session_state or st.session_state.claims_file_obj.name != claims_file.name:
                             if "upload_order" not in st.session_state:
                                 st.session_state.upload_order = []
@@ -298,6 +305,13 @@ def render_upload_and_claims_preview():
                         st.session_state.pop("final_mapping", None)
                         st.session_state.pop("auto_mapping", None)
                         st.session_state.pop("auto_mapped_fields", None)
+                        # Clear preprocessing steps for new file
+                        try:
+                            from data.preprocessing_tracker import clear_preprocessing_steps
+                            clear_preprocessing_steps()
+                        except ImportError:
+                            pass
+                        st.session_state.pop("preprocessing_skiprows", None)
                     # Track upload order if this is a new file
                     if "claims_file_obj" not in st.session_state or st.session_state.claims_file_obj.name != claims_file.name:
                         if "upload_order" not in st.session_state:
@@ -359,7 +373,14 @@ def render_upload_and_claims_preview():
             
             # Show enhanced progress indicator
             from ui.progress_indicators import ProgressIndicator
-            from performance.memory_profiling import track_memory_usage
+            
+            # Memory profiling (optional feature - not available, using dummy implementation)
+            from contextlib import contextmanager
+            
+            @contextmanager
+            def track_memory_usage(operation_name: str):
+                """Dummy context manager for memory tracking (performance module not available)."""
+                yield {"available": False}
             
             progress = ProgressIndicator(
                 total_steps=100,
@@ -504,6 +525,24 @@ def render_upload_and_claims_preview():
                             st.session_state.header_uploader_shown = True
                             st.stop()  # Stop processing until header file is uploaded
 
+                    # --- Preprocessing Options ---
+                    with st.expander("⚙️ Preprocessing Options", expanded=False):
+                        skiprows_input = st.number_input(
+                            "Skip first N rows (e.g., for logos, stats, or metadata)",
+                            min_value=0,
+                            value=st.session_state.get("preprocessing_skiprows", 0),
+                            key="preprocessing_skiprows",
+                            help="Use this if your file has logos, statistics, or other metadata at the top that should be skipped before the actual data starts."
+                        )
+                        
+                        # Track skiprows if > 0
+                        if skiprows_input > 0:
+                            try:
+                                from data.preprocessing_tracker import track_preprocessing_step
+                                track_preprocessing_step("skip_rows", {"num_rows": skiprows_input})
+                            except ImportError:
+                                pass
+                    
                     # --- Read full source file
                     progress.update(70, "Loading claims data...")
                     
@@ -516,13 +555,18 @@ def render_upload_and_claims_preview():
                         # Determine if we should use header spec file or regular header file
                         use_header_spec = header_spec_colspecs is not None and header_spec_names is not None
                         
+                        skiprows_value = st.session_state.get("preprocessing_skiprows", 0) or None
+                        if skiprows_value == 0:
+                            skiprows_value = None
+                        
                         claims_df = read_claims_with_header_option(
                             claims_file,
                             headerless=(use_header_file or (detected_has_header is False) or use_header_spec),
                             header_file=header_file if (use_header_file and not use_header_spec) else None,
                             delimiter=delimiter,
                             colspecs=colspecs if is_fw else None,
-                            header_names=header_spec_names if use_header_spec else None
+                            header_names=header_spec_names if use_header_spec else None,
+                            skiprows=skiprows_value
                         )
 
                         # Fallback for junk columns

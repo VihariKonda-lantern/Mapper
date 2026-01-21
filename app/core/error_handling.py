@@ -305,25 +305,68 @@ def get_error_info(error: Exception) -> Dict[str, Any]:
     
     # Handle standard exceptions
     error_type = type(error).__name__
+    error_str = str(error)
+    
     if "FileNotFound" in error_type or "FileNotFoundError" in error_type:
         error_code = "FILE_NOT_FOUND"
     elif "Permission" in error_type or "PermissionError" in error_type:
         error_code = "PERMISSION_ERROR"
     elif "ValueError" in error_type:
         error_code = "VALIDATION_ERROR"
+        # For ValueError, show the actual error message
+        return {
+            "error_code": error_code,
+            "message": error_str if error_str else "Validation error occurred",
+            "suggestions": ERROR_REGISTRY.get("VALIDATION_ERROR", {}).get("suggestions", []),
+            "help_url": ERROR_REGISTRY.get("VALIDATION_ERROR", {}).get("help_url", "/help"),
+            "technical_details": error_str,
+            "context": {}
+        }
+    elif "ImportError" in error_type or "ModuleNotFoundError" in error_type:
+        error_code = "MISSING_DEPENDENCY"
+        # For ImportError, show the actual error message directly
+        return {
+            "error_code": error_code,
+            "message": error_str if error_str else "A required package is missing",
+            "suggestions": [
+                "Install the missing package using pip",
+                "Check that all dependencies from requirements.txt are installed",
+                "Try: pip install -r requirements.txt"
+            ],
+            "help_url": "/help/installation",
+            "technical_details": error_str,
+            "context": {}
+        }
     elif "KeyError" in error_type:
         error_code = "MISSING_REQUIRED_FIELD"
+    elif "AttributeError" in error_type:
+        error_code = "UNEXPECTED_ERROR"
+        # For AttributeError, show more details
+        return {
+            "error_code": error_code,
+            "message": f"Configuration error: {error_str}" if error_str else "An unexpected configuration error occurred",
+            "suggestions": ERROR_REGISTRY.get("UNEXPECTED_ERROR", {}).get("suggestions", []),
+            "help_url": ERROR_REGISTRY.get("UNEXPECTED_ERROR", {}).get("help_url", "/help"),
+            "technical_details": error_str,
+            "context": {}
+        }
     else:
         error_code = "UNEXPECTED_ERROR"
     
     registry_entry = ERROR_REGISTRY.get(error_code, ERROR_REGISTRY["UNEXPECTED_ERROR"])
     
+    # For unexpected errors, try to show the actual error message if it's informative
+    message = registry_entry.get("message", "An unexpected error occurred")
+    if error_code == "UNEXPECTED_ERROR" and error_str and len(error_str) < 200:
+        # If the error message is short and informative, show it directly instead of prefixing
+        message = error_str
+    
     return {
         "error_code": error_code,
-        "message": registry_entry.get("message", str(error)),
+        "message": message,
         "suggestions": registry_entry.get("suggestions", []),
         "help_url": registry_entry.get("help_url", "/help"),
-        "technical_details": str(error),
+        "technical_details": error_str,
         "context": {}
     }
 

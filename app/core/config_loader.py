@@ -14,7 +14,7 @@ AUDIT_LOG_MAX_SIZE: int = 100
 MAPPING_HISTORY_MAX_SIZE: int = 50
 
 # AI & Validation Settings
-AI_CONFIDENCE_THRESHOLD: int = 80
+AI_CONFIDENCE_THRESHOLD: int = 80  # Minimum confidence (as percentage) to auto-apply mappings
 VALIDATION_PAGE_SIZES: List[int] = [25, 50, 100, 200]
 DEFAULT_VALIDATION_PAGE_SIZE: int = 50
 

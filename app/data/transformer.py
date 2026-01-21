@@ -117,7 +117,11 @@ def _transform_source_data_internal(source_df: Any, final_mapping: Dict[str, Dic
             mask_other = ~mask_excel & ~mask_yyyymmdd
             if mask_other.any():
                 # Try parsing as various date formats
-                result.loc[mask_other] = pd.to_datetime(s_str.loc[mask_other], errors='coerce')  # type: ignore[no-untyped-call]
+                # Suppress the format inference warning since we're handling multiple formats explicitly
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=UserWarning, message='.*Could not infer format.*')
+                    result.loc[mask_other] = pd.to_datetime(s_str.loc[mask_other], errors='coerce')  # type: ignore[no-untyped-call]
             
             # Convert NaT to None
             result = result.where(pd.notna(result), None)  # type: ignore[no-untyped-call]

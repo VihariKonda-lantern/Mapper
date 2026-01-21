@@ -207,7 +207,7 @@ class SessionStateManager:
             "timestamp": datetime.now().isoformat()
         })
         # Keep only last N events
-        from config import AUDIT_LOG_MAX_SIZE
+        from core.config_loader import AUDIT_LOG_MAX_SIZE
         if len(audit_log) > AUDIT_LOG_MAX_SIZE:
             del audit_log[:len(audit_log) - AUDIT_LOG_MAX_SIZE]
     
