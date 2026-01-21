@@ -59,12 +59,6 @@ def generate_preprocessing_script(
     script_lines = [
         "#!/usr/bin/env python3",
         '"""',
-        "File Preprocessing Script",
-        "Generated automatically based on preprocessing steps applied during file processing.",
-        "",
-        "This script reproduces the preprocessing steps used to process the raw file.",
-        "Usage: python preprocess_file.py <input_file> [output_file]",
-        "",
         f"Original file: {filename or 'N/A'}",
         '"""',
         "",

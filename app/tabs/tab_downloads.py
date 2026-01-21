@@ -568,22 +568,15 @@ def render_downloads_tab() -> None:
                     
                     if st.session_state.get("onboarding_include_in_zip"):
                         enhanced_readme += "ONBOARDING SCRIPTS:\n"
-                        enhanced_readme += "- SQL script for CDAP database setup is included in the onboarding/ folder.\n"
-                        enhanced_readme += "- Review the script before executing in SQL Server Management Studio.\n"
-                        enhanced_readme += "- Ensure all parameters are correctly configured.\n\n"
+                        enhanced_readme += "- SQL script for CDAP database setup is included in the onboarding/ folder.\n\n"
                     
                     if st.session_state.get("test_include_in_zip"):
                         enhanced_readme += "TEST DATA SCENARIOS:\n"
-                        enhanced_readme += "- Test data files are included in the test_data/ folder.\n"
-                        enhanced_readme += "- Each scenario tests different validation and processing conditions.\n"
-                        enhanced_readme += "- Use these files to validate your ETL pipeline.\n\n"
+                        enhanced_readme += "- Test data files are included in the test_data/ folder.\n\n"
                     
                     if st.session_state.get("preprocessing_steps"):
                         enhanced_readme += "PREPROCESSING SCRIPT:\n"
-                        enhanced_readme += "- Python script (preprocess_file.py) is included in the preprocessing/ folder.\n"
-                        enhanced_readme += "- This script reproduces the preprocessing steps applied to your raw file.\n"
-                        enhanced_readme += "- Use it to preprocess similar files in the future.\n"
-                        enhanced_readme += "- See preprocessing_instructions.txt for usage details.\n\n"
+                        enhanced_readme += "- Python script (preprocess_file.py) is included in the preprocessing/ folder.\n\n"
 
                 buffer = io.BytesIO()
                 with zipfile.ZipFile(buffer, "w") as zip_file:
@@ -593,21 +586,10 @@ def render_downloads_tab() -> None:
                     
                     # Add onboarding script if requested
                     if st.session_state.get("onboarding_include_in_zip") and st.session_state.get("onboarding_sql_script"):
-                        onboarding_instructions = """CDAP Onboarding SQL Script Instructions
-
-1. Review the SQL script before execution
-2. Ensure all parameters match your environment
-3. Execute in SQL Server Management Studio
-4. Verify all MERGE statements completed successfully
-5. Check IngestionConfig and related tables for proper setup
-
-For questions or issues, contact your database administrator.
-"""
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         client_name = st.session_state.get("onboarding_client_name") or "client"
                         sql_filename = f"CDAP_Onboarding_{client_name}_{timestamp}.sql"
                         zip_file.writestr(f"onboarding/{sql_filename}", st.session_state.onboarding_sql_script)
-                        zip_file.writestr("onboarding/onboarding_instructions.txt", onboarding_instructions)
                     
                     # Add test data if requested
                     if st.session_state.get("test_include_in_zip") and st.session_state.get("test_data_dict"):
@@ -615,22 +597,7 @@ For questions or issues, contact your database administrator.
                         file_format = file_metadata.get("format", "csv")
                         file_separator = file_metadata.get("sep", "\t")
                         
-                        test_data_readme = """Test Data Scenarios
-
-This folder contains test data files for different validation scenarios:
-
-1. happy_path: Normal valid data for standard processing
-2. headers_only: File with only headers, no data rows
-3. messed_up_date_formats: Invalid date formats to test date parsing
-4. nulls_in_required_fields: Missing required fields to test validation
-5. duplicates: Duplicate records to test deduplication logic
-6. demo_mismatch: Demographic mismatches to test validation
-7. duplicates_with_recent_service: Duplicates with one recent service date
-8. validation_edge_cases: Specific validation issues (DOB < 18, service date > 18 months)
-
-Use these files to validate your ETL pipeline handles edge cases correctly.
-"""
-                        zip_file.writestr("test_data/test_data_scenarios_readme.txt", test_data_readme)
+                        # No readme file for test data
                         
                         # Determine file extension based on format
                         file_ext_map = {
@@ -682,29 +649,7 @@ Use these files to validate your ETL pipeline handles edge cases correctly.
                                 filename=original_filename
                             )
                             
-                            preprocessing_readme = """Preprocessing Script Instructions
-
-This Python script (preprocess_file.py) reproduces the preprocessing steps that were applied to your raw file during processing.
-
-Usage:
-    python preprocess_file.py <input_file> [output_file]
-
-Example:
-    python preprocess_file.py raw_claims.csv processed_claims.csv
-
-The script includes:
-- File format detection and reading
-- Encoding detection
-- Delimiter detection
-- Row skipping (if applicable)
-- Header handling
-- Fixed-width processing (if applicable)
-- Basic data cleaning
-
-You can customize this script for your specific preprocessing needs.
-"""
                             zip_file.writestr("preprocessing/preprocess_file.py", preprocessing_script.encode('utf-8'))
-                            zip_file.writestr("preprocessing/preprocessing_instructions.txt", preprocessing_readme)
                         except ImportError:
                             pass  # Preprocessing tracker not available
                         except Exception:
