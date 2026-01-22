@@ -1,6 +1,6 @@
 # --- config_loader.py ---
 """Configuration loader with external file support and validation."""
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import json
 import os
 from pathlib import Path
@@ -120,7 +120,7 @@ class ConfigLoader:
         return config
     
     @staticmethod
-    def validate_config(config: Dict[str, Any], schema: Optional[Dict[str, Any]] = None) -> tuple[bool, Optional[str]]:
+    def validate_config(config: Dict[str, Any], schema: Optional[Dict[str, Any]] = None) -> Tuple[bool, Optional[str]]:
         """
         Validate configuration against schema.
         

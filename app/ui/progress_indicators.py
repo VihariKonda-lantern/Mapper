@@ -1,7 +1,7 @@
 # --- progress_indicators.py ---
 """Enhanced progress indicators with time estimates and action feedback."""
 import streamlit as st
-from typing import Any, Optional, Callable, Dict
+from typing import Any, Optional, Callable, Dict, List
 from datetime import datetime, timedelta
 import time
 
@@ -137,7 +137,7 @@ def show_loading_state(
 def render_workflow_progress(
     current_step: int,
     total_steps: int,
-    step_names: Optional[list[str]] = None
+    step_names: Optional[List[str]] = None
 ) -> None:
     """Render overall workflow progress indicator."""
     if step_names is None:

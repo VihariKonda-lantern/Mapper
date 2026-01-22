@@ -2,7 +2,7 @@
 """Utility functions for UI/UX improvements."""
 import streamlit as st
 import pandas as pd
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable, Tuple
 from datetime import datetime, timedelta
 import time
 import hashlib
@@ -155,7 +155,7 @@ def get_user_friendly_error(error: Exception) -> str:
 
 
 # --- Input Validation ---
-def validate_file_upload(file_obj: Any, max_size_mb: int = MAX_FILE_SIZE_MB) -> tuple[bool, Optional[str]]:
+def validate_file_upload(file_obj: Any, max_size_mb: int = MAX_FILE_SIZE_MB) -> Tuple[bool, Optional[str]]:
     """Validate uploaded file."""
     if file_obj is None:
         return False, "No file uploaded."

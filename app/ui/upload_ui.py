@@ -5,7 +5,7 @@ import pandas as pd  # type: ignore[import-not-found]
 import io
 import os
 import gzip
-from typing import Any, List, Dict, Set, Union, cast
+from typing import Any, List, Dict, Set, Union, cast, Tuple
 
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
@@ -37,7 +37,7 @@ try:
     )
 except ImportError:
     # Fallback if modules not available
-    def validate_file_upload(file_obj: Any, max_size_mb: int = 500) -> tuple[bool, Any]:
+    def validate_file_upload(file_obj: Any, max_size_mb: int = 500) -> Tuple[bool, Any]:
         return True, None
     def get_user_friendly_error(error: Exception) -> str:
         return str(error)

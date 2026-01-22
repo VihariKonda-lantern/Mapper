@@ -1,7 +1,7 @@
 # --- path_utils.py ---
 """Path utilities using pathlib for better path handling."""
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 import os
 
 
@@ -255,7 +255,7 @@ def path_dirname(path: Union[str, Path]) -> Path:
     return Path(path).parent
 
 
-def path_splitext(path: Union[str, Path]) -> tuple[str, str]:
+def path_splitext(path: Union[str, Path]) -> Tuple[str, str]:
     """Split extension (pathlib version of os.path.splitext)."""
     path_obj = Path(path)
     return (path_obj.stem, path_obj.suffix)

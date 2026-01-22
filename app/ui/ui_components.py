@@ -46,12 +46,18 @@ def render_progress_bar(percent: int, label: str = "", text_color: Optional[str]
     from ui.design_system import DesignTokens
     tokens = DesignTokens
     text_color = text_color or tokens.COLORS['text']
+    # Extract values to avoid nested quotes in f-strings
+    spacing_sm = tokens.SPACING['sm']
+    background_alt = tokens.COLORS['background-alt']
+    radius_full = tokens.RADIUS['full']
+    color_primary = tokens.COLORS['primary']
+    font_size_sm = tokens.FONT_SIZES['sm']
     return (
-        f'<div class="progress-container" style="margin-top: {tokens.SPACING['sm']}; margin-bottom: {tokens.SPACING['sm']}; '
-        f'background-color: {tokens.COLORS['background-alt']}; border-radius: {tokens.RADIUS['full']}; '
-        f'height: 8px; overflow: hidden;"><div style="width: {percent}%; background: {tokens.COLORS['primary']} !important; '
-        f'height: 100%; border-radius: {tokens.RADIUS['full']}; transition: width 0.5s ease;"></div></div>'
-        f'<small style="color: {text_color}; font-size: {tokens.FONT_SIZES['sm']}; display: block; margin-top: {tokens.SPACING['sm']};">{label}</small>'
+        f'<div class="progress-container" style="margin-top: {spacing_sm}; margin-bottom: {spacing_sm}; '
+        f'background-color: {background_alt}; border-radius: {radius_full}; '
+        f'height: 8px; overflow: hidden;"><div style="width: {percent}%; background: {color_primary} !important; '
+        f'height: 100%; border-radius: {radius_full}; transition: width 0.5s ease;"></div></div>'
+        f'<small style="color: {text_color}; font-size: {font_size_sm}; display: block; margin-top: {spacing_sm};">{label}</small>'
     )
 
 
@@ -59,8 +65,13 @@ def render_title():
     """Renders the app title with consistent styling."""
     from ui.design_system import DesignTokens
     tokens = DesignTokens
+    # Extract values to avoid nested quotes in f-strings
+    font_size_2xl = tokens.FONT_SIZES['2xl']
+    font_weight_semibold = tokens.FONT_WEIGHTS['semibold']
+    spacing_md = tokens.SPACING['md']
+    color_text = tokens.COLORS['text']
     st.markdown(
-        f"<div style='font-size: {tokens.FONT_SIZES['2xl']}; font-weight: {tokens.FONT_WEIGHTS['semibold']}; margin-bottom: {tokens.SPACING['md']}; color: {tokens.COLORS['text']};'>Claims File Mapper and Validator</div>",
+        f"<div style='font-size: {font_size_2xl}; font-weight: {font_weight_semibold}; margin-bottom: {spacing_md}; color: {color_text};'>Claims File Mapper and Validator</div>",
         unsafe_allow_html=True
     )
 

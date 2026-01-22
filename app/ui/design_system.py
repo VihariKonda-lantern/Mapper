@@ -1107,24 +1107,29 @@ def render_info_card(
     
     style = variant_styles.get(variant, variant_styles["info"])
     icon_text = f"{icon} " if icon else ""
+    # Extract values to avoid nested quotes in f-strings
+    radius_md = tokens.RADIUS['md']
+    font_weight_semibold = tokens.FONT_WEIGHTS['semibold']
+    font_size_base = tokens.FONT_SIZES['base']
+    font_size_sm = tokens.FONT_SIZES['sm']
     
     card_html = f"""
     <div style='
         background: {style['bg']};
         border-left: 4px solid {style['border']};
-        border-radius: {tokens.RADIUS['md']};
+        border-radius: {radius_md};
         padding: 0.75rem 1rem;
         margin-bottom: 0.5rem;
     '>
         <div style='
-            font-weight: {tokens.FONT_WEIGHTS['semibold']};
+            font-weight: {font_weight_semibold};
             color: {style['text']};
-            font-size: {tokens.FONT_SIZES['base']};
+            font-size: {font_size_base};
             margin-bottom: 0.25rem;
         '>{icon_text}{title}</div>
         <div style='
             color: {style['text']};
-            font-size: {tokens.FONT_SIZES['sm']};
+            font-size: {font_size_sm};
             line-height: 1.5;
         '>{content}</div>
     </div>

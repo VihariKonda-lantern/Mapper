@@ -5,7 +5,7 @@ import csv
 import json
 import os
 import io
-from typing import Tuple, List, Any, Optional, IO, cast
+from typing import Tuple, List, Any, Optional, IO, cast, Dict
 import streamlit as st  # type: ignore[import-not-found]
 
 st = cast(Any, st)
@@ -43,7 +43,7 @@ def clean_header_row(header_list: List[str]) -> List[str]:
             cleaned.append(str(val).strip())
 
     # De-duplicate headers
-    seen: dict[str, int] = {}
+    seen: Dict[str, int] = {}
     final_headers: List[str] = []
     for h in cleaned:
         if h in seen:

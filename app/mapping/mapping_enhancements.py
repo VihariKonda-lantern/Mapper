@@ -420,7 +420,7 @@ def get_mapping_confidence_score(
     return confidence_scores
 
 
-def validate_mapping_before_processing(mapping: Dict[str, Dict[str, Any]]) -> tuple[bool, Optional[str]]:
+def validate_mapping_before_processing(mapping: Dict[str, Dict[str, Any]]) -> Tuple[bool, Optional[str]]:
     """
     Validate mapping before processing.
     
