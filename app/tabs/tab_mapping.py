@@ -127,7 +127,6 @@ def render_mapping_tab() -> None:
         
         # Show payload if generated (collapsible using details/summary HTML)
         if "llm_payload" in st.session_state:
-            st.markdown("---")
             payload_size = st.session_state.get("llm_payload_size", 0)
             size_info = f" ({payload_size:.1f} KB)" if payload_size > 0 else ""
             st.markdown(f"""
@@ -209,8 +208,6 @@ def render_mapping_tab() -> None:
                 st.session_state.copy_payload_clicked = False
                 st.success("✅ Payload copied to clipboard!")
         
-        st.divider()
-        
         # Response input
         st.markdown("**Paste Copilot Studio Response:**")
         response_text = st.text_area(
@@ -266,8 +263,8 @@ def render_mapping_tab() -> None:
     
     # --- Main Mapping Section ---
     st.markdown("""
-        <div style='margin-top: 0.5rem; margin-bottom: 0.125rem;'>
-            <h4 style='margin: 0; padding: 0;'>Field Mapping</h4>
+        <div style='margin-top: 0.5rem; margin-bottom: 0.5rem;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Field Mapping</h2>
         </div>
     """, unsafe_allow_html=True)
     

@@ -224,6 +224,11 @@ def render_validation_tab() -> None:
     
     # Tab 1: Mandatory Fields
     with tab1:
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Mandatory Fields Analysis</h3>
+            </div>
+        """, unsafe_allow_html=True)
         if unmapped_required_fields:
             st.error(f"**Missing Fields:** {', '.join(f'`{f}`' for f in unmapped_required_fields)}")
             st.caption("These mandatory fields must be present in the source file and properly mapped.")
@@ -273,7 +278,6 @@ def render_validation_tab() -> None:
                 st.metric("Fields Exceeding Threshold", len(fields_exceeding_threshold))
             
             if fields_exceeding_threshold:
-                st.markdown("---")
                 st.markdown("""
                     <div style='margin-bottom: 0.5rem;'>
                         <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin: 0;'>Fields Requiring Attention</h4>
@@ -302,7 +306,6 @@ def render_validation_tab() -> None:
         ]
         
         if other_failures or other_warnings:
-            st.markdown("---")
             if other_failures:
                 st.markdown("**Critical Issues:**")
                 for issue in other_failures:
@@ -326,8 +329,12 @@ def render_validation_tab() -> None:
     
     # --- Tab 2: Data Quality ---
     with tab2:
-        claims_df = SessionStateManager.get_claims_df()
-        
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Data Quality Analysis</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        # Use claims_df from top-level check (already validated)
         if claims_df is not None and not claims_df.empty:
             # Data Quality Score
             required_fields_quality = []
@@ -376,7 +383,6 @@ def render_validation_tab() -> None:
                 st.json(breakdown)
             
             # Column Statistics
-            st.markdown("---")
             st.markdown("""
                 <div style='margin-bottom: 0.5rem;'>
                     <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin: 0;'>Column Statistics</h4>
@@ -391,13 +397,17 @@ def render_validation_tab() -> None:
                 except Exception as e:
                     error_msg = get_user_friendly_error(e)
                     st.error(f"Error calculating column statistics: {error_msg}")
-                else:
-                    st.info("No source data available for quality analysis.")
+        else:
+            st.info("No source data available for quality analysis.")
     
     # --- Tab 3: Advanced Analysis ---
     with tab3:
-        claims_df = SessionStateManager.get_claims_df()
-        
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Advanced Analysis</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        # Use claims_df from top-level check (already validated)
         if claims_df is not None and not claims_df.empty:
             # Duplicate Detection
             with st.expander("🔍 Duplicate Detection", expanded=True):
@@ -468,6 +478,6 @@ def render_validation_tab() -> None:
                                      "sample_data.csv",
                                      "text/csv",
                                      key="download_sample")
-                else:
-                    st.info("No source data available for advanced analysis.")
+        else:
+            st.info("No source data available for advanced analysis.")
     

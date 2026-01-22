@@ -79,6 +79,13 @@ def render_setup_tab() -> None:
     
     # Unified design system is already injected in main.py
     
+    # File Summaries Section
+    st.markdown("""
+        <div style='margin-top: 1rem; margin-bottom: 0.5rem;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>File Summaries</h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
     # Dynamic summary cards based on upload order
     upload_order = cast(List[str], SessionStateManager.get("upload_order", []))
     summary_functions: List[Callable[[], None]] = []

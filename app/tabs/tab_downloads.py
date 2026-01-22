@@ -6,6 +6,7 @@ from datetime import datetime
 import io
 import zipfile
 import pandas as pd
+import re
 from core.state_manager import SessionStateManager
 from ui.ui_components import render_sortable_table, show_toast, show_confirmation_dialog
 from core.error_handling import get_user_friendly_error
@@ -66,6 +67,11 @@ def render_downloads_tab() -> None:
     
     # Tab 1: Data Generation
     with tab1:
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Test Data Generation</h3>
+            </div>
+        """, unsafe_allow_html=True)
         with st.expander("Generate Test Data with Scenarios", expanded=False):
             from data.output_generator import generate_test_data_outputs
             
@@ -234,6 +240,11 @@ def render_downloads_tab() -> None:
 
     # Tab 2: Output Previews
     with tab2:
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Output Previews</h3>
+            </div>
+        """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
         if not final_mapping:
             st.info("Complete required field mappings to generate outputs.")
@@ -255,14 +266,72 @@ def render_downloads_tab() -> None:
                     render_sortable_table(anonymized_df.head(), key="anonymized_preview_table")
 
                     st.markdown("**Customize Anonymized File Output**")
+                    
+                    # Get file information from uploaded file
+                    claims_file_obj = st.session_state.get("claims_file_obj")
+                    file_metadata = st.session_state.get("claims_file_metadata", {})
+                    
+                    # Extract file name without extension
+                    import os
+                    if claims_file_obj and hasattr(claims_file_obj, "name"):
+                        original_filename = claims_file_obj.name
+                        # Remove extension
+                        file_name_without_ext = os.path.splitext(original_filename)[0]
+                        # Remove .gz if present (for decompressed files)
+                        if file_name_without_ext.lower().endswith('.gz'):
+                            file_name_without_ext = os.path.splitext(file_name_without_ext)[0]
+                    else:
+                        file_name_without_ext = "anonymized_claims"
+                    
+                    # Determine file type from metadata or file extension
+                    file_format = file_metadata.get("format", "csv")
+                    if claims_file_obj and hasattr(claims_file_obj, "name"):
+                        file_ext = os.path.splitext(claims_file_obj.name.lower())[1]
+                        # Handle .gz files
+                        if file_ext == ".gz":
+                            # Get the extension before .gz
+                            name_without_gz = os.path.splitext(claims_file_obj.name)[0]
+                            file_ext = os.path.splitext(name_without_gz.lower())[1]
+                    else:
+                        file_ext = ".csv"
+                    
+                    # Map file format/extension to selectbox options
+                    file_type_map = {
+                        "csv": ".csv",
+                        "excel": ".xlsx",
+                        "json": ".json",
+                        "parquet": ".parquet",
+                        ".csv": ".csv",
+                        ".txt": ".txt",
+                        ".tsv": ".txt",
+                        ".xlsx": ".xlsx",
+                        ".xls": ".xlsx",
+                        ".json": ".json",
+                        ".parquet": ".parquet"
+                    }
+                    default_file_type = file_type_map.get(file_format, file_type_map.get(file_ext, ".csv"))
+                    file_type_options = [".csv", ".txt", ".xlsx", ".json", ".parquet"]
+                    default_file_type_index = file_type_options.index(default_file_type) if default_file_type in file_type_options else 0
+                    
+                    # Determine delimiter from metadata
+                    detected_sep = file_metadata.get("sep", ",")
+                    delimiter_map = {
+                        ",": "Comma",
+                        "\t": "Tab",
+                        "|": "Pipe"
+                    }
+                    default_delimiter = delimiter_map.get(detected_sep, "Comma")
+                    delimiter_options = ["Comma", "Tab", "Pipe"]
+                    default_delimiter_index = delimiter_options.index(default_delimiter) if default_delimiter in delimiter_options else 0
+                    
                     col1, col2, col3, col4 = st.columns(4)
 
                     with col1:
-                        file_name_input = st.text_input("File Name (without extension)", value="anonymized_claims")
+                        file_name_input = st.text_input("File Name (without extension)", value=file_name_without_ext)
                     with col2:
-                        file_type = st.selectbox("File Type", options=[".csv", ".txt", ".xlsx", ".json", ".parquet"], index=0)
+                        file_type = st.selectbox("File Type", options=file_type_options, index=default_file_type_index)
                     with col3:
-                        delimiter = st.selectbox("Delimiter", options=["Comma", "Tab", "Pipe"], index=0, disabled=file_type in [".xlsx", ".json", ".parquet"])
+                        delimiter = st.selectbox("Delimiter", options=delimiter_options, index=default_delimiter_index, disabled=file_type in [".xlsx", ".json", ".parquet"])
 
                     delim_char = {
                         "Comma": ",",
@@ -317,12 +386,15 @@ def render_downloads_tab() -> None:
                             try:
                                 status_text.text("Regenerating anonymized data...")
                                 progress_bar.progress(0.5)
-                                if claims_df is not None:
+                                if claims_df is not None and final_mapping is not None:
+                                    # Import here to ensure it's in scope
+                                    from data.anonymizer import anonymize_claims_data
                                     st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
                                 progress_bar.progress(1.0)
                                 status_text.empty()
                                 progress_bar.empty()
                                 _notify("✅ Anonymized file regenerated!")
+                                st.rerun()
                             except Exception as e:
                                 progress_bar.empty()
                                 status_text.empty()
@@ -379,45 +451,154 @@ def render_downloads_tab() -> None:
 
     # Tab 3: Onboarding & Setup
     with tab3:
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Onboarding & Setup</h3>
+            </div>
+        """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
         if not final_mapping:
             st.info("Complete required field mappings to generate onboarding scripts.")
         else:
             layout_df = SessionStateManager.get_layout_df()
+            claims_df = SessionStateManager.get_claims_df()
+            file_metadata = st.session_state.get("claims_file_metadata", {})
+            claims_file_obj = st.session_state.get("claims_file_obj")
+            
             with st.expander("Generate Onboarding SQL Script", expanded=False):
                 from data.output_generator import generate_onboarding_script_output
                 
-                # Auto-populate from final_mapping if available
-                client_name_from_mapping = final_mapping.get("Client_Name", {}).get("value", "") if final_mapping else ""
-                plan_sponsor_from_mapping = final_mapping.get("Plan_Sponsor_Name", {}).get("value", "") if final_mapping else ""
-                insurance_plan_from_mapping = final_mapping.get("Insurance_Plan_Name", {}).get("value", "") if final_mapping else ""
+                # ===== Intelligent Auto-Population =====
                 
-                # Use mapped values as defaults if not already set in session state
-                default_client = st.session_state.get("onboarding_client_name", client_name_from_mapping)
-                default_sponsor = st.session_state.get("onboarding_sponsor", plan_sponsor_from_mapping)
+                # Helper function to get value from mapping (handles both column names and manual inputs)
+                def get_mapping_value(field_name: str, claims_df: Any = None) -> str:
+                    """Get value from mapping, extracting from claims_df if it's a column name."""
+                    if not final_mapping:
+                        return ""
+                    
+                    mapping_info = final_mapping.get(field_name, {})
+                    value = mapping_info.get("value", "")
+                    
+                    if not value:
+                        return ""
+                    
+                    # Check if it's a column name in claims_df
+                    if claims_df is not None and value in claims_df.columns:
+                        # Get first non-null value from that column
+                        col_data = claims_df[value].dropna()
+                        if len(col_data) > 0:
+                            return str(col_data.iloc[0]).strip()
+                        # If all null, return column name
+                        return value
+                    
+                    # Otherwise, it's a manual input or direct value
+                    return value
+                
+                # 1. Client Name: From Plan_Sponsor_Name mapping (Client Name = Plan Sponsor Name)
+                client_name_from_mapping = get_mapping_value("Plan_Sponsor_Name", claims_df)
+                # If manual input was provided, use that; otherwise use mapping
+                default_client = st.session_state.get("onboarding_client_name") or client_name_from_mapping
+                
+                # 2. Plan Sponsor Name: From Insurance_Plan_Name mapping (Plan Sponsor Name = Insurance Plan Name)
+                plan_sponsor_from_mapping = get_mapping_value("Insurance_Plan_Name", claims_df)
+                default_sponsor = st.session_state.get("onboarding_sponsor") or plan_sponsor_from_mapping
+                
+                # 3. Domain Name: Default to "PlanSponsorClaims"
+                default_domain = st.session_state.get("onboarding_domain", "PlanSponsorClaims")
+                
+                # 4. Preprocessor Name: Auto-generate from client and domain if not set
+                default_preprocessor = st.session_state.get("onboarding_preprocessor", "")
+                if not default_preprocessor and default_client:
+                    default_preprocessor = f"{default_client.lower().replace(' ', '_')}_plansponsorclaims_prep"
+                
+                # 5. File Name Date Format: Infer from file name or use default
+                default_file_date_format = st.session_state.get("onboarding_file_date_format", "yyyyMMdd")
+                if claims_file_obj:
+                    filename = claims_file_obj.name
+                    # Try to detect date format from filename (e.g., 20251205, 2025-12-05, etc.)
+                    if re.search(r'\d{8}', filename):  # yyyyMMdd
+                        default_file_date_format = "yyyyMMdd"
+                    elif re.search(r'\d{4}-\d{2}-\d{2}', filename):  # yyyy-MM-dd
+                        default_file_date_format = "yyyy-MM-dd"
+                    elif re.search(r'\d{2}/\d{2}/\d{4}', filename):  # MM/dd/yyyy
+                        default_file_date_format = "MM/dd/yyyy"
+                
+                # 6. File Name Regex Pattern: Infer from file name pattern
+                default_regex_pattern = st.session_state.get("onboarding_regex_pattern", "")
+                if not default_regex_pattern and claims_file_obj:
+                    filename = claims_file_obj.name
+                    # Create a simple regex pattern based on filename
+                    # Replace date patterns with regex
+                    pattern = re.sub(r'\d{8}', r'\\d{8}', filename)  # Replace 8-digit dates
+                    pattern = re.sub(r'\d{4}-\d{2}-\d{2}', r'\\d{4}-\\d{2}-\\d{2}', pattern)  # Replace date with dashes
+                    if pattern != filename:
+                        default_regex_pattern = pattern
+                
+                # 7. Primary Key Columns: Infer from layout_df (look for ID/Key fields or required unique fields)
+                default_primary_key = st.session_state.get("onboarding_primary_key", "")
+                if not default_primary_key and layout_df is not None:
+                    primary_key_candidates = []
+                    # Look for fields with "ID", "Key", "Number" in internal field name
+                    for _, row in layout_df.iterrows():
+                        internal_field = str(row.get("Internal Field", "")).lower()
+                        if any(keyword in internal_field for keyword in ["id", "key", "number", "claim_id", "member_id"]):
+                            mapped_value = final_mapping.get(row.get("Internal Field", ""), {}).get("value", "")
+                            if mapped_value:
+                                primary_key_candidates.append(mapped_value)
+                    if primary_key_candidates:
+                        default_primary_key = ",".join(primary_key_candidates[:2])  # Limit to 2 columns
+                
+                # 8. Preprocessing Primary Key: Same as primary key or first ID field
+                default_prep_primary_key = st.session_state.get("onboarding_prep_primary_key", "")
+                if not default_prep_primary_key and default_primary_key:
+                    default_prep_primary_key = default_primary_key.split(",")[0].strip()
+                
+                # 9. Sort Column Name: Infer from date fields (Service Date, Claim Date, etc.)
+                default_sort_col = st.session_state.get("onboarding_sort_col", "")
+                if not default_sort_col and final_mapping:
+                    # Look for date fields that might be used for sorting
+                    date_field_candidates = ["Service_Date", "Claim_Date", "Date_of_Service", "ServiceDate", "ClaimDate"]
+                    for field_name in date_field_candidates:
+                        if field_name in final_mapping:
+                            mapped_value = final_mapping[field_name].get("value", "")
+                            if mapped_value:
+                                default_sort_col = mapped_value
+                                break
+                
+                # 10. Entity Type: Default "Medical"
+                default_entity_type = st.session_state.get("onboarding_entity_type", "Medical")
+                
+                # 11. Demographic Match Tier Config: Default "tier1,tier2"
+                default_demo_tier = st.session_state.get("onboarding_demo_tier", "tier1,tier2")
+                
+                # 12. Null Threshold Percentage: Default 15
+                default_null_threshold = st.session_state.get("onboarding_null_threshold", 15)
+                
+                # 13. Process Curation: Default True
+                default_process_curation = st.session_state.get("onboarding_process_curation", True)
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    onboarding_client_name = st.text_input("Client Name", value=default_client, key="onboarding_client_name", help="e.g., LibertyCocaCola_Aetna (auto-filled from mapping if available)")
-                    onboarding_domain = st.text_input("Domain Name", value="PlanSponsorClaims", key="onboarding_domain")
+                    onboarding_client_name = st.text_input("Client Name", value=default_client, key="onboarding_client_name", help="Auto-filled from Client_Name mapping if available")
+                    onboarding_domain = st.text_input("Domain Name", value=default_domain, key="onboarding_domain")
                     onboarding_file_date_format = st.selectbox(
                         "File Name Date Format",
                         options=["yyyyMMdd", "yyyy-MM-dd", "MMddyyyy", "MM/dd/yyyy", "ddMMyyyy"],
-                        index=0,
+                        index=["yyyyMMdd", "yyyy-MM-dd", "MMddyyyy", "MM/dd/yyyy", "ddMMyyyy"].index(default_file_date_format) if default_file_date_format in ["yyyyMMdd", "yyyy-MM-dd", "MMddyyyy", "MM/dd/yyyy", "ddMMyyyy"] else 0,
                         key="onboarding_file_date_format"
                     )
-                    onboarding_primary_key = st.text_input("Primary Key Columns (comma-separated)", key="onboarding_primary_key", help="e.g., Claim_ID,Claim_Line")
-                    onboarding_entity_type = st.text_input("Entity Type", value="Medical", key="onboarding_entity_type")
-                    onboarding_null_threshold = st.number_input("Null Threshold Percentage", min_value=0, max_value=100, value=15, key="onboarding_null_threshold")
+                    onboarding_primary_key = st.text_input("Primary Key Columns (comma-separated)", value=default_primary_key, key="onboarding_primary_key", help="Auto-detected from ID/Key fields in layout if available")
+                    onboarding_entity_type = st.text_input("Entity Type", value=default_entity_type, key="onboarding_entity_type")
+                    onboarding_null_threshold = st.number_input("Null Threshold Percentage", min_value=0, max_value=100, value=default_null_threshold, key="onboarding_null_threshold")
                 
                 with col2:
-                    onboarding_sponsor = st.text_input("Plan Sponsor Name", value=default_sponsor, key="onboarding_sponsor", help="e.g., Aetna (auto-filled from mapping if available)")
-                    onboarding_preprocessor = st.text_input("Preprocessor Name", key="onboarding_preprocessor", help="Auto-generated if left empty")
-                    onboarding_regex_pattern = st.text_input("File Name Regex Pattern (optional)", key="onboarding_regex_pattern")
-                    onboarding_prep_primary_key = st.text_input("Preprocessing Primary Key (optional)", key="onboarding_prep_primary_key")
-                    onboarding_demo_tier = st.text_input("Demographic Match Tier Config", value="tier1,tier2", key="onboarding_demo_tier")
-                    onboarding_sort_col = st.text_input("Sort Column Name (optional)", key="onboarding_sort_col")
-                    onboarding_process_curation = st.checkbox("Process Curation", value=True, key="onboarding_process_curation")
+                    onboarding_sponsor = st.text_input("Plan Sponsor Name", value=default_sponsor, key="onboarding_sponsor", help="Auto-filled from Plan_Sponsor_Name mapping if available")
+                    onboarding_preprocessor = st.text_input("Preprocessor Name", value=default_preprocessor, key="onboarding_preprocessor", help="Auto-generated from client name if left empty")
+                    onboarding_regex_pattern = st.text_input("File Name Regex Pattern (optional)", value=default_regex_pattern, key="onboarding_regex_pattern", help="Auto-inferred from file name pattern if available")
+                    onboarding_prep_primary_key = st.text_input("Preprocessing Primary Key (optional)", value=default_prep_primary_key, key="onboarding_prep_primary_key", help="Auto-filled from primary key if available")
+                    onboarding_demo_tier = st.text_input("Demographic Match Tier Config", value=default_demo_tier, key="onboarding_demo_tier")
+                    onboarding_sort_col = st.text_input("Sort Column Name (optional)", value=default_sort_col, key="onboarding_sort_col", help="Auto-detected from Service_Date/Claim_Date fields if available")
+                    onboarding_process_curation = st.checkbox("Process Curation", value=default_process_curation, key="onboarding_process_curation")
                 
                 onboarding_include_in_zip = st.checkbox("Include in ZIP file", value=False, key="onboarding_include_in_zip")
                 
@@ -445,7 +626,6 @@ def render_downloads_tab() -> None:
                                 final_mapping=final_mapping
                             )
                             st.session_state.onboarding_sql_script = sql_script
-                            st.session_state.onboarding_include_in_zip = onboarding_include_in_zip
                             st.session_state.onboarding_client_name = onboarding_client_name
                             _notify("✅ SQL script generated!")
                         except Exception as e:
@@ -466,6 +646,11 @@ def render_downloads_tab() -> None:
 
     # Tab 4: Download Package
     with tab4:
+        st.markdown("""
+            <div style='margin-bottom: 0.5rem;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Download Package</h3>
+            </div>
+        """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
         if not final_mapping:
             st.info("Complete required field mappings to generate download package.")
@@ -545,7 +730,6 @@ def render_downloads_tab() -> None:
                     except Exception as e:
                         progress_bar.empty()
                         status_text.empty()
-                        from core.error_handling import get_user_friendly_error
                         error_msg = get_user_friendly_error(e)
                         st.error(f"Error regenerating outputs: {error_msg}")
 
@@ -578,6 +762,21 @@ def render_downloads_tab() -> None:
                         enhanced_readme += "PREPROCESSING SCRIPT:\n"
                         enhanced_readme += "- Python script (preprocess_file.py) is included in the preprocessing/ folder.\n\n"
 
+                # Get uploaded file name for ZIP file naming
+                claims_file_obj = st.session_state.get("claims_file_obj")
+                import os
+                if claims_file_obj and hasattr(claims_file_obj, "name"):
+                    original_filename = claims_file_obj.name
+                    # Remove extension
+                    zip_file_name = os.path.splitext(original_filename)[0]
+                    # Remove .gz if present (for decompressed files)
+                    if zip_file_name.lower().endswith('.gz'):
+                        zip_file_name = os.path.splitext(zip_file_name)[0]
+                    # Add .zip extension
+                    zip_file_name = f"{zip_file_name}.zip"
+                else:
+                    zip_file_name = "all_outputs.zip"
+                
                 buffer = io.BytesIO()
                 with zipfile.ZipFile(buffer, "w") as zip_file:
                     zip_file.writestr(anon_file_name, anonymized_data)
@@ -596,8 +795,7 @@ def render_downloads_tab() -> None:
                         file_metadata = st.session_state.get("claims_file_metadata", {})
                         file_format = file_metadata.get("format", "csv")
                         file_separator = file_metadata.get("sep", "\t")
-                        
-                        # No readme file for test data
+                        file_has_header = file_metadata.get("header", False)
                         
                         # Determine file extension based on format
                         file_ext_map = {
@@ -611,25 +809,84 @@ def render_downloads_tab() -> None:
                         }
                         file_ext = file_ext_map.get(file_format.lower(), '.csv')
                         
+                        # Separate headers_only from other scenarios
+                        headers_only_data = None
+                        other_scenarios_dfs = []
+                        
                         for scenario_name, scenario_data in st.session_state.test_data_dict.items():
-                            if isinstance(scenario_data, pd.DataFrame):
-                                # DataFrame - convert to CSV
-                                csv_data = scenario_data.to_csv(index=False, sep=file_separator).encode('utf-8')
-                                zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", csv_data)
-                            elif isinstance(scenario_data, bytes):
-                                # Already in binary format (Excel, Parquet, fixed-width)
-                                zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data)
-                            elif isinstance(scenario_data, str):
-                                # String format (JSON text)
-                                zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data.encode('utf-8'))
+                            if scenario_name == "headers_only":
+                                headers_only_data = scenario_data
                             else:
-                                # Fallback: try to convert to CSV
-                                try:
-                                    if hasattr(scenario_data, 'to_csv'):
-                                        csv_data = scenario_data.to_csv(index=False, sep=file_separator).encode('utf-8')
-                                        zip_file.writestr(f"test_data/test_data_{scenario_name}.csv", csv_data)
-                                except Exception:
-                                    pass
+                                # For combining, we need DataFrames
+                                # If already converted to bytes/str, we'll handle it separately
+                                if isinstance(scenario_data, pd.DataFrame) and not scenario_data.empty:
+                                    other_scenarios_dfs.append(scenario_data)
+                        
+                        # Write headers_only file if it exists
+                        if headers_only_data is not None:
+                            if isinstance(headers_only_data, pd.DataFrame):
+                                # Convert to appropriate format
+                                if file_format.lower() == 'xlsx':
+                                    output = io.BytesIO()
+                                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                        headers_only_data.to_excel(writer, sheet_name='headers_only', index=False, header=file_has_header)
+                                    zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", output.getvalue())
+                                elif file_format.lower() == 'json':
+                                    json_str = headers_only_data.to_json(orient='records', indent=2, date_format='iso')
+                                    zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", json_str.encode('utf-8'))
+                                elif file_format.lower() == 'parquet':
+                                    output = io.BytesIO()
+                                    headers_only_data.to_parquet(output, index=False, engine='pyarrow')
+                                    zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", output.getvalue())
+                                elif file_format.lower() == 'fixed-width':
+                                    from data.test_data_generator import _convert_to_fixed_width
+                                    source_columns = list(headers_only_data.columns) if not headers_only_data.empty else []
+                                    fixed_width_str = _convert_to_fixed_width(headers_only_data, source_columns, file_has_header)
+                                    zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", fixed_width_str.encode('utf-8'))
+                                else:
+                                    # CSV/delimited format
+                                    csv_data = headers_only_data.to_csv(index=False, sep=file_separator, header=file_has_header).encode('utf-8')
+                                    zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", csv_data)
+                            elif isinstance(headers_only_data, bytes):
+                                zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data)
+                            elif isinstance(headers_only_data, str):
+                                zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data.encode('utf-8'))
+                        
+                        # Combine all other scenarios into one file
+                        if other_scenarios_dfs:
+                            combined_df = pd.concat(other_scenarios_dfs, ignore_index=True)
+                            
+                            # Convert to appropriate format
+                            if file_format.lower() == 'xlsx':
+                                output = io.BytesIO()
+                                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                    combined_df.to_excel(writer, sheet_name='combined_scenarios', index=False, header=file_has_header)
+                                zip_file.writestr(f"test_data/test_data_combined{file_ext}", output.getvalue())
+                            elif file_format.lower() == 'json':
+                                json_str = combined_df.to_json(orient='records', indent=2, date_format='iso')
+                                zip_file.writestr(f"test_data/test_data_combined{file_ext}", json_str.encode('utf-8'))
+                            elif file_format.lower() == 'parquet':
+                                output = io.BytesIO()
+                                combined_df.to_parquet(output, index=False, engine='pyarrow')
+                                zip_file.writestr(f"test_data/test_data_combined{file_ext}", output.getvalue())
+                            elif file_format.lower() == 'fixed-width':
+                                from data.test_data_generator import _convert_to_fixed_width
+                                source_columns = list(combined_df.columns)
+                                fixed_width_str = _convert_to_fixed_width(combined_df, source_columns, file_has_header)
+                                zip_file.writestr(f"test_data/test_data_combined{file_ext}", fixed_width_str.encode('utf-8'))
+                            else:
+                                # CSV/delimited format
+                                csv_data = combined_df.to_csv(index=False, sep=file_separator, header=file_has_header).encode('utf-8')
+                                zip_file.writestr(f"test_data/test_data_combined{file_ext}", csv_data)
+                        
+                        # Handle scenarios that were already converted to bytes/str (shouldn't happen with current flow, but handle for safety)
+                        for scenario_name, scenario_data in st.session_state.test_data_dict.items():
+                            if scenario_name != "headers_only" and not isinstance(scenario_data, pd.DataFrame):
+                                # These are already converted, write them separately as fallback
+                                if isinstance(scenario_data, bytes):
+                                    zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data)
+                                elif isinstance(scenario_data, str):
+                                    zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data.encode('utf-8'))
                     
                     for attachment in uploaded_attachments or []:
                         att_name: Any = attachment.name
@@ -640,7 +897,7 @@ def render_downloads_tab() -> None:
                     if st.session_state.get("preprocessing_steps"):
                         try:
                             from data.preprocessing_tracker import generate_preprocessing_script
-                            claims_file_obj = st.session_state.get("claims_file_obj")
+                            # Use the same claims_file_obj from above
                             original_filename = claims_file_obj.name if claims_file_obj and hasattr(claims_file_obj, "name") else "input_file.csv"
                             
                             preprocessing_script = generate_preprocessing_script(
@@ -659,14 +916,15 @@ def render_downloads_tab() -> None:
 
                 def on_zip_download():
                     try:
-                        log_event("output", "ZIP file generated and downloaded (all_outputs.zip)")
+                        log_event("output", f"ZIP file generated and downloaded ({zip_file_name})")
                     except NameError:
                         pass
+                    from ui.ui_components import _notify
                     _notify("✅ ZIP file ready!")
                 st.download_button(
                     label="Download All Files (ZIP)",
                     data=buffer,
-                    file_name="all_outputs.zip",
+                    file_name=zip_file_name,
                     mime="application/zip",
                     key="download_zip",
                     on_click=on_zip_download

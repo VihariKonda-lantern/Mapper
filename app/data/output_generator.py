@@ -121,27 +121,37 @@ def generate_test_data_outputs(
     Generate test data with scenarios.
     
     Returns:
-        Dictionary mapping scenario names to DataFrames
+        Dictionary mapping scenario names to DataFrames (always returns DataFrames for combining)
     """
     from data.test_data_generator import generate_test_data_with_scenarios
     
     claims_df = st.session_state.get("claims_df")
     file_metadata = st.session_state.get("claims_file_metadata", {})
-    file_format = file_metadata.get("format", "csv")
+    # Don't pass file_format to keep as DataFrames - conversion happens in tab_downloads
     file_separator = file_metadata.get("sep", "\t")
     file_has_header = file_metadata.get("header", False)
     file_date_format = file_metadata.get("dateFormat", "yyyyMMdd")
     
-    return generate_test_data_with_scenarios(
+    # Always return DataFrames (file_format=None) so we can combine them
+    result = generate_test_data_with_scenarios(
         layout_df=layout_df,
         final_mapping=final_mapping,
         claims_df=claims_df,
         records_per_scenario=records_per_scenario,
         include_scenarios=include_scenarios,
-        file_format=file_format,
+        file_format=None,  # Keep as DataFrames for combining
         file_separator=file_separator,
         file_has_header=file_has_header,
         file_date_format=file_date_format,
         apply_reverse_mappings=True
     )
+    
+    # Ensure all values are DataFrames (in case conversion happened anyway)
+    dataframes_only = {}
+    for scenario_name, scenario_data in result.items():
+        if isinstance(scenario_data, pd.DataFrame):
+            dataframes_only[scenario_name] = scenario_data
+        # Skip non-DataFrame values (shouldn't happen with file_format=None)
+    
+    return dataframes_only
 

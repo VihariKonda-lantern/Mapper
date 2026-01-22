@@ -176,7 +176,6 @@ def render_claims_file_summary() -> None:
             else:
                 st.write("No text columns found.")  # type: ignore[no-untyped-call]
             
-            st.markdown("---")
             type_summary = claims_df.dtypes.value_counts().to_frame(name="Count")
             st.dataframe(type_summary, use_container_width=True)  # type: ignore[no-untyped-call]
 

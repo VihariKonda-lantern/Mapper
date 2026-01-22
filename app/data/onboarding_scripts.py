@@ -548,203 +548,137 @@ def generate_onboarding_sql_script(
             from core.domain_config import get_domain_config
             config = get_domain_config()
             internal_field_col = config.internal_field_name
-        
-        # Generate ColumnDetail for each internal field
-        try:
-            for idx, row in layout_df.iterrows():
-                internal_field = str(row.get(internal_field_col, '')).strip()
-                if not internal_field or internal_field.lower() == 'nan':
-                    continue
-                
-                data_type_col = config.layout_columns.get("data_type", "Data Type")
-                data_type = str(row.get(data_type_col, 'string')).strip().lower()
-                if data_type == 'date':
-                    data_type = 'date'
-                else:
-                    data_type = 'string'
-                
-                sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
-                sql_lines.append(f"    USING (Select '{internal_field}' as ColumnName, '{data_type}' as DataType) AS S")
-                sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
-                sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                sql_lines.append(f"        INSERT (ColumnName, DataType)")
-                sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
-                sql_lines.append("")
-        except Exception:
-            # If iterating layout_df fails, skip column detail generation
-            pass
-        
-        # Generate ZoneTable for raw and prep zones
-        raw_table_name = f"{client_name.lower()}_layout"
-        prep_table_name = f"{domain_name.lower()}_{entity_type.lower()}_{client_name.lower()}"
-        
-        sql_lines.append(f"MERGE CDAP.ZoneTable AS C")
-        sql_lines.append(f"    USING (select TOP 1 pz.ZoneId, '{raw_table_name}' as TableName from CDAP.ProcessingZone pz")
-        sql_lines.append(f"            where pz.name = 'raw') AS S")
-        sql_lines.append(f"        ON (C.ZoneId = S.ZoneId AND C.TableName = S.TableName)")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (ZoneId, TableName)")
-        sql_lines.append(f"        VALUES (S.ZoneId, S.TableName);")
-        sql_lines.append("")
-        
-        sql_lines.append(f"MERGE CDAP.ZoneTable AS C")
-        sql_lines.append(f"    USING (select TOP 1 pz.ZoneId, '{prep_table_name}' as TableName from CDAP.ProcessingZone pz")
-        sql_lines.append(f"            where pz.name = 'prep') AS S")
-        sql_lines.append(f"        ON (C.ZoneId = S.ZoneId AND C.TableName = S.TableName)")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (ZoneId, TableName)")
-        sql_lines.append(f"        VALUES (S.ZoneId, S.TableName);")
-        sql_lines.append("")
-        
-        # Generate TableColumn for raw zone (source columns)
-        source_columns = []
-        for internal_field, mapping_info in final_mapping.items():
-            if isinstance(mapping_info, dict) and 'value' in mapping_info:
-                source_col = mapping_info['value']
-                if source_col and source_col not in source_columns:
-                    source_columns.append(source_col)
-        
-        for col_order, source_col in enumerate(source_columns, 1):
-            sql_lines.append(f"MERGE CDAP.TableColumn AS C")
-            sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
-            sql_lines.append(f"            from CDAP.ZoneTable zt")
-            sql_lines.append(f"            join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
-            sql_lines.append(f"            join CDAP.ColumnDetail cd on (1=1)")
-            sql_lines.append(f"            where pz.name = 'raw'")
-            sql_lines.append(f"            and zt.TableName = '{raw_table_name}'")
-            sql_lines.append(f"            and cd.ColumnName = '{source_col}'")
-            sql_lines.append(f"            and cd.DataType = 'string') AS S")
-            sql_lines.append(f"        ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
+            
+            # Generate ColumnDetail for each internal field
+            try:
+                for idx, row in layout_df.iterrows():
+                    internal_field = str(row.get(internal_field_col, '')).strip()
+                    if not internal_field or internal_field.lower() == 'nan':
+                        continue
+                    
+                    data_type_col = config.layout_columns.get("data_type", "Data Type")
+                    data_type = str(row.get(data_type_col, 'string')).strip().lower()
+                    if data_type == 'date':
+                        data_type = 'date'
+                    else:
+                        data_type = 'string'
+                    
+                    sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
+                    sql_lines.append(f"    USING (Select '{internal_field}' as ColumnName, '{data_type}' as DataType) AS S")
+                    sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
+                    sql_lines.append(f"    WHEN NOT MATCHED THEN")
+                    sql_lines.append(f"        INSERT (ColumnName, DataType)")
+                    sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
+                    sql_lines.append("")
+            except Exception:
+                # If iterating layout_df fails, skip column detail generation
+                pass
+            
+            # Generate ZoneTable for raw and prep zones
+            raw_table_name = f"{client_name.lower()}_layout"
+            prep_table_name = f"{domain_name.lower()}_{entity_type.lower()}_{client_name.lower()}"
+            
+            sql_lines.append(f"MERGE CDAP.ZoneTable AS C")
+            sql_lines.append(f"    USING (select TOP 1 pz.ZoneId, '{raw_table_name}' as TableName from CDAP.ProcessingZone pz")
+            sql_lines.append(f"            where pz.name = 'raw') AS S")
+            sql_lines.append(f"        ON (C.ZoneId = S.ZoneId AND C.TableName = S.TableName)")
             sql_lines.append(f"    WHEN NOT MATCHED THEN")
-            sql_lines.append(f"        INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
-            sql_lines.append(f"        VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
+            sql_lines.append(f"        INSERT (ZoneId, TableName)")
+            sql_lines.append(f"        VALUES (S.ZoneId, S.TableName);")
             sql_lines.append("")
             
-            # Also create ColumnDetail for source column if it doesn't exist
-            sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
-            sql_lines.append(f"    USING (Select '{source_col}' as ColumnName, 'string' as DataType) AS S")
-            sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
+            sql_lines.append(f"MERGE CDAP.ZoneTable AS C")
+            sql_lines.append(f"    USING (select TOP 1 pz.ZoneId, '{prep_table_name}' as TableName from CDAP.ProcessingZone pz")
+            sql_lines.append(f"            where pz.name = 'prep') AS S")
+            sql_lines.append(f"        ON (C.ZoneId = S.ZoneId AND C.TableName = S.TableName)")
             sql_lines.append(f"    WHEN NOT MATCHED THEN")
-            sql_lines.append(f"        INSERT (ColumnName, DataType)")
-            sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
+            sql_lines.append(f"        INSERT (ZoneId, TableName)")
+            sql_lines.append(f"        VALUES (S.ZoneId, S.TableName);")
             sql_lines.append("")
-        
-        # Generate TableColumn for prep zone (internal fields)
-        try:
-            for col_order, (idx, row) in enumerate(layout_df.iterrows(), 1):
-                internal_field = str(row.get(internal_field_col, '')).strip()
-                if not internal_field or internal_field.lower() == 'nan':
-                    continue
-                
-                data_type_col = config.layout_columns.get("data_type", "Data Type")
-                data_type = str(row.get(data_type_col, 'string')).strip().lower()
-                if data_type == 'date':
-                    data_type = 'date'
-                else:
-                    data_type = 'string'
-                
-                usage_col = config.internal_usage_name
-                usage = str(row.get(usage_col, '')).strip()
-                is_nullable = 1 if usage.lower() == 'optional' else 0
-                
+            
+            # Generate TableColumn for raw zone (source columns)
+            source_columns = []
+            for internal_field, mapping_info in final_mapping.items():
+                if isinstance(mapping_info, dict) and 'value' in mapping_info:
+                    source_col = mapping_info['value']
+                    if source_col and source_col not in source_columns:
+                        source_columns.append(source_col)
+            
+            for col_order, source_col in enumerate(source_columns, 1):
                 sql_lines.append(f"MERGE CDAP.TableColumn AS C")
-                sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, {is_nullable} as IsNullable, {col_order} as ColumnOrder")
+                sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
                 sql_lines.append(f"            from CDAP.ZoneTable zt")
                 sql_lines.append(f"            join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
                 sql_lines.append(f"            join CDAP.ColumnDetail cd on (1=1)")
-                sql_lines.append(f"            where pz.name = 'prep'")
-                sql_lines.append(f"            and zt.TableName = '{prep_table_name}'")
-                sql_lines.append(f"            and cd.ColumnName = '{internal_field}'")
-                sql_lines.append(f"            and cd.DataType = '{data_type}') AS S")
+                sql_lines.append(f"            where pz.name = 'raw'")
+                sql_lines.append(f"            and zt.TableName = '{raw_table_name}'")
+                sql_lines.append(f"            and cd.ColumnName = '{source_col}'")
+                sql_lines.append(f"            and cd.DataType = 'string') AS S")
                 sql_lines.append(f"        ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
                 sql_lines.append(f"    WHEN NOT MATCHED THEN")
                 sql_lines.append(f"        INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
                 sql_lines.append(f"        VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
                 sql_lines.append("")
-        except Exception:
-            # If iterating layout_df fails, skip table column generation
-            pass
-        
-        # Generate ColumnMapping: raw → prep (source columns to internal fields)
-        sql_lines.append("-- Column Mappings: raw → prep")
-        for internal_field, mapping_info in final_mapping.items():
-            if isinstance(mapping_info, dict) and 'value' in mapping_info:
-                source_col = mapping_info['value']
-                if not source_col:
-                    continue
                 
-                # Normalize column name (remove special chars, spaces, etc.)
-                normalized_source = source_col.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
-                normalized_internal = internal_field.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
-                
-                sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
-                sql_lines.append(f"    USING (select ic.IngestionConfigId, ftc.tablecolumnid as SourceTableColumnId, ttc.tablecolumnid as TargetTableColumnId")
-                sql_lines.append(f"            from cdap.IngestionConfig ic")
-                sql_lines.append(f"            join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
-                sql_lines.append(f"            join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
-                sql_lines.append(f"            join CDAP.DomainSponsor ds on (ds.domainsponsorid = ic.domainsponsorid)")
-                sql_lines.append(f"            join CDAP.Domain d on (d.domainid = dc.domainid)")
-                sql_lines.append(f"            join CDAP.Client c on (c.clientkey = dc.clientkey)")
-                sql_lines.append(f"            join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
-                sql_lines.append(f"            join CDAP.ProcessingZone fpz on (fpz.name = 'raw')")
-                sql_lines.append(f"            join CDAP.ProcessingZone tpz on (tpz.name = 'prep')")
-                sql_lines.append(f"            join CDAP.ZoneTable fzt on (fzt.TableName = '{raw_table_name}' and fpz.zoneid=fzt.zoneid)")
-                sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{prep_table_name}' and tpz.zoneid = tzt.zoneid)")
-                sql_lines.append(f"            join CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
-                sql_lines.append(f"            join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{source_col}')")
-                sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{internal_field}')")
-                sql_lines.append(f"            where c.DAPClientName = '{client_name}' and d.DomainName='{domain_name}'")
-                sql_lines.append(f"            and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
-                sql_lines.append(f"        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
+                # Also create ColumnDetail for source column if it doesn't exist
+                sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
+                sql_lines.append(f"    USING (Select '{source_col}' as ColumnName, 'string' as DataType) AS S")
+                sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
                 sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                sql_lines.append(f"        INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId)")
-                sql_lines.append(f"        VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId);")
+                sql_lines.append(f"        INSERT (ColumnName, DataType)")
+                sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
                 sql_lines.append("")
-        
-        # Generate ColumnMapping: prep → structured (basic mappings)
-        # Note: This requires knowledge of standard field names. Generating basic mappings based on common patterns.
-        sql_lines.append("-- Column Mappings: prep → structured")
-        sql_lines.append("-- NOTE: Review and customize these mappings based on your standard schema")
-        sql_lines.append("-- The structured zone uses standard field names (e.g., claim_id, patient_dob)")
-        sql_lines.append("-- You may need to manually adjust these mappings to match your standard schema")
-        sql_lines.append("")
-        
-        # Common field mappings (prep internal field → structured standard field)
-        common_mappings = {
-            'file_date': 'file_effective_date',
-            'claim_id': 'claim_id',
-            'patient_dob': 'patient_dob',
-            'patient_first_name': 'patient_first_name',
-            'patient_last_name': 'patient_last_name',
-            'patient_sex': 'patient_sex',
-        }
-        
-        structured_table_name = f"{domain_name.lower()}_{entity_type.lower()}_standard"
-        
-        for internal_field, mapping_info in final_mapping.items():
-            if isinstance(mapping_info, dict) and 'value' in mapping_info:
-                # Try to find standard field name
-                internal_lower = internal_field.lower()
-                standard_field = None
-                
-                # Check common mappings first
-                for prep_field, std_field in common_mappings.items():
-                    if prep_field in internal_lower:
-                        standard_field = std_field
-                        break
-                
-                # If no common mapping, try to infer from internal field name
-                if not standard_field:
-                    # Simple normalization: remove numbers and underscores, convert to standard format
-                    normalized = internal_lower.replace('_', ' ').strip()
-                    # This is a basic heuristic - may need manual adjustment
-                    standard_field = None  # Leave as None to skip for now
-                
-                if standard_field:
+            
+            # Generate TableColumn for prep zone (internal fields)
+            try:
+                for col_order, (idx, row) in enumerate(layout_df.iterrows(), 1):
+                    internal_field = str(row.get(internal_field_col, '')).strip()
+                    if not internal_field or internal_field.lower() == 'nan':
+                        continue
+                    
+                    data_type_col = config.layout_columns.get("data_type", "Data Type")
+                    data_type = str(row.get(data_type_col, 'string')).strip().lower()
+                    if data_type == 'date':
+                        data_type = 'date'
+                    else:
+                        data_type = 'string'
+                    
+                    usage_col = config.internal_usage_name
+                    usage = str(row.get(usage_col, '')).strip()
+                    is_nullable = 1 if usage.lower() == 'optional' else 0
+                    
+                    sql_lines.append(f"MERGE CDAP.TableColumn AS C")
+                    sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, {is_nullable} as IsNullable, {col_order} as ColumnOrder")
+                    sql_lines.append(f"            from CDAP.ZoneTable zt")
+                    sql_lines.append(f"            join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
+                    sql_lines.append(f"            join CDAP.ColumnDetail cd on (1=1)")
+                    sql_lines.append(f"            where pz.name = 'prep'")
+                    sql_lines.append(f"            and zt.TableName = '{prep_table_name}'")
+                    sql_lines.append(f"            and cd.ColumnName = '{internal_field}'")
+                    sql_lines.append(f"            and cd.DataType = '{data_type}') AS S")
+                    sql_lines.append(f"        ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
+                    sql_lines.append(f"    WHEN NOT MATCHED THEN")
+                    sql_lines.append(f"        INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
+                    sql_lines.append(f"        VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
+                    sql_lines.append("")
+            except Exception:
+                # If iterating layout_df fails, skip table column generation
+                pass
+            
+            # Generate ColumnMapping: raw → prep (source columns to internal fields)
+            sql_lines.append("-- Column Mappings: raw → prep")
+            for internal_field, mapping_info in final_mapping.items():
+                if isinstance(mapping_info, dict) and 'value' in mapping_info:
+                    source_col = mapping_info['value']
+                    if not source_col:
+                        continue
+                    
+                    # Normalize column name (remove special chars, spaces, etc.)
+                    normalized_source = source_col.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
+                    normalized_internal = internal_field.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
+                    
                     sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
-                    sql_lines.append(f"    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid,")
-                    sql_lines.append(f"            '' SVMRule")
+                    sql_lines.append(f"    USING (select ic.IngestionConfigId, ftc.tablecolumnid as SourceTableColumnId, ttc.tablecolumnid as TargetTableColumnId")
                     sql_lines.append(f"            from cdap.IngestionConfig ic")
                     sql_lines.append(f"            join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
                     sql_lines.append(f"            join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
@@ -752,21 +686,87 @@ def generate_onboarding_sql_script(
                     sql_lines.append(f"            join CDAP.Domain d on (d.domainid = dc.domainid)")
                     sql_lines.append(f"            join CDAP.Client c on (c.clientkey = dc.clientkey)")
                     sql_lines.append(f"            join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
-                    sql_lines.append(f"            join CDAP.ProcessingZone fpz on (fpz.name = 'prep')")
-                    sql_lines.append(f"            join CDAP.ProcessingZone tpz on (tpz.name = 'structured')")
-                    sql_lines.append(f"            join CDAP.ZoneTable fzt on (fzt.TableName = '{prep_table_name}' and fpz.zoneid=fzt.zoneid)")
-                    sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
+                    sql_lines.append(f"            join CDAP.ProcessingZone fpz on (fpz.name = 'raw')")
+                    sql_lines.append(f"            join CDAP.ProcessingZone tpz on (tpz.name = 'prep')")
+                    sql_lines.append(f"            join CDAP.ZoneTable fzt on (fzt.TableName = '{raw_table_name}' and fpz.zoneid=fzt.zoneid)")
+                    sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{prep_table_name}' and tpz.zoneid = tzt.zoneid)")
                     sql_lines.append(f"            join CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
                     sql_lines.append(f"            join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                    sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{internal_field}')")
-                    sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{standard_field}')")
+                    sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{source_col}')")
+                    sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{internal_field}')")
                     sql_lines.append(f"            where c.DAPClientName = '{client_name}' and d.DomainName='{domain_name}'")
                     sql_lines.append(f"            and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
                     sql_lines.append(f"        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
                     sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                    sql_lines.append(f"        INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
-                    sql_lines.append(f"        VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
+                    sql_lines.append(f"        INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId)")
+                    sql_lines.append(f"        VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId);")
                     sql_lines.append("")
+            
+            # Generate ColumnMapping: prep → structured (basic mappings)
+            # Note: This requires knowledge of standard field names. Generating basic mappings based on common patterns.
+            sql_lines.append("-- Column Mappings: prep → structured")
+            sql_lines.append("-- NOTE: Review and customize these mappings based on your standard schema")
+            sql_lines.append("-- The structured zone uses standard field names (e.g., claim_id, patient_dob)")
+            sql_lines.append("-- You may need to manually adjust these mappings to match your standard schema")
+            sql_lines.append("")
+            
+            # Common field mappings (prep internal field → structured standard field)
+            common_mappings = {
+                'file_date': 'file_effective_date',
+                'claim_id': 'claim_id',
+                'patient_dob': 'patient_dob',
+                'patient_first_name': 'patient_first_name',
+                'patient_last_name': 'patient_last_name',
+                'patient_sex': 'patient_sex',
+            }
+            
+            structured_table_name = f"{domain_name.lower()}_{entity_type.lower()}_standard"
+            
+            for internal_field, mapping_info in final_mapping.items():
+                if isinstance(mapping_info, dict) and 'value' in mapping_info:
+                    # Try to find standard field name
+                    internal_lower = internal_field.lower()
+                    standard_field = None
+                    
+                    # Check common mappings first
+                    for prep_field, std_field in common_mappings.items():
+                        if prep_field in internal_lower:
+                            standard_field = std_field
+                            break
+                    
+                    # If no common mapping, try to infer from internal field name
+                    if not standard_field:
+                        # Simple normalization: remove numbers and underscores, convert to standard format
+                        normalized = internal_lower.replace('_', ' ').strip()
+                        # This is a basic heuristic - may need manual adjustment
+                        standard_field = None  # Leave as None to skip for now
+                    
+                    if standard_field:
+                        sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
+                        sql_lines.append(f"    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid,")
+                        sql_lines.append(f"            '' SVMRule")
+                        sql_lines.append(f"            from cdap.IngestionConfig ic")
+                        sql_lines.append(f"            join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
+                        sql_lines.append(f"            join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
+                        sql_lines.append(f"            join CDAP.DomainSponsor ds on (ds.domainsponsorid = ic.domainsponsorid)")
+                        sql_lines.append(f"            join CDAP.Domain d on (d.domainid = dc.domainid)")
+                        sql_lines.append(f"            join CDAP.Client c on (c.clientkey = dc.clientkey)")
+                        sql_lines.append(f"            join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
+                        sql_lines.append(f"            join CDAP.ProcessingZone fpz on (fpz.name = 'prep')")
+                        sql_lines.append(f"            join CDAP.ProcessingZone tpz on (tpz.name = 'structured')")
+                        sql_lines.append(f"            join CDAP.ZoneTable fzt on (fzt.TableName = '{prep_table_name}' and fpz.zoneid=fzt.zoneid)")
+                        sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
+                        sql_lines.append(f"            join CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
+                        sql_lines.append(f"            join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
+                        sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{internal_field}')")
+                        sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{standard_field}')")
+                        sql_lines.append(f"            where c.DAPClientName = '{client_name}' and d.DomainName='{domain_name}'")
+                        sql_lines.append(f"            and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
+                        sql_lines.append(f"        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
+                        sql_lines.append(f"    WHEN NOT MATCHED THEN")
+                        sql_lines.append(f"        INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
+                        sql_lines.append(f"        VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
+                        sql_lines.append("")
         except Exception:
             # If column mapping generation fails, add a note but continue
             sql_lines.append("-- NOTE: Column mapping generation encountered an error.")

@@ -65,6 +65,8 @@ def generate_preprocessing_script(
         "import pandas as pd",
         "import sys",
         "import os",
+        "import gzip",
+        "import io",
         "",
         "def preprocess_file(input_file: str, output_file: str = None) -> pd.DataFrame:",
         '    """',
@@ -73,12 +75,33 @@ def generate_preprocessing_script(
         "    if not os.path.exists(input_file):",
         '        raise FileNotFoundError(f"Input file not found: {input_file}")',
         "",
+    ]
+    
+    # Add decompression step if needed
+    if needs_decompression:
+        script_lines.extend([
+            "    # Decompress .gz file if needed",
+            "    if input_file.endswith('.gz'):",
+            "        with open(input_file, 'rb') as f:",
+            "            decompressed_content = gzip.decompress(f.read())",
+            "        input_file_obj = io.BytesIO(decompressed_content)",
+            "        # Update file extension for format detection",
+            "        input_file = input_file[:-3]  # Remove .gz extension",
+            "    else:",
+            "        input_file_obj = open(input_file, 'rb')",
+            "",
+        ])
+    else:
+        script_lines.append("    input_file_obj = open(input_file, 'rb')")
+    
+    script_lines.extend([
+        "",
         "    # File format and basic settings",
         f"    file_format = '{file_metadata.get('format', 'csv')}'",
         f"    delimiter = {repr(file_metadata.get('sep', ','))}",
         f"    has_header = {file_metadata.get('header', False)}",
         "",
-    ]
+    ])
     
     # Extract preprocessing parameters
     skiprows = None
@@ -87,6 +110,7 @@ def generate_preprocessing_script(
     colspecs = None
     external_header = False
     headerless = False
+    needs_decompression = False
     
     for step in steps:
         step_name = step.get("step")
@@ -103,6 +127,8 @@ def generate_preprocessing_script(
             headerless = True
         elif step_name == "fixed_width":
             colspecs = params.get("colspecs")
+        elif step_name == "unzip_gz":
+            needs_decompression = True
     
     # Add encoding detection if tracked
     if encoding:
@@ -133,7 +159,8 @@ def generate_preprocessing_script(
         read_options.append("dtype=str")
         read_options.append("on_bad_lines='skip'")
         
-        script_lines.append(f"    df = pd.read_csv(input_file, {', '.join(read_options)})")
+        file_var = "input_file_obj" if needs_decompression else "input_file"
+        script_lines.append(f"    df = pd.read_csv({file_var}, {', '.join(read_options)})")
         
     elif file_metadata.get("format") in ["xlsx", "excel"]:
         script_lines.append("    # Read Excel file")
@@ -148,22 +175,31 @@ def generate_preprocessing_script(
         
         read_options.append("dtype=str")
         
-        script_lines.append(f"    df = pd.read_excel(input_file, {', '.join(read_options)})")
+        file_var = "input_file_obj" if needs_decompression else "input_file"
+        script_lines.append(f"    df = pd.read_excel({file_var}, {', '.join(read_options)})")
         
     elif file_metadata.get("format") == "json":
         script_lines.append("    # Read JSON file")
-        script_lines.append("    df = pd.read_json(input_file)")
+        if needs_decompression:
+            script_lines.append("    import json")
+            script_lines.append("    input_file_obj.seek(0)")
+            script_lines.append("    data = json.load(io.TextIOWrapper(input_file_obj, encoding='utf-8'))")
+            script_lines.append("    df = pd.DataFrame(data) if isinstance(data, list) else pd.json_normalize(data)")
+        else:
+            script_lines.append("    df = pd.read_json(input_file)")
         
     elif file_metadata.get("format") == "parquet":
         script_lines.append("    # Read Parquet file")
-        script_lines.append("    df = pd.read_parquet(input_file)")
+        file_var = "input_file_obj" if needs_decompression else "input_file"
+        script_lines.append(f"    df = pd.read_parquet({file_var})")
     
     # Add fixed-width handling
     if colspecs:
         script_lines.append("")
         script_lines.append("    # Fixed-width file processing")
         script_lines.append(f"    colspecs = {colspecs}")
-        script_lines.append("    df = pd.read_fwf(input_file, colspecs=colspecs, header=0 if has_header else None, dtype=str)")
+        file_var = "input_file_obj" if needs_decompression else "input_file"
+        script_lines.append(f"    df = pd.read_fwf({file_var}, colspecs=colspecs, header=0 if has_header else None, dtype=str)")
     
     # Add external header handling
     if external_header:
@@ -182,6 +218,12 @@ def generate_preprocessing_script(
     if skiprows:
         script_lines.append("")
         script_lines.append(f"    # Note: First {skiprows} rows were skipped (e.g., logos, stats, etc.)")
+    
+    # Close file object if decompression was used
+    if needs_decompression:
+        script_lines.append("")
+        script_lines.append("    # Close decompressed file object")
+        script_lines.append("    input_file_obj.close()")
     
     script_lines.extend([
         "",

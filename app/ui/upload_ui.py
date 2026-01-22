@@ -4,6 +4,7 @@ import streamlit as st  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-not-found]
 import io
 import os
+import gzip
 from typing import Any, List, Dict, Set, Union, cast
 
 st: Any = st  # type: ignore[assignment]
@@ -97,7 +98,11 @@ def render_upload_and_claims_preview():
     """
     from core.ui_labels import get_ui_labels
     ui_labels = get_ui_labels()
-    st.markdown(f"### Step 1: Upload Files and Confirm {ui_labels.source_file_label} Headers")
+    st.markdown("""
+        <div style='margin-bottom: 0.5rem;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Step 1: Upload Files and Confirm {}</h2>
+        </div>
+    """.format(ui_labels.source_file_label), unsafe_allow_html=True)
 
     # Check if header file uploader should be shown (only when headerless file detected)
     show_header_uploader = False
@@ -229,9 +234,9 @@ def render_upload_and_claims_preview():
             with col4:
                 claims_file = st.file_uploader(
                     f"Upload {ui_labels.source_file_label}", 
-                    type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
+                    type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet", "gz"],
                     key="claims_file_upload",
-                    help=f"{ui_labels.source_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
+                    help=f"{ui_labels.source_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET, GZ. Drag and drop or click to upload."
                 )
                 # Handle source file upload (inside column context)
                 if claims_file:
@@ -287,7 +292,7 @@ def render_upload_and_claims_preview():
         with col3:
             claims_file = st.file_uploader(
                 f"📊 Upload {ui_labels.source_file_label}", 
-                type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet"],
+                type=["csv", "txt", "tsv", "xlsx", "xls", "json", "parquet", "gz"],
                 key="claims_file_upload",
                 help=f"{ui_labels.source_file_help}. Supports: CSV, TXT, TSV, XLSX, XLS, JSON, PARQUET. Drag and drop or click to upload."
             )
@@ -394,6 +399,26 @@ def render_upload_and_claims_preview():
                 # --- Intelligent File Format Detection ---
                 claims_file.seek(0)
                 ext = claims_file.name.lower()
+                
+                # Handle .gz decompression if user selected it in preprocessing options
+                needs_decompression = ext.endswith('.gz') and st.session_state.get("preprocessing_type") == "Unzip .gz File"
+                if needs_decompression:
+                    progress.update(15, "Decompressing .gz file...")
+                    try:
+                        claims_file.seek(0)
+                        decompressed_content = gzip.decompress(claims_file.read())
+                        claims_file = io.BytesIO(decompressed_content)
+                        # Update extension to remove .gz
+                        ext = ext[:-3]  # Remove .gz extension
+                        # Track decompression step
+                        try:
+                            from data.preprocessing_tracker import track_preprocessing_step
+                            track_preprocessing_step("unzip_gz", {"compressed": True})
+                        except ImportError:
+                            pass
+                    except Exception as e:
+                        st.error(f"Error decompressing .gz file: {str(e)}")
+                        st.stop()
                 
                 progress.update(20, "Analyzing file structure...")
             
@@ -525,25 +550,8 @@ def render_upload_and_claims_preview():
                             st.session_state.header_uploader_shown = True
                             st.stop()  # Stop processing until header file is uploaded
 
-                    # --- Preprocessing Options ---
-                    with st.expander("⚙️ Preprocessing Options", expanded=False):
-                        skiprows_input = st.number_input(
-                            "Skip first N rows (e.g., for logos, stats, or metadata)",
-                            min_value=0,
-                            value=st.session_state.get("preprocessing_skiprows", 0),
-                            key="preprocessing_skiprows",
-                            help="Use this if your file has logos, statistics, or other metadata at the top that should be skipped before the actual data starts."
-                        )
-                        
-                        # Track skiprows if > 0
-                        if skiprows_input > 0:
-                            try:
-                                from data.preprocessing_tracker import track_preprocessing_step
-                                track_preprocessing_step("skip_rows", {"num_rows": skiprows_input})
-                            except ImportError:
-                                pass
-                    
-                    # --- Read full source file
+                # --- Read full source file (only if header detection is complete)
+                if detected_has_header is not None:  # type: ignore[comparison-overlap]
                     progress.update(70, "Loading claims data...")
                     
                     with st.spinner(f"Loading {ui_labels.source_file_label.lower()}..."):
@@ -607,6 +615,186 @@ def render_upload_and_claims_preview():
                 st.session_state.pop("claims_df", None)
                 st.session_state.pop("last_loaded_file", None)
                 st.session_state.needs_refresh = True
+    
+    # --- Preprocessing Options (Always show if file is uploaded, even after loading) ---
+    claims_file_obj = st.session_state.get("claims_file_obj")
+    if claims_file_obj is not None:
+        with st.expander("⚙️ Preprocessing Options", expanded=True):
+            # Show first 10 rows preview
+            st.markdown("**📊 Data Preview (First 10 rows):**")
+            try:
+                # Read a preview of the file
+                claims_file_obj.seek(0)
+                preview_file = claims_file_obj
+                
+                # Check if file needs decompression
+                file_ext = claims_file_obj.name.lower()
+                actual_ext = file_ext
+                if file_ext.endswith('.gz'):
+                    preview_file = io.BytesIO(gzip.decompress(claims_file_obj.read()))
+                    claims_file_obj.seek(0)
+                    # Determine actual file type after decompression
+                    actual_ext = file_ext[:-3]  # Remove .gz
+                
+                # Read preview based on file type
+                if actual_ext.endswith(('.csv', '.txt', '.tsv')):
+                    # Try to detect delimiter for text files
+                    preview_file.seek(0)
+                    delimiter = detect_delimiter(preview_file) if hasattr(preview_file, 'read') else ','
+                    preview_file.seek(0)
+                    preview_df = pd.read_csv(preview_file, nrows=10, dtype=str, delimiter=delimiter, on_bad_lines='skip')
+                elif actual_ext.endswith(('.xlsx', '.xls')):
+                    preview_file.seek(0)
+                    preview_df = pd.read_excel(preview_file, nrows=10, dtype=str)
+                elif actual_ext.endswith('.json'):
+                    import json
+                    preview_file.seek(0)
+                    data = json.load(io.TextIOWrapper(preview_file, encoding='utf-8'))
+                    if isinstance(data, list):
+                        preview_df = pd.DataFrame(data[:10])
+                    else:
+                        preview_df = pd.json_normalize(data).head(10)
+                elif actual_ext.endswith('.parquet'):
+                    preview_file.seek(0)
+                    preview_df = pd.read_parquet(preview_file).head(10)
+                else:
+                    preview_df = pd.DataFrame()
+                
+                if not preview_df.empty:
+                    # Convert all columns to string to avoid PyArrow serialization issues
+                    preview_df_display = preview_df.copy()
+                    for col in preview_df_display.columns:
+                        preview_df_display[col] = preview_df_display[col].astype(str).fillna("")
+                    # Limit preview to avoid memory issues
+                    preview_df_display = preview_df_display.head(10)
+                    try:
+                        st.dataframe(preview_df_display, use_container_width=True, height=300)
+                    except Exception as display_error:
+                        # Fallback: show as text if dataframe display fails
+                        st.warning(f"Preview display issue: {str(display_error)}")
+                        st.text(str(preview_df_display.head(5)))
+                else:
+                    st.info("Preview not available for this file type.")
+            except Exception as e:
+                st.warning(f"Could not preview file: {str(e)}")
+                # Don't show full traceback to user, just log it
+                import logging
+                logging.exception("Preview error")
+            
+            # Preprocessing type selector - show options based on file type
+            file_ext_for_preprocessing = claims_file_obj.name.lower()
+            preprocessing_options = ["None", "Skip Rows"]
+            
+            # Add .gz option only if file is .gz
+            if file_ext_for_preprocessing.endswith('.gz'):
+                preprocessing_options.append("Unzip .gz File")
+            
+            # Initialize preprocessing_type in session state if not present
+            if "preprocessing_type" not in st.session_state:
+                st.session_state.preprocessing_type = "None"
+            
+            # Get current selection
+            current_selection = st.session_state.get("preprocessing_type", "None")
+            if current_selection not in preprocessing_options:
+                current_selection = "None"
+                st.session_state.preprocessing_type = "None"
+            
+            # Ensure we have a valid index
+            try:
+                current_index = preprocessing_options.index(current_selection)
+            except ValueError:
+                current_index = 0
+                st.session_state.preprocessing_type = "None"
+            
+            preprocessing_type = st.selectbox(
+                "Select Preprocessing Step",
+                options=preprocessing_options,
+                index=current_index,
+                key="preprocessing_type",
+                help="Select the type of preprocessing step needed for this file. Available options: " + ", ".join(preprocessing_options)
+            )
+            
+            # Clear previous preprocessing steps when type changes to "None"
+            if preprocessing_type == "None":
+                try:
+                    from data.preprocessing_tracker import clear_preprocessing_steps
+                    clear_preprocessing_steps()
+                    st.session_state.pop("preprocessing_skiprows", None)
+                except ImportError:
+                    pass
+            
+            # Show preprocessing options based on selection
+            if preprocessing_type == "Skip Rows":
+                skiprows_input = st.number_input(
+                    "Skip first N rows (e.g., for logos, stats, or metadata)",
+                    min_value=0,
+                    value=st.session_state.get("preprocessing_skiprows", 0),
+                    key="preprocessing_skiprows",
+                    help="Use this if your file has logos, statistics, or other metadata at the top that should be skipped before the actual data starts."
+                )
+                
+                # Track skiprows - clear previous skip_rows steps first, then add new one
+                if skiprows_input > 0:
+                    try:
+                        from data.preprocessing_tracker import track_preprocessing_step, get_preprocessing_steps, clear_preprocessing_steps
+                        # Remove any existing skip_rows steps
+                        steps = get_preprocessing_steps()
+                        clear_preprocessing_steps()
+                        # Re-add other steps (excluding skip_rows)
+                        for step in steps:
+                            if step.get("step") != "skip_rows":
+                                track_preprocessing_step(step.get("step"), step.get("parameters", {}))
+                        # Add the new skip_rows step
+                        track_preprocessing_step("skip_rows", {"num_rows": int(skiprows_input)})
+                        # Don't manually set session state - widget manages its own state
+                    except ImportError:
+                        pass
+                else:
+                    # Clear skip_rows step if set to 0
+                    try:
+                        from data.preprocessing_tracker import get_preprocessing_steps, clear_preprocessing_steps, track_preprocessing_step
+                        steps = get_preprocessing_steps()
+                        clear_preprocessing_steps()
+                        # Re-add other steps (excluding skip_rows)
+                        for step in steps:
+                            if step.get("step") != "skip_rows":
+                                track_preprocessing_step(step.get("step"), step.get("parameters", {}))
+                        # Don't manually set session state - widget manages its own state
+                    except ImportError:
+                        pass
+            
+            elif preprocessing_type == "Unzip .gz File":
+                if not file_ext_for_preprocessing.endswith('.gz'):
+                    st.info("ℹ️ This file doesn't appear to be a .gz compressed file.")
+                else:
+                    st.success("✅ .gz file detected. File will be automatically decompressed during processing.")
+                    try:
+                        from data.preprocessing_tracker import track_preprocessing_step, get_preprocessing_steps
+                        # Check if unzip_gz step already exists
+                        steps = get_preprocessing_steps()
+                        has_unzip = any(step.get("step") == "unzip_gz" for step in steps)
+                        if not has_unzip:
+                            track_preprocessing_step("unzip_gz", {"compressed": True})
+                    except ImportError:
+                        pass
+            
+            # Show active preprocessing steps
+            try:
+                from data.preprocessing_tracker import get_preprocessing_steps
+                active_steps = get_preprocessing_steps()
+                if active_steps:
+                    st.markdown("**✅ Active Preprocessing Steps:**")
+                    for step in active_steps:
+                        step_name = step.get("step", "")
+                        params = step.get("parameters", {})
+                        if step_name == "skip_rows":
+                            st.info(f"📋 Skip Rows: {params.get('num_rows', 0)} rows will be skipped")
+                        elif step_name == "unzip_gz":
+                            st.info("📦 Unzip .gz: File will be decompressed")
+                        else:
+                            st.info(f"⚙️ {step_name}: {params}")
+            except ImportError:
+                pass
 
 
 def render_claims_file_deep_dive():
