@@ -5,6 +5,7 @@ import pandas as pd  # type: ignore[import-not-found]
 from typing import Any, List, Dict, Set, Optional, Tuple
 import time
 import difflib
+import unicodedata
 
 st: Any = st  # type: ignore[assignment]
 pd: Any = pd  # type: ignore[assignment]
@@ -48,12 +49,11 @@ def _sort_columns_by_confidence(
     columns: List[str],
     ai_suggested_column: Optional[str] = None,
     ai_confidence: Optional[float] = None,
-    algorithmic_scores: Optional[Dict[str, float]] = None,
-    llm_scores: Optional[Dict[str, float]] = None
-) -> List[Tuple[str, Optional[float], Optional[float]]]:
+    algorithmic_scores: Optional[Dict[str, float]] = None
+) -> List[Tuple[str, Optional[float]]]:
     """
     Sort columns by confidence score, with AI-suggested column at top if available.
-    Returns tuples of (column_name, algorithmic_score, llm_score) for display.
+    Returns tuples of (column_name, algorithmic_score) for display.
     
     Args:
         field_name: Internal field name
@@ -61,13 +61,12 @@ def _sort_columns_by_confidence(
         ai_suggested_column: Optional AI-suggested column
         ai_confidence: Optional AI confidence score
         algorithmic_scores: Dict of column -> algorithmic confidence score
-        llm_scores: Dict of column -> LLM confidence score
         
     Returns:
-        Sorted list of tuples: [(column_name, algo_score, llm_score), ...]
+        Sorted list of tuples: [(column_name, algo_score), ...]
     """
     # Calculate confidence scores for all columns
-    column_scores: List[Tuple[str, float, Optional[float], Optional[float]]] = []
+    column_scores: List[Tuple[str, float, Optional[float]]] = []
     
     for col in columns:
         # Get algorithmic score
@@ -79,21 +78,13 @@ def _sort_columns_by_confidence(
         else:
             algo_score = _calculate_column_confidence(field_name, col)
         
-        # Get LLM score
-        llm_score = None
-        if llm_scores and col in llm_scores:
-            llm_score = llm_scores[col] / 100.0  # Convert back to 0-1 range
-        
-        # Use highest available score for sorting
-        sort_score = max(algo_score, llm_score) if llm_score is not None else algo_score
-        
-        column_scores.append((col, sort_score, algo_score, llm_score))
+        column_scores.append((col, algo_score, algo_score))
     
     # Sort by confidence (descending), then alphabetically for ties
     column_scores.sort(key=lambda x: (-x[1], x[0]))
     
     # Return tuples with scores for display
-    return [(col, algo_score, llm_score) for col, _, algo_score, llm_score in column_scores]
+    return [(col, algo_score) for col, _, algo_score in column_scores]
 
 
 def dual_input_field(field_label: str, options: List[str], key_prefix: str, col_name_map: Optional[Dict[str, str]] = None, default_value: Optional[str] = None, allow_manual_input: bool = False) -> Optional[str]:
@@ -421,6 +412,26 @@ def render_field_mapping_tab():
             for _, (_, row) in enumerate(group_fields.iterrows()):
                 field_name = row["Internal Field"]
                 raw_columns = claims_df.columns.tolist()
+                
+                # Clean and filter column names - remove empty, blank, or whitespace-only columns
+                # Also handle BOM and encoding issues
+                cleaned_columns = []
+                for col in raw_columns:
+                    if col is None:
+                        continue
+                    # Convert to string and strip
+                    col_str = str(col).strip()
+                    # Remove BOM and other invisible characters
+                    col_str = col_str.encode('utf-8').decode('utf-8-sig')  # Remove BOM
+                    col_str = unicodedata.normalize('NFKC', col_str)  # Normalize unicode
+                    col_str = col_str.strip()
+                    # Skip empty or whitespace-only columns
+                    if col_str:
+                        cleaned_columns.append(col_str)
+                
+                # If no valid columns found, skip this field
+                if not cleaned_columns:
+                    continue
 
                 # --- AI suggestion if available ---
                 suggestion_info = ai_suggestions.get(field_name, {})
@@ -432,29 +443,29 @@ def render_field_mapping_tab():
                 if suggestion_score is not None and suggestion_score <= 1.0:
                     suggestion_score = suggestion_score * 100
 
-                # Get algorithmic and LLM scores
+                # Get algorithmic scores
                 algorithmic_scores = suggestion_info.get("algorithmic_scores", {})
-                llm_scores = suggestion_info.get("llm_scores", {})
                 
                 # Sort columns by confidence score (returns tuples with scores)
                 field_col_options_with_scores = _sort_columns_by_confidence(
                     field_name,
-                    raw_columns,
+                    cleaned_columns,
                     suggested_column,
                     suggestion_score,
-                    algorithmic_scores,
-                    llm_scores
+                    algorithmic_scores
                 )
                 
                 # Format dropdown options with confidence scores
                 field_col_options = []
                 field_col_name_map = {}  # Map display text to actual column name
-                for col_name, algo_score, llm_score in field_col_options_with_scores:
+                for col_name, algo_score in field_col_options_with_scores:
+                    # Ensure col_name is not empty
+                    if not col_name or not col_name.strip():
+                        continue
+                    
                     display_parts = []
                     if algo_score is not None:
                         display_parts.append(f"Algo: {algo_score*100:.0f}%")
-                    if llm_score is not None:
-                        display_parts.append(f"LLM: {llm_score*100:.0f}%")
                     
                     if len(display_parts) > 0:
                         display_text = f"{col_name} ({', '.join(display_parts)})"
@@ -487,22 +498,14 @@ def render_field_mapping_tab():
                     
                     st.markdown(f"**{display_name}**", unsafe_allow_html=True)
                     
-                    # Show both algorithmic and LLM confidence scores below field name
+                    # Show algorithmic confidence score below field name
                     algorithmic_scores = suggestion_info.get("algorithmic_scores", {})
-                    llm_scores = suggestion_info.get("llm_scores", {})
                     
                     if suggested_column:
                         algo_score = algorithmic_scores.get(suggested_column, None)
-                        llm_score = llm_scores.get(suggested_column, None)
                         
-                        score_parts = []
                         if algo_score is not None:
-                            score_parts.append(f"Algo: {algo_score:.0f}%")
-                        if llm_score is not None:
-                            score_parts.append(f"LLM: {llm_score:.0f}%")
-                        
-                        if score_parts:
-                            scores_text = " | ".join(score_parts)
+                            scores_text = f"Algo: {algo_score:.0f}%"
                             st.caption(f"<span style='color: #6c757d; font-size: 0.85em;'>{scores_text}</span>", unsafe_allow_html=True)
                     
                     # Subtle status indicator (only if mapped)
@@ -603,7 +606,7 @@ def render_field_mapping_tab():
                                     <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
                                         <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
                                         <div style='color: #6c757d; font-size: 0.8rem;'>
-                                            <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
+                                        <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
                                         </div>
                                     </div>
                                 """, unsafe_allow_html=True)
@@ -687,6 +690,26 @@ def render_field_mapping_tab():
                 for _, (_, row) in enumerate(group_fields.iterrows()):
                     field_name = row["Internal Field"]
                     raw_columns = claims_df.columns.tolist()
+                    
+                    # Clean and filter column names - remove empty, blank, or whitespace-only columns
+                    # Also handle BOM and encoding issues
+                    cleaned_columns = []
+                    for col in raw_columns:
+                        if col is None:
+                            continue
+                        # Convert to string and strip
+                        col_str = str(col).strip()
+                        # Remove BOM and other invisible characters
+                        col_str = col_str.encode('utf-8').decode('utf-8-sig')  # Remove BOM
+                        col_str = unicodedata.normalize('NFKC', col_str)  # Normalize unicode
+                        col_str = col_str.strip()
+                        # Skip empty or whitespace-only columns
+                        if col_str:
+                            cleaned_columns.append(col_str)
+                    
+                    # If no valid columns found, skip this field
+                    if not cleaned_columns:
+                        continue
 
                     suggestion_info = ai_suggestions.get(field_name, {})
                     suggested_column = suggestion_info.get("value")
@@ -697,29 +720,29 @@ def render_field_mapping_tab():
                     if suggestion_score is not None and suggestion_score <= 1.0:
                         suggestion_score = suggestion_score * 100
 
-                    # Get algorithmic and LLM scores
+                    # Get algorithmic scores
                     algorithmic_scores = suggestion_info.get("algorithmic_scores", {})
-                    llm_scores = suggestion_info.get("llm_scores", {})
                     
                     # Sort columns by confidence score (returns tuples with scores)
                     opt_col_options_with_scores = _sort_columns_by_confidence(
                         field_name,
-                        raw_columns,
+                        cleaned_columns,
                         suggested_column,
                         suggestion_score,
-                        algorithmic_scores,
-                        llm_scores
+                        algorithmic_scores
                     )
                     
                     # Format dropdown options with confidence scores
                     opt_col_options = []
                     opt_col_name_map = {}  # Map display text to actual column name
-                    for col_name, algo_score, llm_score in opt_col_options_with_scores:
+                    for col_name, algo_score in opt_col_options_with_scores:
+                        # Ensure col_name is not empty
+                        if not col_name or not col_name.strip():
+                            continue
+                        
                         display_parts = []
                         if algo_score is not None:
                             display_parts.append(f"Algo: {algo_score*100:.0f}%")
-                        if llm_score is not None:
-                            display_parts.append(f"LLM: {llm_score*100:.0f}%")
                         
                         if len(display_parts) > 0:
                             display_text = f"{col_name} ({', '.join(display_parts)})"
@@ -747,22 +770,14 @@ def render_field_mapping_tab():
                         display_name = field_name
                         st.markdown(f"**{display_name}**", unsafe_allow_html=True)
                         
-                        # Show both algorithmic and LLM confidence scores below field name
+                        # Show algorithmic confidence score below field name
                         algorithmic_scores = suggestion_info.get("algorithmic_scores", {})
-                        llm_scores = suggestion_info.get("llm_scores", {})
                         
                         if suggested_column:
                             algo_score = algorithmic_scores.get(suggested_column, None)
-                            llm_score = llm_scores.get(suggested_column, None)
                             
-                            score_parts = []
                             if algo_score is not None:
-                                score_parts.append(f"Algo: {algo_score:.0f}%")
-                            if llm_score is not None:
-                                score_parts.append(f"LLM: {llm_score:.0f}%")
-                            
-                            if score_parts:
-                                scores_text = " | ".join(score_parts)
+                                scores_text = f"Algo: {algo_score:.0f}%"
                                 st.caption(f"<span style='color: #6c757d; font-size: 0.85em;'>{scores_text}</span>", unsafe_allow_html=True)
                     
                     with col2:
@@ -856,16 +871,16 @@ def render_field_mapping_tab():
                                         sample_display = ["• (no data)"]
                                     
                                     st.markdown(f"""
-                                        <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
-                                            <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
-                                            <div style='color: #6c757d; font-size: 0.8rem;'>
-                                                <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
-                                            </div>
+                                    <div style='background-color: #f8f9fa; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #6b7280; font-size: 0.85rem;'>
+                                        <div style='color: #6c757d; margin-bottom: 0.2rem;'>{'<br>'.join(sample_display)}</div>
+                                        <div style='color: #6c757d; font-size: 0.8rem;'>
+                                            <span>Fill Rate: <strong>{fill_rate:.1f}%</strong></span>
                                         </div>
-                                    """, unsafe_allow_html=True)
+                                </div>
+                            """, unsafe_allow_html=True)
                                 except Exception:
                                     pass
-                            elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
+                        elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
                                 # For manual inputs, show a simple indicator
                                 st.markdown(f"""
                                     <div style='background-color: #e8f5e9; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 0.85rem;'>

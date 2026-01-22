@@ -626,7 +626,6 @@ def render_downloads_tab() -> None:
                                 final_mapping=final_mapping
                             )
                             st.session_state.onboarding_sql_script = sql_script
-                            st.session_state.onboarding_client_name = onboarding_client_name
                             _notify("✅ SQL script generated!")
                         except Exception as e:
                             error_msg = get_user_friendly_error(e)
@@ -667,164 +666,163 @@ def render_downloads_tab() -> None:
                 # Generate mapping_csv early (needed for ZIP creation)
                 mapping_csv = mapping_table.to_csv(index=False).encode('utf-8') if mapping_table is not None else b""
 
-                # --- Optional Attachments Section ---
-                uploaded_attachments = st.file_uploader(
-                    "Attach any additional files (e.g., header file, original claims, notes)",
-                    accept_multiple_files=True,
-                    key="zip_attachments"
-                )
+            # --- Optional Attachments Section ---
+            uploaded_attachments = st.file_uploader(
+                "Attach any additional files (e.g., header file, original claims, notes)",
+                accept_multiple_files=True,
+                key="zip_attachments"
+            )
 
-                # --- Custom Notes Section ---
-                notes_text = st.text_area(
-                    "Add Custom Notes (Optional)", 
-                    value="",
-                    help="Include any notes or instructions to be added in the README file",
-                    key="readme_notes"
-                )
+            # --- Custom Notes Section ---
+            notes_text = st.text_area(
+                "Add Custom Notes (Optional)", 
+                value="",
+                help="Include any notes or instructions to be added in the README file",
+                key="readme_notes"
+            )
 
-                # --- Download All as ZIP ---
-                st.markdown("""
-                    <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
-                        <h4 style='margin: 0; padding: 0;'>Download All Outputs as ZIP</h4>
-                    </div>
-                """, unsafe_allow_html=True)
+            # --- Download All as ZIP ---
+            st.markdown("""
+                <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+                    <h4 style='margin: 0; padding: 0;'>Download All Outputs as ZIP</h4>
+                </div>
+            """, unsafe_allow_html=True)
 
-                # Regenerate All Outputs button (moved above download button)
-                if st.button("Regenerate All Outputs"):
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    try:
-                        status_text.text("Regenerating all outputs...")
-                        progress_bar.progress(0.2)
-                        
-                        # Regenerate anonymized data
-                        if claims_df is not None:
-                            from data.anonymizer import anonymize_claims_data
-                            st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
-                        progress_bar.progress(0.4)
-                        
-                        # Regenerate mapping table
-                        if layout_df is not None and claims_df is not None:
-                            from ui.mapping_ui import generate_mapping_table
-                            st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
-                        progress_bar.progress(0.6)
-                        
-                        # Regenerate transformed data
-                        if claims_df is not None:
-                            from data.transformer import transform_claims_data
-                            st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping, layout_df)
-                        progress_bar.progress(0.8)
-                        
-                        # Regenerate anonymized file output
-                        file_metadata = st.session_state.get("claims_file_metadata", {})
-                        file_format = file_metadata.get("format", "csv")
-                        if file_format == "csv":
-                            anonymized_data = st.session_state.anonymized_df.to_csv(index=False).encode('utf-8')
-                            st.session_state.anonymized_data = anonymized_data
-                            st.session_state.anonymized_filename = "anonymized_claims.csv"
-                        progress_bar.progress(1.0)
-                        status_text.empty()
-                        progress_bar.empty()
-                        from ui.ui_components import _notify
-                        _notify("✅ All outputs regenerated!")
-                    except Exception as e:
-                        progress_bar.empty()
-                        status_text.empty()
-                        error_msg = get_user_friendly_error(e)
-                        st.error(f"Error regenerating outputs: {error_msg}")
-
-                readme_text = notes_text.strip() if notes_text else "No additional notes provided."
-                anon_file_name = st.session_state.get("anonymized_filename", "anonymized_claims.csv")
-                anonymized_data = st.session_state.get("anonymized_data", b"")
-
-                # Enhanced README with onboarding, test data, and preprocessing sections
-                enhanced_readme = readme_text
-                has_additional_content = (
-                    st.session_state.get("onboarding_include_in_zip") or 
-                    st.session_state.get("test_include_in_zip") or
-                    st.session_state.get("preprocessing_steps")
-                )
-                if has_additional_content:
-                    enhanced_readme += "\n\n"
-                    enhanced_readme += "=" * 50 + "\n"
-                    enhanced_readme += "ADDITIONAL FILES AND SCRIPTS\n"
-                    enhanced_readme += "=" * 50 + "\n\n"
+            # Regenerate All Outputs button (moved above download button)
+            if st.button("Regenerate All Outputs"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                try:
+                    status_text.text("Regenerating all outputs...")
+                    progress_bar.progress(0.2)
                     
-                    if st.session_state.get("onboarding_include_in_zip"):
-                        enhanced_readme += "ONBOARDING SCRIPTS:\n"
-                        enhanced_readme += "- SQL script for CDAP database setup is included in the onboarding/ folder.\n\n"
+                    # Regenerate anonymized data
+                    if claims_df is not None:
+                        from data.anonymizer import anonymize_claims_data
+                        st.session_state.anonymized_df = anonymize_claims_data(claims_df, final_mapping)
+                    progress_bar.progress(0.4)
                     
-                    if st.session_state.get("test_include_in_zip"):
-                        enhanced_readme += "TEST DATA SCENARIOS:\n"
-                        enhanced_readme += "- Test data files are included in the test_data/ folder.\n\n"
+                    # Regenerate mapping table
+                    if layout_df is not None and claims_df is not None:
+                        from ui.mapping_ui import generate_mapping_table
+                        st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
+                    progress_bar.progress(0.6)
+                    
+                    # Regenerate transformed data
+                    if claims_df is not None:
+                        from data.transformer import transform_claims_data
+                        st.session_state.transformed_df = transform_claims_data(claims_df, final_mapping, layout_df)
+                    progress_bar.progress(0.8)
+                    
+                    # Regenerate anonymized file output
+                    file_metadata = st.session_state.get("claims_file_metadata", {})
+                    file_format = file_metadata.get("format", "csv")
+                    if file_format == "csv":
+                        anonymized_data = st.session_state.anonymized_df.to_csv(index=False).encode('utf-8')
+                        st.session_state.anonymized_data = anonymized_data
+                        st.session_state.anonymized_filename = "anonymized_claims.csv"
+                    progress_bar.progress(1.0)
+                    status_text.empty()
+                    progress_bar.empty()
+                    _notify("✅ All outputs regenerated!")
+                except Exception as e:
+                    progress_bar.empty()
+                    status_text.empty()
+                    error_msg = get_user_friendly_error(e)
+                    st.error(f"Error regenerating outputs: {error_msg}")
+
+            readme_text = notes_text.strip() if notes_text else "No additional notes provided."
+            anon_file_name = st.session_state.get("anonymized_filename", "anonymized_claims.csv")
+            anonymized_data = st.session_state.get("anonymized_data", b"")
+
+            # Enhanced README with onboarding, test data, and preprocessing sections
+            enhanced_readme = readme_text
+            has_additional_content = (
+                st.session_state.get("onboarding_include_in_zip") or 
+                st.session_state.get("test_include_in_zip") or
+                st.session_state.get("preprocessing_steps")
+            )
+            if has_additional_content:
+                enhanced_readme += "\n\n"
+                enhanced_readme += "=" * 50 + "\n"
+                enhanced_readme += "ADDITIONAL FILES AND SCRIPTS\n"
+                enhanced_readme += "=" * 50 + "\n\n"
+                
+                if st.session_state.get("onboarding_include_in_zip"):
+                    enhanced_readme += "ONBOARDING SCRIPTS:\n"
+                    enhanced_readme += "- SQL script for CDAP database setup is included in the onboarding/ folder.\n\n"
+                
+                if st.session_state.get("test_include_in_zip"):
+                    enhanced_readme += "TEST DATA SCENARIOS:\n"
+                    enhanced_readme += "- Test data files are included in the test_data/ folder.\n\n"
                     
                     if st.session_state.get("preprocessing_steps"):
                         enhanced_readme += "PREPROCESSING SCRIPT:\n"
                         enhanced_readme += "- Python script (preprocess_file.py) is included in the preprocessing/ folder.\n\n"
 
-                # Get uploaded file name for ZIP file naming
-                claims_file_obj = st.session_state.get("claims_file_obj")
-                import os
-                if claims_file_obj and hasattr(claims_file_obj, "name"):
-                    original_filename = claims_file_obj.name
-                    # Remove extension
-                    zip_file_name = os.path.splitext(original_filename)[0]
-                    # Remove .gz if present (for decompressed files)
-                    if zip_file_name.lower().endswith('.gz'):
-                        zip_file_name = os.path.splitext(zip_file_name)[0]
-                    # Add .zip extension
-                    zip_file_name = f"{zip_file_name}.zip"
-                else:
-                    zip_file_name = "all_outputs.zip"
+            # Get uploaded file name for ZIP file naming
+            claims_file_obj = st.session_state.get("claims_file_obj")
+            import os
+            if claims_file_obj and hasattr(claims_file_obj, "name"):
+                original_filename = claims_file_obj.name
+                # Remove extension
+                zip_file_name = os.path.splitext(original_filename)[0]
+                # Remove .gz if present (for decompressed files)
+                if zip_file_name.lower().endswith('.gz'):
+                    zip_file_name = os.path.splitext(zip_file_name)[0]
+                # Add .zip extension
+                zip_file_name = f"{zip_file_name}.zip"
+            else:
+                zip_file_name = "all_outputs.zip"
+            
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as zip_file:
+                zip_file.writestr(anon_file_name, anonymized_data)
+                zip_file.writestr("field_mapping_table.csv", mapping_csv)
+                zip_file.writestr("readme.txt", enhanced_readme)
                 
-                buffer = io.BytesIO()
-                with zipfile.ZipFile(buffer, "w") as zip_file:
-                    zip_file.writestr(anon_file_name, anonymized_data)
-                    zip_file.writestr("field_mapping_table.csv", mapping_csv)
-                    zip_file.writestr("readme.txt", enhanced_readme)
+                # Add onboarding script if requested
+                if st.session_state.get("onboarding_include_in_zip") and st.session_state.get("onboarding_sql_script"):
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    client_name = st.session_state.get("onboarding_client_name") or "client"
+                    sql_filename = f"CDAP_Onboarding_{client_name}_{timestamp}.sql"
+                    zip_file.writestr(f"onboarding/{sql_filename}", st.session_state.onboarding_sql_script)
+                
+                # Add test data if requested
+                if st.session_state.get("test_include_in_zip") and st.session_state.get("test_data_dict"):
+                    file_metadata = st.session_state.get("claims_file_metadata", {})
+                    file_format = file_metadata.get("format", "csv")
+                    file_separator = file_metadata.get("sep", "\t")
+                    file_has_header = file_metadata.get("header", False)
                     
-                    # Add onboarding script if requested
-                    if st.session_state.get("onboarding_include_in_zip") and st.session_state.get("onboarding_sql_script"):
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        client_name = st.session_state.get("onboarding_client_name") or "client"
-                        sql_filename = f"CDAP_Onboarding_{client_name}_{timestamp}.sql"
-                        zip_file.writestr(f"onboarding/{sql_filename}", st.session_state.onboarding_sql_script)
+                    # Determine file extension based on format
+                    file_ext_map = {
+                        'csv': '.csv',
+                        'txt': '.txt',
+                        'tsv': '.tsv',
+                        'xlsx': '.xlsx',
+                        'json': '.json',
+                        'parquet': '.parquet',
+                        'fixed-width': '.txt'
+                    }
+                    file_ext = file_ext_map.get(file_format.lower(), '.csv')
                     
-                    # Add test data if requested
-                    if st.session_state.get("test_include_in_zip") and st.session_state.get("test_data_dict"):
-                        file_metadata = st.session_state.get("claims_file_metadata", {})
-                        file_format = file_metadata.get("format", "csv")
-                        file_separator = file_metadata.get("sep", "\t")
-                        file_has_header = file_metadata.get("header", False)
-                        
-                        # Determine file extension based on format
-                        file_ext_map = {
-                            'csv': '.csv',
-                            'txt': '.txt',
-                            'tsv': '.tsv',
-                            'xlsx': '.xlsx',
-                            'json': '.json',
-                            'parquet': '.parquet',
-                            'fixed-width': '.txt'
-                        }
-                        file_ext = file_ext_map.get(file_format.lower(), '.csv')
-                        
-                        # Separate headers_only from other scenarios
-                        headers_only_data = None
-                        other_scenarios_dfs = []
-                        
-                        for scenario_name, scenario_data in st.session_state.test_data_dict.items():
-                            if scenario_name == "headers_only":
-                                headers_only_data = scenario_data
-                            else:
-                                # For combining, we need DataFrames
-                                # If already converted to bytes/str, we'll handle it separately
-                                if isinstance(scenario_data, pd.DataFrame) and not scenario_data.empty:
-                                    other_scenarios_dfs.append(scenario_data)
-                        
-                        # Write headers_only file if it exists
-                        if headers_only_data is not None:
-                            if isinstance(headers_only_data, pd.DataFrame):
+                    # Separate headers_only from other scenarios
+                    headers_only_data = None
+                    other_scenarios_dfs = []
+                    
+                    for scenario_name, scenario_data in st.session_state.test_data_dict.items():
+                        if scenario_name == "headers_only":
+                            headers_only_data = scenario_data
+                        else:
+                            # For combining, we need DataFrames
+                            # If already converted to bytes/str, we'll handle it separately
+                            if isinstance(scenario_data, pd.DataFrame) and not scenario_data.empty:
+                                other_scenarios_dfs.append(scenario_data)
+                    
+                    # Write headers_only file if it exists
+                    if headers_only_data is not None:
+                        if isinstance(headers_only_data, pd.DataFrame):
                                 # Convert to appropriate format
                                 if file_format.lower() == 'xlsx':
                                     output = io.BytesIO()
@@ -847,10 +845,10 @@ def render_downloads_tab() -> None:
                                     # CSV/delimited format
                                     csv_data = headers_only_data.to_csv(index=False, sep=file_separator, header=file_has_header).encode('utf-8')
                                     zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", csv_data)
-                            elif isinstance(headers_only_data, bytes):
-                                zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data)
-                            elif isinstance(headers_only_data, str):
-                                zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data.encode('utf-8'))
+                        elif isinstance(headers_only_data, bytes):
+                            zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data)
+                        elif isinstance(headers_only_data, str):
+                            zip_file.writestr(f"test_data/test_data_headers_only{file_ext}", headers_only_data.encode('utf-8'))
                         
                         # Combine all other scenarios into one file
                         if other_scenarios_dfs:
@@ -887,45 +885,44 @@ def render_downloads_tab() -> None:
                                     zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data)
                                 elif isinstance(scenario_data, str):
                                     zip_file.writestr(f"test_data/test_data_{scenario_name}{file_ext}", scenario_data.encode('utf-8'))
-                    
-                    for attachment in uploaded_attachments or []:
-                        att_name: Any = attachment.name
-                        att_bytes: Any = attachment.getvalue()
-                        zip_file.writestr(att_name, att_bytes)
-                    
-                    # Add preprocessing script if preprocessing steps were tracked
-                    if st.session_state.get("preprocessing_steps"):
-                        try:
-                            from data.preprocessing_tracker import generate_preprocessing_script
-                            # Use the same claims_file_obj from above
-                            original_filename = claims_file_obj.name if claims_file_obj and hasattr(claims_file_obj, "name") else "input_file.csv"
-                            
-                            preprocessing_script = generate_preprocessing_script(
-                                file_path="raw_file.csv",
-                                output_path="processed_file.csv",
-                                filename=original_filename
-                            )
-                            
-                            zip_file.writestr("preprocessing/preprocess_file.py", preprocessing_script.encode('utf-8'))
-                        except ImportError:
-                            pass  # Preprocessing tracker not available
-                        except Exception:
-                            pass  # Don't fail if script generation fails
-
-                buffer.seek(0)
-
-                def on_zip_download():
+                
+                for attachment in uploaded_attachments or []:
+                    att_name: Any = attachment.name
+                    att_bytes: Any = attachment.getvalue()
+                    zip_file.writestr(att_name, att_bytes)
+                
+                # Add preprocessing script if preprocessing steps were tracked
+                if st.session_state.get("preprocessing_steps"):
                     try:
-                        log_event("output", f"ZIP file generated and downloaded ({zip_file_name})")
-                    except NameError:
-                        pass
-                    from ui.ui_components import _notify
-                    _notify("✅ ZIP file ready!")
-                st.download_button(
-                    label="Download All Files (ZIP)",
-                    data=buffer,
-                    file_name=zip_file_name,
-                    mime="application/zip",
-                    key="download_zip",
-                    on_click=on_zip_download
-                )
+                        from data.preprocessing_tracker import generate_preprocessing_script
+                        # Use the same claims_file_obj from above
+                        original_filename = claims_file_obj.name if claims_file_obj and hasattr(claims_file_obj, "name") else "input_file.csv"
+                        
+                        preprocessing_script = generate_preprocessing_script(
+                            file_path="raw_file.csv",
+                            output_path="processed_file.csv",
+                            filename=original_filename
+                        )
+                        
+                        zip_file.writestr("preprocessing/preprocess_file.py", preprocessing_script.encode('utf-8'))
+                    except ImportError:
+                        pass  # Preprocessing tracker not available
+                    except Exception:
+                        pass  # Don't fail if script generation fails
+
+            buffer.seek(0)
+
+            def on_zip_download():
+                try:
+                    log_event("output", f"ZIP file generated and downloaded ({zip_file_name})")
+                except NameError:
+                    pass
+                _notify("✅ ZIP file ready!")
+            st.download_button(
+                label="Download All Files (ZIP)",
+                data=buffer,
+                file_name=zip_file_name,
+                mime="application/zip",
+                key="download_zip",
+                on_click=on_zip_download
+            )

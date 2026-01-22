@@ -17,14 +17,7 @@ MAPPING_HISTORY_MAX_SIZE: int = 50
 AI_CONFIDENCE_THRESHOLD: int = 80  # Minimum confidence (as percentage) to auto-apply mappings
 VALIDATION_PAGE_SIZES: List[int] = [25, 50, 100, 200]
 DEFAULT_VALIDATION_PAGE_SIZE: int = 50
-
-# LLM Settings
-LLM_ENABLED: bool = os.getenv("LLM_ENABLED", "false").lower() == "true"
-LLM_API_ENDPOINT: Optional[str] = os.getenv("LLM_API_ENDPOINT")  # Custom Copilot Studio endpoint URL
-LLM_CONFIDENCE_THRESHOLD: float = float(os.getenv("LLM_CONFIDENCE_THRESHOLD", "0.8"))  # Only use LLM below this confidence
 MIN_MAPPING_CONFIDENCE: float = float(os.getenv("MIN_MAPPING_CONFIDENCE", "0.9"))  # Only map if confidence >= 90%
-LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "10"))
-LLM_MAX_RETRIES: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
 
 # File Processing Settings
 MAX_FILE_SIZE_MB: int = 100  # Maximum file size in MB

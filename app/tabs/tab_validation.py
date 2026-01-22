@@ -22,7 +22,20 @@ from core.error_handling import get_user_friendly_error
 from validation.validation_engine import run_validations, dynamic_run_validations
 from data.layout_loader import get_required_fields
 from validation.advanced_validation import track_validation_performance
-from utils.performance_utils import paginate_dataframe, render_lazy_dataframe
+try:
+    from utils.performance_utils import paginate_dataframe, render_lazy_dataframe
+except (ImportError, KeyError, ModuleNotFoundError):
+    # Fallback if performance_utils is not available
+    def paginate_dataframe(df: Any, page_size: int = 100) -> tuple:
+        """Fallback pagination function."""
+        return df, 1, 1
+    
+    def render_lazy_dataframe(df: Any, key: str = "lazy_df", page_size: int = 1000, max_rows_before_pagination: int = 1000) -> None:
+        """Fallback lazy dataframe renderer."""
+        if df is None or (hasattr(df, 'empty') and df.empty):
+            st.info("No data to display")
+            return
+        st.dataframe(df, use_container_width=True)
 from ui.ui_components import _notify
 from utils.audit_logger import log_event
 
