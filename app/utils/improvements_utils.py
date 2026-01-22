@@ -131,7 +131,7 @@ def get_user_friendly_error(error: Exception) -> str:
     """
     # Try to use enhanced error handling
     try:
-        from error_handling import get_user_friendly_error as _enhanced
+        from core.error_handling import get_user_friendly_error as _enhanced
         return _enhanced(error)
     except (ImportError, Exception):
         # Fallback to basic error message handling
