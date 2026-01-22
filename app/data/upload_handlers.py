@@ -8,7 +8,6 @@ from data.file_handler import detect_delimiter, read_claims_with_header_option
 st = cast(Any, st)
 pd = cast(Any, pd)
 
-# Removed duplicate function - use detect_delimiter from file_handler instead
 
 def capture_claims_file_metadata(file: Any, has_header: bool) -> None:
     """Record basic metadata for an uploaded claims file in session state.

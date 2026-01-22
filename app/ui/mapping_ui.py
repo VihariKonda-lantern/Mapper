@@ -281,7 +281,6 @@ def render_field_mapping_tab():
     else:
         # Show placeholder when no mappings yet
         st.info("Map fields below to see a real-time preview of your transformed data.")
-    # Tip removed to reduce empty containers
 
     required_fields = get_required_fields(layout_df)
 
@@ -325,8 +324,6 @@ def render_field_mapping_tab():
 
     # --- Mapping Progress ---
     _mapped_required, total_required, _percent_complete = calculate_mapping_progress(layout_df, final_mapping)
-    
-    # --- Required Fields Heading (removed redundant heading) ---
     
     # --- Enhanced Search and Filter with Debouncing ---
     search_col1, search_col2, search_col3 = st.columns([3, 2, 2])
@@ -669,7 +666,6 @@ def render_field_mapping_tab():
     optional_fields = optional_fields[optional_fields["Category"].notnull()]
     optional_fields = optional_fields[~optional_fields["Internal Field"].isin(required_fields["Internal Field"].tolist())]  # type: ignore[no-untyped-call]
 
-    # --- Optional Fields Mapping ---
     if not optional_fields.empty:
         optional_field_groups = get_field_groups(optional_fields)
 

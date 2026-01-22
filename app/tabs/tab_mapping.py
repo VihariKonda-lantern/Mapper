@@ -16,7 +16,6 @@ from ui.ui_components import render_progress_bar
 from core.state_manager import initialize_undo_redo, save_to_history, undo_mapping, redo_mapping
 from data.transformer import transform_claims_data
 from data.output_generator import generate_all_outputs
-# Testing QA removed - optional feature
 from mapping.mapping_engine import get_enhanced_automap
 from mapping.mapping_enhancements import (
     get_mapping_confidence_score,
@@ -294,10 +293,9 @@ def render_mapping_tab() -> None:
                     pass
 
     # --- Test Mapping Section (silent, no UI) ---
-    if st.session_state.get("mappings_ready") and current_mapping:
+    if st.session_state.get("mappings_ready") and final_mapping:
         mapping_hash = str(hash(str(final_mapping)))
         last_hash = st.session_state.get("last_mapping_hash")
-        if last_hash != mapping_hash or not st.session_state.get("unit_test_results"):
-            # Testing QA removed - optional feature
+        if last_hash != mapping_hash:
             st.session_state.last_mapping_hash = mapping_hash
 

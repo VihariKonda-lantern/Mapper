@@ -162,7 +162,6 @@ def render_validation_tab() -> None:
     # ============================================
     # MAIN VALIDATION DASHBOARD
     # ============================================
-    # Validation dashboard removed - using simple validation display instead
     if validation_results_summary:
         st.dataframe(pd.DataFrame(validation_results_summary))
     
@@ -379,7 +378,6 @@ def render_validation_tab() -> None:
             # Quality visualization
             breakdown = quality_score.get('breakdown', {})
             if breakdown:
-                # Chart visualization removed - showing breakdown as text instead
                 st.json(breakdown)
             
             # Column Statistics
@@ -458,7 +456,6 @@ def render_validation_tab() -> None:
                     if completeness_matrix.empty:
                         st.info("Unable to generate completeness matrix.")
                     else:
-                        # Heatmap visualization removed - showing matrix as table instead
                         render_sortable_table(completeness_matrix, key="completeness_table")
                 except Exception as e:
                     error_msg = get_user_friendly_error(e)
