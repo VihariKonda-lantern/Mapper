@@ -30,15 +30,15 @@ class DesignTokens:
         'bold': '700',
     }
     
-    # Spacing Scale (Tight spacing - reduced by ~60%)
+    # Spacing Scale (Ultra-tight, compact spacing - reduced by ~80%)
     SPACING = {
-        'xs': '2px',       # Very tight
-        'sm': '4px',       # Small spacing
-        'md': '8px',       # Medium spacing (default)
-        'lg': '12px',      # Large spacing
-        'xl': '16px',      # Extra large
-        '2xl': '20px',     # 2x large
-        '3xl': '24px',     # 3x large
+        'xs': '1px',       # Minimal spacing
+        'sm': '2px',       # Very small spacing
+        'md': '4px',       # Medium spacing (default) - ultra compact
+        'lg': '6px',       # Large spacing
+        'xl': '8px',       # Extra large
+        '2xl': '12px',     # 2x large
+        '3xl': '16px',     # 3x large
     }
     
     # Border Radius (consistent rounding)
@@ -118,31 +118,51 @@ def inject_tight_spacing_css():
            Based on: https://uxplaybook.org/articles/ui-fundamentals-best-practices-for-ux-designers
            ============================================ */
         
-        /* 1. VISUAL HIERARCHY - Size, Color, Contrast */
+        /* 1. VISUAL HIERARCHY - Ultra-tight vertical spacing (0.5px) */
         .element-container {
-            margin-bottom: 0.25rem !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0 !important;
         }
         
-        /* Consistent heading hierarchy with proper contrast */
+        /* Consistent heading hierarchy with 0.5px vertical spacing */
+        h1, .stMarkdown h1 {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+            letter-spacing: -0.02em !important;
+        }
         h2, .stMarkdown h2 {
-            margin-top: 0.5rem !important;
-            margin-bottom: 0.25rem !important;
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
             font-weight: 600 !important;
             color: #1f2937 !important;
             letter-spacing: -0.02em !important;
         }
         h3, .stMarkdown h3 {
-            margin-top: 0.5rem !important;
-            margin-bottom: 0.25rem !important;
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
             font-weight: 600 !important;
             color: #374151 !important;
             letter-spacing: -0.01em !important;
         }
         h4, .stMarkdown h4 {
-            margin-top: 0.5rem !important;
-            margin-bottom: 0.125rem !important;
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
             font-weight: 600 !important;
             color: #4b5563 !important;
+        }
+        h5, .stMarkdown h5 {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+            font-weight: 600 !important;
+            color: #4b5563 !important;
+        }
+        h6, .stMarkdown h6 {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+            font-weight: 500 !important;
+            color: #6b7280 !important;
         }
         
         /* 2. ACCESSIBILITY - Better contrast and focus states */
@@ -175,19 +195,22 @@ def inject_tight_spacing_css():
             transform: translateY(0) !important;
         }
         
-        /* 4. CONSISTENCY - Form elements spacing */
+        /* 4. CONSISTENCY - Ultra-tight vertical spacing for form elements (0.5px) */
         [data-testid="stSelectbox"], 
         [data-testid="stTextInput"], 
-        [data-testid="stTextArea"] {
-            margin-top: 0.125rem !important;
-            margin-bottom: 0.25rem !important;
+        [data-testid="stTextArea"],
+        [data-testid="stNumberInput"],
+        [data-testid="stMultiselect"] {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
         }
         
-        /* 5. PROGRESSIVE DISCLOSURE - Expander styling */
+        /* 5. PROGRESSIVE DISCLOSURE - Ultra-tight vertical spacing for expanders (0.5px) */
         [data-testid="stExpander"] {
             border: 1px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            margin-bottom: 0.5rem !important;
+            border-radius: 6px !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
             background: #ffffff !important;
         }
         [data-testid="stExpander"]:hover {
@@ -195,31 +218,42 @@ def inject_tight_spacing_css():
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
         }
         
-        /* 6. METRICS - Consistent card styling */
+        /* 6. METRICS - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stMetric"] {
-            margin-bottom: 0.25rem !important;
-            padding: 0.75rem !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+            padding: 4px 8px !important;
             background: #f9fafb !important;
-            border-radius: 8px !important;
-            border: 1px solid #e5e7eb !important;
-        }
-        
-        /* 7. JSON/CODE - Better readability */
-        [data-testid="stJson"] {
-            margin-top: 0.125rem !important;
-            margin-bottom: 0.25rem !important;
             border-radius: 6px !important;
             border: 1px solid #e5e7eb !important;
         }
         
-        /* 8. RADIO - Better spacing */
-        [data-testid="stRadio"] {
-            margin-bottom: 0.25rem !important;
+        /* 7. JSON/CODE - Ultra-tight vertical spacing (0.5px) */
+        [data-testid="stJson"] {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+            border-radius: 6px !important;
+            border: 1px solid #e5e7eb !important;
+            padding: 4px !important;
         }
         
-        /* 9. MARKDOWN - Consistent spacing */
+        /* 8. RADIO - Ultra-tight vertical spacing (0.5px) */
+        [data-testid="stRadio"] {
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+        }
+        
+        /* 9. MARKDOWN - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stMarkdownContainer"] {
-            margin-bottom: 0.25rem !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Ultra-tight paragraph vertical margins (0.5px) */
+        .stMarkdown p,
+        p {
+            margin-top: 0 !important;
+            margin-bottom: 0.5px !important;
         }
         
         /* 10. LOADING STATES - Better spinner visibility */
@@ -227,11 +261,13 @@ def inject_tight_spacing_css():
             color: #6b7280 !important;
         }
         
-        /* 11. ALERTS - Better contrast and hierarchy */
+        /* 11. ALERTS - Ultra-tight vertical spacing (0.5px) */
         .stAlert {
-            border-radius: 8px !important;
-            border-left-width: 4px !important;
-            padding: 0.75rem 1rem !important;
+            border-radius: 6px !important;
+            border-left-width: 3px !important;
+            padding: 4px 8px !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
         }
         
         /* 12. TABLES - Better readability */
@@ -240,11 +276,12 @@ def inject_tight_spacing_css():
             overflow: hidden !important;
         }
         
-        /* 13. EMPTY STATES - Better visual hierarchy */
+        /* 13. EMPTY STATES - Ultra-tight vertical spacing (0.5px) */
         .empty-state-container {
             text-align: center !important;
-            padding: 2rem !important;
+            padding: 0.5rem !important;
             color: #6b7280 !important;
+            margin: 0.5px 0 !important;
         }
         
         /* 14. MICRO-INTERACTIONS - Smooth transitions */
@@ -252,13 +289,14 @@ def inject_tight_spacing_css():
             transition: background-color 0.2s ease, border-color 0.2s ease !important;
         }
         
-        /* 15. REMOVE EMPTY CONTAINERS - Compact UI - Aggressive cleanup */
-        /* Hide all empty element containers */
-        [data-testid="stElementContainer"]:empty,
-        [data-testid="stElementContainer"]:has(> :empty:only-child),
-        [data-testid="stElementContainer"]:has(> div:empty:only-child),
-        .element-container:empty,
-        .element-container:has(> :empty:only-child) {
+        /* 15. REMOVE EMPTY CONTAINERS - Compact UI - Keep only 1 standard spacing */
+        /* Standard spacing: Keep first empty container, hide all subsequent duplicates */
+        /* Hide empty element containers that come after another empty one (keep only 1) */
+        [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty,
+        [data-testid="stElementContainer"]:has(> :empty:only-child) + [data-testid="stElementContainer"]:has(> :empty:only-child),
+        [data-testid="stElementContainer"]:has(> div:empty:only-child) + [data-testid="stElementContainer"]:has(> div:empty:only-child),
+        .element-container:empty + .element-container:empty,
+        .element-container:has(> :empty:only-child) + .element-container:has(> :empty:only-child) {
             display: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -266,11 +304,8 @@ def inject_tight_spacing_css():
             min-height: 0 !important;
         }
         
-        /* Hide empty markdown containers */
-        [data-testid="stMarkdownContainer"]:empty,
-        [data-testid="stMarkdownContainer"]:has(> :empty:only-child),
-        [data-testid="stMarkdownContainer"]:has(> p:empty:only-child),
-        [data-testid="stMarkdownContainer"]:has(> div:empty:only-child) {
+        /* Hide all empty containers after the first one in any sequence */
+        [data-testid="stElementContainer"]:empty ~ [data-testid="stElementContainer"]:empty {
             display: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -278,11 +313,25 @@ def inject_tight_spacing_css():
             min-height: 0 !important;
         }
         
-        /* Remove unnecessary spacing from empty vertical blocks */
-        .stVerticalBlock:empty,
-        .stVerticalBlock:has(> :empty:only-child),
-        .stVerticalBlock:has(> [data-testid="stElementContainer"]:empty:only-child),
-        [class*="stVerticalBlock"]:empty {
+        /* Hide duplicate empty markdown containers - keep only 1 standard spacing */
+        [data-testid="stMarkdownContainer"]:empty + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> :empty:only-child) + [data-testid="stMarkdownContainer"]:has(> :empty:only-child),
+        [data-testid="stMarkdownContainer"]:has(> p:empty:only-child) + [data-testid="stMarkdownContainer"]:has(> p:empty:only-child),
+        [data-testid="stMarkdownContainer"]:has(> div:empty:only-child) + [data-testid="stMarkdownContainer"]:has(> div:empty:only-child),
+        [data-testid="stMarkdownContainer"]:empty ~ [data-testid="stMarkdownContainer"]:empty {
+            display: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+        }
+        
+        /* Remove duplicate empty vertical blocks - keep only 1 standard spacing */
+        .stVerticalBlock:empty + .stVerticalBlock:empty,
+        .stVerticalBlock:has(> :empty:only-child) + .stVerticalBlock:has(> :empty:only-child),
+        .stVerticalBlock:has(> [data-testid="stElementContainer"]:empty:only-child) + .stVerticalBlock:has(> [data-testid="stElementContainer"]:empty:only-child),
+        [class*="stVerticalBlock"]:empty + [class*="stVerticalBlock"]:empty,
+        .stVerticalBlock:empty ~ .stVerticalBlock:empty {
             display: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -315,15 +364,55 @@ def inject_tight_spacing_css():
             display: none !important;
         }
         
-        /* Remove consecutive empty containers - only allow one at a time */
+        /* Remove ALL consecutive empty containers - keep only 1 standard spacing */
+        /* Hide all empty containers except the first one in a sequence */
         [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty,
-        [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty {
+        [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty,
+        [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty,
+        [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Remove empty containers between non-empty ones - keep only 1 standard spacing */
+        [data-testid="stElementContainer"]:not(:empty) ~ [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide all empty containers except the first in any sequence */
+        [data-testid="stElementContainer"]:empty ~ [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Standard spacing: Only allow 1 empty container between non-empty elements */
+        [data-testid="stElementContainer"]:not(:empty) + [data-testid="stElementContainer"]:empty + [data-testid="stElementContainer"]:empty {
             display: none !important;
         }
         
-        /* Remove empty containers between non-empty ones */
-        [data-testid="stElementContainer"]:not(:empty) ~ [data-testid="stElementContainer"]:empty {
+        /* Hide multiple empty markdown containers - keep only 1 */
+        [data-testid="stMarkdownContainer"]:empty + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:empty + [data-testid="stMarkdownContainer"]:empty + [data-testid="stMarkdownContainer"]:empty {
             display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide multiple empty vertical blocks - keep only 1 */
+        .stVerticalBlock:empty + .stVerticalBlock:empty,
+        .stVerticalBlock:empty + .stVerticalBlock:empty + .stVerticalBlock:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         /* Hide empty containers in columns */
@@ -364,7 +453,516 @@ def inject_tight_spacing_css():
         [data-testid="stSelectbox"] ~ [data-testid="stElementContainer"]:empty:not(:has(+ [data-testid="stElementContainer"]:not(:empty))) {
             display: none !important;
         }
+        
+        /* Hide ALL empty containers with 8px height - aggressive removal */
+        [data-testid="stElementContainer"][height="8px"],
+        [data-testid="stElementContainer"]:has(> div[style*="height: 8px"]),
+        [data-testid="stElementContainer"]:has(> div[style*="height:8px"]),
+        .element-container[style*="height: 8px"],
+        .element-container[style*="height:8px"],
+        [data-testid="stElementContainer"][style*="height: 8px"],
+        [data-testid="stElementContainer"][style*="height:8px"] {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Hide ALL empty element containers - no exceptions */
+        [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Hide empty containers that have only whitespace or invisible content */
+        [data-testid="stElementContainer"]:has(> :empty:only-child),
+        [data-testid="stElementContainer"]:has(> div:empty:only-child),
+        [data-testid="stElementContainer"]:has(> span:empty:only-child),
+        [data-testid="stElementContainer"]:has(> p:empty:only-child) {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Standard spacing: Keep only 1 empty container, hide all duplicates */
+        /* Hide all empty containers that follow another empty container */
+        [data-testid="stElementContainer"]:empty ~ [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide all empty vertical blocks after the first one */
+        .stVerticalBlock:empty ~ .stVerticalBlock:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide ALL empty vertical blocks that contain only empty element containers */
+        .stVerticalBlock:has(> [data-testid="stElementContainer"]:empty:only-child),
+        .stVerticalBlock:has(> [data-testid="stElementContainer"]:empty) {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* AGGRESSIVE: Hide ALL containers with height 8px or less (including 4px) - regardless of content */
+        [data-testid="stElementContainer"][style*="height: 8px"],
+        [data-testid="stElementContainer"][style*="height:8px"],
+        [data-testid="stElementContainer"][style*="height: 4px"],
+        [data-testid="stElementContainer"][style*="height:4px"],
+        [data-testid="stElementContainer"]:has(> div[style*="height: 8px"]),
+        [data-testid="stElementContainer"]:has(> div[style*="height:8px"]),
+        [data-testid="stElementContainer"]:has(> div[style*="height: 4px"]),
+        [data-testid="stElementContainer"]:has(> div[style*="height:4px"]) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* STANDARD: Remove empty containers between section titles and content */
+        /* Hide empty containers that appear immediately after headings */
+        h1 + [data-testid="stElementContainer"]:empty,
+        h2 + [data-testid="stElementContainer"]:empty,
+        h3 + [data-testid="stElementContainer"]:empty,
+        h4 + [data-testid="stElementContainer"]:empty,
+        h5 + [data-testid="stElementContainer"]:empty,
+        h6 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h1 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h2 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h3 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h4 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h5 + [data-testid="stElementContainer"]:empty,
+        .stMarkdown h6 + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h1) + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h2) + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h3) + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h4) + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h5) + [data-testid="stElementContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h6) + [data-testid="stElementContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide empty containers after markdown containers that contain headings */
+        [data-testid="stMarkdownContainer"]:has(> h1) ~ [data-testid="stElementContainer"]:empty:first-of-type,
+        [data-testid="stMarkdownContainer"]:has(> h2) ~ [data-testid="stElementContainer"]:empty:first-of-type,
+        [data-testid="stMarkdownContainer"]:has(> h3) ~ [data-testid="stElementContainer"]:empty:first-of-type,
+        [data-testid="stMarkdownContainer"]:has(> h4) ~ [data-testid="stElementContainer"]:empty:first-of-type,
+        [data-testid="stMarkdownContainer"]:has(> h5) ~ [data-testid="stElementContainer"]:empty:first-of-type,
+        [data-testid="stMarkdownContainer"]:has(> h6) ~ [data-testid="stElementContainer"]:empty:first-of-type {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide empty vertical blocks after headings */
+        h1 + .stVerticalBlock:empty,
+        h2 + .stVerticalBlock:empty,
+        h3 + .stVerticalBlock:empty,
+        h4 + .stVerticalBlock:empty,
+        [data-testid="stMarkdownContainer"]:has(> h1) + .stVerticalBlock:empty,
+        [data-testid="stMarkdownContainer"]:has(> h2) + .stVerticalBlock:empty,
+        [data-testid="stMarkdownContainer"]:has(> h3) + .stVerticalBlock:empty,
+        [data-testid="stMarkdownContainer"]:has(> h4) + .stVerticalBlock:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Hide empty markdown containers after headings */
+        h1 + [data-testid="stMarkdownContainer"]:empty,
+        h2 + [data-testid="stMarkdownContainer"]:empty,
+        h3 + [data-testid="stMarkdownContainer"]:empty,
+        h4 + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h1) + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h2) + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h3) + [data-testid="stMarkdownContainer"]:empty,
+        [data-testid="stMarkdownContainer"]:has(> h4) + [data-testid="stMarkdownContainer"]:empty {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ultra-compact: Remove all margins between headings and content */
+        h1, h2, h3, h4, h5, h6,
+        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+            margin-bottom: 2px !important;
+            margin-top: 4px !important;
+        }
+        
+        /* Remove all spacing between sections */
+        .stVerticalBlock {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ultra-compact: Remove all default margins and padding */
+        * {
+            margin-top: 0 !important;
+        }
+        
+        /* Ultra-tight bottom margins for visual separation (0.5px) */
+        div[data-testid="stElementContainer"]:not(:empty) {
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-minimal spacing for tabs - reduce gap after tabs to almost zero */
+        .stTabs {
+            margin-bottom: 0 !important;
+            margin-top: 4px !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            padding: 6px 12px !important;
+            margin: 0 2px !important;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 4px !important;
+            padding: 4px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Remove spacing between tabs and content that follows */
+        .stTabs ~ div,
+        .stTabs + div,
+        .stTabs + [data-testid="stElementContainer"],
+        .stTabs ~ [data-testid="stElementContainer"],
+        .stTabs ~ [data-testid="stVerticalBlock"] {
+            margin-top: 0 !important;
+        }
+        
+        /* Remove spacing after tab panel content */
+        [data-baseweb="tab-panel"] {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        [data-baseweb="tab-panel"] > div {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        /* Ultra-tight vertical spacing for headings that come after tabs (0.5px) */
+        .stTabs ~ h1,
+        .stTabs ~ h2,
+        .stTabs ~ h3,
+        .stTabs ~ h4,
+        .stTabs ~ h5,
+        .stTabs ~ h6,
+        .stTabs ~ .stMarkdown h1,
+        .stTabs ~ .stMarkdown h2,
+        .stTabs ~ .stMarkdown h3,
+        .stTabs ~ .stMarkdown h4 {
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for headings in tab panels (0.5px) */
+        [data-baseweb="tab-panel"] h1,
+        [data-baseweb="tab-panel"] h2,
+        [data-baseweb="tab-panel"] h3,
+        [data-baseweb="tab-panel"] h4 {
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for first element in tab panel (0.5px) */
+        [data-baseweb="tab-panel"] > *:first-child {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        /* SPECIFIC: Downloads tab - ultra-minimal spacing */
+        /* Target elements with "Downloads & Outputs" text and reduce spacing */
+        div[style*="margin-bottom: 0.5rem"]:has(h2),
+        div:has(> h2[style*="Downloads & Outputs"]) {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Remove spacing from h2 with Downloads & Outputs */
+        h2[style*="Downloads & Outputs"],
+        h2:has-text("Downloads & Outputs") {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Remove spacing after Downloads heading - target next sibling tabs */
+        div:has(> h2[style*="Downloads & Outputs"]) + .stTabs,
+        div:has(> h2[style*="Downloads & Outputs"]) ~ .stTabs {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Ultra-tight vertical spacing in Downloads tab panels (0.5px) */
+        .stTabs [data-baseweb="tab-panel"] {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        .stTabs [data-baseweb="tab-panel"] > div {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        /* Ultra-tight vertical spacing from headings in Downloads tab panels (0.5px) */
+        .stTabs [data-baseweb="tab-panel"] h3,
+        .stTabs [data-baseweb="tab-panel"] h4 {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing from expanders in Downloads tab (0.5px) */
+        .stTabs [data-baseweb="tab-panel"] [data-testid="stExpander"] {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing from markdown in Downloads tab (0.5px) */
+        .stTabs [data-baseweb="tab-panel"] .stMarkdown {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing from containers in Downloads tab (0.5px) */
+        .stTabs [data-baseweb="tab-panel"] [data-testid="stElementContainer"] {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for expander headers (0.5px) */
+        .streamlit-expanderHeader {
+            padding: 4px 8px !important;
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for expander content (0.5px) */
+        .streamlit-expanderContent {
+            padding: 4px 8px !important;
+            margin-top: 0 !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for buttons (0.5px) */
+        [data-testid="stButton"] {
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for file uploaders (0.5px) */
+        [data-testid="stFileUploader"] {
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+            padding: 4px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for dataframes (0.5px) */
+        [data-testid="stDataFrame"] {
+            margin-bottom: 0.5px !important;
+            margin-top: 0.5px !important;
+        }
+        
+        /* Keep horizontal gaps in columns, only reduce vertical (0.5px) */
+        [data-testid="column"] {
+            gap: 0.5rem !important;
+            padding: 0.5rem 0.5rem !important;
+        }
+        
+        /* ULTRA-COMPACT: Remove ALL empty spaces - aggressive cleanup */
+        /* Hide any container with height <= 8px (including 4px) that appears empty */
+        [data-testid="stElementContainer"]:empty,
+        [data-testid="stElementContainer"]:has(> :empty:only-child),
+        [data-testid="stElementContainer"]:has(> div:empty:only-child),
+        [data-testid="stElementContainer"]:has(> span:empty:only-child),
+        [data-testid="stElementContainer"]:has(> p:empty:only-child) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Hide containers with height 4px specifically */
+        [data-testid="stElementContainer"][style*="height: 4px"],
+        [data-testid="stElementContainer"][style*="height:4px"] {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ultra-tight vertical spacing for vertical blocks (0.5px) */
+        .stVerticalBlock {
+            margin: 0.5px 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ultra-tight vertical spacing for markdown containers (0.5px) */
+        [data-testid="stMarkdownContainer"] {
+            margin: 0.5px 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ultra-tight vertical padding from Streamlit components (0.5px) */
+        .main .block-container {
+            padding-top: 0.5px !important;
+            padding-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing between tabs and content (0.5px) */
+        .stTabs ~ div,
+        .stTabs ~ [data-testid="stElementContainer"],
+        .stTabs ~ [data-testid="stVerticalBlock"] {
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing in tab panels (0.5px) */
+        [data-baseweb="tab-panel"] {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        [data-baseweb="tab-panel"] > div {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        [data-baseweb="tab-panel"] > *:first-child {
+            margin-top: 0.5px !important;
+            padding-top: 0 !important;
+        }
+        
+        /* Consistent line-height spacing */
+        p, div, span {
+            line-height: 1.3 !important;
+        }
+        
+        /* Ultra-tight vertical spacing for all sections (0.5px) */
+        section,
+        .main > div,
+        .block-container > div {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing for all content blocks (0.5px) */
+        [data-testid="stElementContainer"]:not(:empty) {
+            margin-top: 0.5px !important;
+            margin-bottom: 0.5px !important;
+        }
+        
+        /* Ultra-tight vertical spacing between titles and their content (0.5px) */
+        h1 + *,
+        h2 + *,
+        h3 + *,
+        h4 + * {
+            margin-top: 0.5px !important;
+        }
+        
+        /* Ultra-compact table spacing */
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+        }
+        
+        /* Remove all unnecessary whitespace */
+        br {
+            display: none !important;
+        }
         </style>
+    """, unsafe_allow_html=True)
+    
+    # JavaScript-based removal of 8px containers as fallback
+    # This will run after page load to catch any containers missed by CSS
+    st.markdown("""
+        <script>
+        (function() {
+            function remove8pxContainers() {
+                const containers = document.querySelectorAll('[data-testid="stElementContainer"]');
+                containers.forEach(container => {
+                    const rect = container.getBoundingClientRect();
+                    // Remove ALL containers that are 8px or less (including 4px) and appear empty
+                    if (rect.height <= 8 && rect.height > 0) {
+                        const hasVisibleContent = container.textContent.trim() !== '' || 
+                                                  container.querySelector('button, input, select, textarea, [data-testid*="st"], iframe, img, svg, canvas, video, audio, hr, table, tr, td, th');
+                        if (!hasVisibleContent) {
+                            container.style.display = 'none';
+                            container.style.height = '0';
+                            container.style.margin = '0';
+                            container.style.padding = '0';
+                            container.style.visibility = 'hidden';
+                            container.style.minHeight = '0';
+                            container.style.maxHeight = '0';
+                        }
+                    }
+                    // Also remove any empty containers regardless of height
+                    if (container.children.length === 0 && container.textContent.trim() === '') {
+                        container.style.display = 'none';
+                        container.style.height = '0';
+                        container.style.margin = '0';
+                        container.style.padding = '0';
+                    }
+                });
+                
+                // Remove empty vertical blocks (including 4px ones)
+                const verticalBlocks = document.querySelectorAll('.stVerticalBlock');
+                verticalBlocks.forEach(block => {
+                    const rect = block.getBoundingClientRect();
+                    if (rect.height <= 8 && rect.height > 0 && block.children.length === 0) {
+                        block.style.display = 'none';
+                        block.style.height = '0';
+                        block.style.margin = '0';
+                        block.style.padding = '0';
+                    }
+                });
+            }
+            // Run immediately and after delays to catch dynamically added containers
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', remove8pxContainers);
+            } else {
+                remove8pxContainers();
+            }
+            setTimeout(remove8pxContainers, 100);
+            setTimeout(remove8pxContainers, 500);
+            setTimeout(remove8pxContainers, 1000);
+            // Also run on mutations to catch dynamically added containers
+            const observer = new MutationObserver(function(mutations) {
+                remove8pxContainers();
+            });
+            if (document.body) {
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+        })();
+        </script>
     """, unsafe_allow_html=True)
 
 
@@ -386,13 +984,13 @@ def inject_unified_design_system():
         color: {tokens.COLORS['text']} !important;
     }}
     
-    /* Heading Hierarchy - Consistent Sizes */
+    /* Heading Hierarchy - Ultra-tight vertical spacing (0.5px) */
     h1, .stMarkdown h1 {{
         font-size: {tokens.FONT_SIZES['3xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.2 !important;
-        margin-top: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
@@ -400,8 +998,8 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['2xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.3 !important;
-        margin-top: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
         border-bottom: 1px solid {tokens.COLORS['border-light']} !important;
         padding-bottom: {tokens.SPACING['xs']} !important;
@@ -411,8 +1009,8 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.4 !important;
-        margin-top: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['xs']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
@@ -420,8 +1018,8 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['lg']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.4 !important;
-        margin-top: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
@@ -429,8 +1027,8 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['md']} !important;
         font-weight: {tokens.FONT_WEIGHTS['medium']} !important;
         line-height: 1.4 !important;
-        margin-top: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['xs']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
@@ -438,39 +1036,41 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['sm']} !important;
         font-weight: {tokens.FONT_WEIGHTS['medium']} !important;
         line-height: 1.4 !important;
-        margin-top: {tokens.SPACING['sm']} !important;
-        margin-bottom: {tokens.SPACING['xs']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text-muted']} !important;
     }}
     
-    /* Captions and small text */
+    /* Captions and small text - ultra-tight vertical spacing (0.5px) */
     .stCaption, small, .caption {{
         font-size: {tokens.FONT_SIZES['xs']} !important;
         color: {tokens.COLORS['text-muted']} !important;
         line-height: 1.4 !important;
-        margin-top: {tokens.SPACING['xs']} !important;
-        margin-bottom: {tokens.SPACING['xs']} !important;
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
     }}
     
-    /* 2. CONTAINER SIZES - Consistent Layout */
+    /* 2. CONTAINER SIZES - Ultra-compact Layout */
     .main .block-container {{
         max-width: {tokens.CONTAINERS['2xl']} !important;
-        padding-top: {tokens.SPACING['md']} !important;
-        padding-bottom: {tokens.SPACING['md']} !important;
-        padding-left: {tokens.SPACING['md']} !important;
-        padding-right: {tokens.SPACING['md']} !important;
+        padding-top: {tokens.SPACING['sm']} !important;
+        padding-bottom: {tokens.SPACING['sm']} !important;
+        padding-left: {tokens.SPACING['sm']} !important;
+        padding-right: {tokens.SPACING['sm']} !important;
     }}
     
-    /* 3. SPACING - Tight Grid System */
-    /* Consistent margins between elements */
+    /* 3. SPACING - Ultra-tight vertical spacing (0.5px) */
+    /* Ultra-tight vertical margins between elements */
     .element-container {{
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0 !important;
     }}
     
-    /* Consistent padding in containers */
+    /* Keep horizontal padding, reduce vertical margins (0.5px) */
     .stContainer {{
-        padding: {tokens.SPACING['sm']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        padding: 0.5rem !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
     }}
     
     /* 4. BUTTONS - Consistent Sizes */
@@ -567,14 +1167,15 @@ def inject_unified_design_system():
         word-wrap: break-word !important;
     }}
     
-    /* 6. ALERTS - Consistent Styling */
+    /* 6. ALERTS - Ultra-tight vertical spacing (0.5px) */
     .stAlert {{
-        padding: {tokens.SPACING['sm']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         border-radius: {tokens.RADIUS['md']} !important;
         border-left: 3px solid !important;
         font-size: {tokens.FONT_SIZES['base']} !important;
-        line-height: 1.5 !important;
+        line-height: 1.4 !important;
     }}
     
     .stInfo {{
@@ -601,7 +1202,7 @@ def inject_unified_design_system():
         color: {tokens.COLORS['text']} !important;
     }}
     
-    /* 7. EXPANDERS - Consistent Sizing */
+    /* 7. EXPANDERS - Ultra-tight vertical spacing (0.5px) */
     .streamlit-expanderHeader {{
         padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
         font-size: {tokens.FONT_SIZES['base']} !important;
@@ -609,20 +1210,23 @@ def inject_unified_design_system():
         border-radius: {tokens.RADIUS['md']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
-        margin-bottom: {tokens.SPACING['xs']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
     }}
     
     .streamlit-expanderContent {{
-        padding: {tokens.SPACING['sm']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
         background-color: {tokens.COLORS['background']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-top: none !important;
         border-radius: 0 0 {tokens.RADIUS['md']} {tokens.RADIUS['md']} !important;
+        margin-bottom: 0.5px !important;
     }}
     
-    /* 8. DATA TABLES - Consistent Styling */
+    /* 8. DATA TABLES - Ultra-tight vertical spacing (0.5px) */
     .stDataFrame {{
-        margin-bottom: {tokens.SPACING['md']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         border-radius: {tokens.RADIUS['md']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         overflow: hidden !important;
@@ -637,12 +1241,12 @@ def inject_unified_design_system():
         background-color: {tokens.COLORS['background-alt']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         font-size: {tokens.FONT_SIZES['sm']} !important;
-        padding: {tokens.SPACING['sm']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
         border-bottom: 2px solid {tokens.COLORS['border']} !important;
     }}
     
     .stDataFrame td {{
-        padding: {tokens.SPACING['sm']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
         border-bottom: 1px solid {tokens.COLORS['border-light']} !important;
         font-size: {tokens.FONT_SIZES['sm']} !important;
     }}
@@ -651,10 +1255,11 @@ def inject_unified_design_system():
         background-color: {tokens.COLORS['background-hover']} !important;
     }}
     
-    /* 9. METRICS - Consistent Display */
+    /* 9. METRICS - Ultra-tight vertical spacing (0.5px) */
     [data-testid="stMetricContainer"] {{
-        padding: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['md']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
@@ -672,13 +1277,30 @@ def inject_unified_design_system():
         color: {tokens.COLORS['text-muted']} !important;
     }}
     
-    /* 10. TABS - Consistent Navigation */
+    /* 10. TABS - Ultra-tight vertical spacing (0.5px) */
     .stTabs [data-baseweb="tab-list"] {{
-        gap: {tokens.SPACING['xs']} !important;
+        gap: {tokens.SPACING['sm']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
-        padding: {tokens.SPACING['xs']} !important;
+        padding: {tokens.SPACING['sm']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
-        margin-bottom: {tokens.SPACING['md']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: {tokens.SPACING['xs']} !important;
+    }}
+    
+    /* Ultra-tight vertical spacing for tab panel content (0.5px) */
+    .stTabs [data-baseweb="tab-panel"] {{
+        margin-top: 0.5px !important;
+        padding-top: 0 !important;
+    }}
+    
+    .stTabs [data-baseweb="tab-panel"] > div {{
+        margin-top: 0.5px !important;
+        padding-top: 0 !important;
+    }}
+    
+    .stTabs [data-baseweb="tab-panel"] > *:first-child {{
+        margin-top: 0.5px !important;
+        padding-top: 0 !important;
     }}
     
     .stTabs [data-baseweb="tab"] {{
@@ -688,6 +1310,7 @@ def inject_unified_design_system():
         border-radius: {tokens.RADIUS['sm']} !important;
         color: {tokens.COLORS['text']} !important;
         transition: all 0.2s ease !important;
+        margin: 0 {tokens.SPACING['xs']} !important;
     }}
     
     .stTabs [aria-selected="true"] {{
@@ -698,14 +1321,15 @@ def inject_unified_design_system():
         border-bottom: 2px solid {tokens.COLORS['primary']} !important;
     }}
     
-    /* 11. FILE UPLOADERS - Consistent Sizing */
+    /* 11. FILE UPLOADERS - Ultra-tight vertical spacing (0.5px) */
     .stFileUploader {{
         border: 2px dashed {tokens.COLORS['border']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
-        padding: {tokens.SPACING['md']} !important;
+        padding: {tokens.SPACING['sm']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
-        margin-bottom: {tokens.SPACING['md']} !important;
-        min-height: 120px !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
+        min-height: 100px !important;
         transition: all 0.2s ease !important;
     }}
     
@@ -721,14 +1345,15 @@ def inject_unified_design_system():
         margin-bottom: {tokens.SPACING['sm']} !important;
     }}
     
-    /* 12. SUMMARY CARDS - Consistent Container */
+    /* 12. SUMMARY CARDS - Ultra-tight vertical spacing (0.5px) */
     .summary-cards-wrapper [data-testid="column"] {{
         background: {tokens.COLORS['background']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['lg']} !important;
-        padding: {tokens.SPACING['md']} !important;
+        padding: {tokens.SPACING['sm']} !important;
         box-shadow: {tokens.SHADOWS['sm']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         min-height: auto !important;
     }}
     
@@ -736,21 +1361,23 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['lg']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         margin-top: 0 !important;
-        margin-bottom: {tokens.SPACING['md']} !important;
+        margin-bottom: 0.5px !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     .summary-cards-wrapper .stMarkdown p {{
         font-size: {tokens.FONT_SIZES['base']} !important;
-        line-height: 1.5 !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        line-height: 1.4 !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0 !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
-    /* 13. FORMS - Consistent Layout */
+    /* 13. FORMS - Ultra-tight vertical spacing (0.5px) */
     .stForm {{
-        padding: {tokens.SPACING['md']} !important;
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['lg']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
@@ -778,22 +1405,23 @@ def inject_unified_design_system():
         background-color: {tokens.COLORS['background-alt']} !important;
     }}
     
-    /* 16. DIVIDERS - Consistent Spacing */
+    /* 16. DIVIDERS - Ultra-tight vertical spacing (0.5px) */
     hr {{
         border: none !important;
         border-top: 1px solid {tokens.COLORS['border-light']} !important;
-        margin: {tokens.SPACING['md']} 0 !important;
+        margin: 0.5px 0 !important;
     }}
     
-    /* 17. COLUMNS - Consistent Gaps */
+    /* 17. COLUMNS - Keep horizontal gap, reduce vertical spacing (0.5px) */
     [data-testid="column"] {{
-        gap: {tokens.SPACING['sm']} !important;
-        padding: {tokens.SPACING['xs']} !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem !important;
     }}
     
-    /* 18. CHECKBOXES & RADIOS - Consistent Sizing */
+    /* 18. CHECKBOXES & RADIOS - Ultra-tight vertical spacing (0.5px) */
     .stCheckbox, .stRadio {{
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
         font-size: {tokens.FONT_SIZES['base']} !important;
     }}
     
@@ -902,13 +1530,15 @@ def inject_unified_design_system():
         background-image: none !important;
     }}
     
-    /* 27. CONSISTENT MARKDOWN SPACING */
+    /* 27. ULTRA-TIGHT MARKDOWN VERTICAL SPACING (0.5px) */
     .stMarkdown {{
-        margin-bottom: {tokens.SPACING['md']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0.5px !important;
     }}
     
     .stMarkdown p {{
-        margin-bottom: {tokens.SPACING['sm']} !important;
+        margin-bottom: 0.5px !important;
+        margin-top: 0 !important;
     }}
     
     /* 28. CONSISTENT UPLOAD COLUMNS */
@@ -939,6 +1569,44 @@ def inject_unified_design_system():
         margin-bottom: {tokens.SPACING['md']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
+    }}
+    
+    /* 31. ULTRA-TIGHT VERTICAL SPACING FOR ALL SECTIONS (0.5px) */
+    /* Apply 0.5px vertical spacing to all main content areas */
+    .main .block-container > div,
+    .main .block-container > section {{
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
+    }}
+    
+    /* Ultra-tight vertical spacing for all content blocks */
+    [data-testid="stElementContainer"]:not(:empty) {{
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
+    }}
+    
+    /* Ultra-tight vertical spacing between titles and their content */
+    h1 + *,
+    h2 + *,
+    h3 + *,
+    h4 + *,
+    h5 + *,
+    h6 + * {{
+        margin-top: 0.5px !important;
+    }}
+    
+    /* Ultra-tight vertical spacing for all Streamlit components */
+    [data-testid="stSelectbox"],
+    [data-testid="stTextInput"],
+    [data-testid="stTextArea"],
+    [data-testid="stNumberInput"],
+    [data-testid="stMultiselect"],
+    [data-testid="stCheckbox"],
+    [data-testid="stRadio"],
+    [data-testid="stButton"],
+    [data-testid="stDownloadButton"] {{
+        margin-top: 0.5px !important;
+        margin-bottom: 0.5px !important;
     }}
     </style>
     """, unsafe_allow_html=True)

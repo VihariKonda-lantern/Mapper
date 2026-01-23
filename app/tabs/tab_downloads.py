@@ -56,10 +56,9 @@ def render_downloads_tab() -> None:
         st.stop()
     
     # --- Main Content Tabs ---
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <div style='margin-bottom: 0.5rem;'>
-            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Downloads & Outputs</h2>
+        <div style='margin-bottom: 0; margin-top: 0;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Downloads & Outputs</h2>
         </div>
     """, unsafe_allow_html=True)
     
@@ -68,8 +67,8 @@ def render_downloads_tab() -> None:
     # Tab 1: Data Generation
     with tab1:
         st.markdown("""
-            <div style='margin-bottom: 0.5rem;'>
-                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Test Data Generation</h3>
+            <div style='margin-bottom: 0; margin-top: 0;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Test Data Generation</h3>
             </div>
         """, unsafe_allow_html=True)
         with st.expander("Generate Test Data with Scenarios", expanded=False):
@@ -241,8 +240,8 @@ def render_downloads_tab() -> None:
     # Tab 2: Output Previews
     with tab2:
         st.markdown("""
-            <div style='margin-bottom: 0.5rem;'>
-                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Output Previews</h3>
+            <div style='margin-bottom: 0; margin-top: 0;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Output Previews</h3>
             </div>
         """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
@@ -452,8 +451,8 @@ def render_downloads_tab() -> None:
     # Tab 3: Onboarding & Setup
     with tab3:
         st.markdown("""
-            <div style='margin-bottom: 0.5rem;'>
-                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Onboarding & Setup</h3>
+            <div style='margin-bottom: 0; margin-top: 0;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Onboarding & Setup</h3>
             </div>
         """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
@@ -646,8 +645,8 @@ def render_downloads_tab() -> None:
     # Tab 4: Download Package
     with tab4:
         st.markdown("""
-            <div style='margin-bottom: 0.5rem;'>
-                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>Download Package</h3>
+            <div style='margin-bottom: 0; margin-top: 0;'>
+                <h3 style='color: #111827; font-size: 1.1rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Download Package</h3>
             </div>
         """, unsafe_allow_html=True)
         final_mapping = SessionStateManager.get_final_mapping()
@@ -683,7 +682,7 @@ def render_downloads_tab() -> None:
 
             # --- Download All as ZIP ---
             st.markdown("""
-                <div style='margin-top: 0.5rem; margin-bottom: 0.25rem;'>
+                <div style='margin-top: 0; margin-bottom: 0;'>
                     <h4 style='margin: 0; padding: 0;'>Download All Outputs as ZIP</h4>
                 </div>
             """, unsafe_allow_html=True)

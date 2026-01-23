@@ -79,13 +79,6 @@ def render_setup_tab() -> None:
     
     # Unified design system is already injected in main.py
     
-    # File Summaries Section
-    st.markdown("""
-        <div style='margin-top: 1rem; margin-bottom: 0.5rem;'>
-            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>File Summaries</h2>
-        </div>
-    """, unsafe_allow_html=True)
-    
     # Dynamic summary cards based on upload order
     upload_order = cast(List[str], SessionStateManager.get("upload_order", []))
     summary_functions: List[Callable[[], None]] = []
@@ -95,42 +88,51 @@ def render_setup_tab() -> None:
         "claims": render_claims_file_summary
     }
     
-    # Add summaries in upload order if available
+    # Add summaries in upload order if available - check for actual data, not just file objects
     for file_type in upload_order:
         if file_type in summary_map:
-            if file_type == "layout" and SessionStateManager.has("layout_file_obj"):
+            if file_type == "layout" and SessionStateManager.has("layout_file_obj") and SessionStateManager.get_layout_df() is not None:
                 summary_functions.append(summary_map[file_type])
-            elif file_type == "lookup" and SessionStateManager.has("lookup_file_obj"):
+            elif file_type == "lookup" and SessionStateManager.has("lookup_file_obj") and (SessionStateManager.has("msk_codes") or SessionStateManager.has("bar_codes")):
                 summary_functions.append(summary_map[file_type])
-            elif file_type == "claims" and SessionStateManager.has("claims_file_obj"):
+            elif file_type == "claims" and SessionStateManager.has("claims_file_obj") and SessionStateManager.get_claims_df() is not None:
                 summary_functions.append(summary_map[file_type])
     
-    # Fallback for files not in upload_order
-    if SessionStateManager.has("layout_file_obj") and "layout" not in upload_order:
+    # Fallback for files not in upload_order - check for actual data
+    if SessionStateManager.has("layout_file_obj") and SessionStateManager.get_layout_df() is not None and "layout" not in upload_order:
         if "layout" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions]:
             summary_functions.append(summary_map["layout"])
-    if SessionStateManager.has("lookup_file_obj") and "lookup" not in upload_order:
+    if SessionStateManager.has("lookup_file_obj") and (SessionStateManager.has("msk_codes") or SessionStateManager.has("bar_codes")) and "lookup" not in upload_order:
         if "lookup" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions]:
             summary_functions.append(summary_map["lookup"])
-    if SessionStateManager.has("claims_file_obj") and "claims" not in upload_order:
+    if SessionStateManager.has("claims_file_obj") and SessionStateManager.get_claims_df() is not None and "claims" not in upload_order:
         if "claims" not in [f.__name__ if hasattr(f, "__name__") else "" for f in summary_functions]:
             summary_functions.append(summary_map["claims"])
     
     # If we have files but no summaries, add them
+    # Check for actual data, not just file objects in session state
     has_uploaded_files = (
-        SessionStateManager.has("layout_file_obj") or 
-        SessionStateManager.has("lookup_file_obj") or 
-        SessionStateManager.has("claims_file_obj")
+        (SessionStateManager.has("layout_file_obj") and SessionStateManager.get_layout_df() is not None) or 
+        (SessionStateManager.has("lookup_file_obj") and (SessionStateManager.has("msk_codes") or SessionStateManager.has("bar_codes"))) or 
+        (SessionStateManager.has("claims_file_obj") and SessionStateManager.get_claims_df() is not None)
     )
     if not summary_functions and has_uploaded_files:
-        if SessionStateManager.has("layout_file_obj"):
+        if SessionStateManager.has("layout_file_obj") and SessionStateManager.get_layout_df() is not None:
             summary_functions.append(summary_map["layout"])
-        if SessionStateManager.has("lookup_file_obj"):
+        if SessionStateManager.has("lookup_file_obj") and (SessionStateManager.has("msk_codes") or SessionStateManager.has("bar_codes")):
             summary_functions.append(summary_map["lookup"])
-        if SessionStateManager.has("claims_file_obj"):
+        if SessionStateManager.has("claims_file_obj") and SessionStateManager.get_claims_df() is not None:
             summary_functions.append(summary_map["claims"])
     
-    if summary_functions:
+    # Only show title and summaries if we actually have uploaded files with data
+    if summary_functions and has_uploaded_files:
+        # File Summaries Section - only show when files are uploaded
+        st.markdown("""
+            <div style='margin-top: 1rem; margin-bottom: 0.5rem;'>
+                <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>File Summaries</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        
         st.markdown('<div class="summary-cards-wrapper">', unsafe_allow_html=True)
         num_summaries = len(summary_functions)
         if num_summaries == 1:
