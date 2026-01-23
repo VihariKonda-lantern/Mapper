@@ -504,24 +504,27 @@ def render_downloads_tab() -> None:
                     # Otherwise, it's a manual input or direct value
                     return value
                 
-                # 1. Client Name: From Plan_Sponsor_Name mapping (Client Name = Plan Sponsor Name)
-                client_name_from_mapping = get_mapping_value("Plan_Sponsor_Name", claims_df)
+                # 1. Client Name: From Client_Name mapping (correct mapping)
+                client_name_from_mapping = get_mapping_value("Client_Name", claims_df)
                 # If manual input was provided, use that; otherwise use mapping
                 default_client = st.session_state.get("onboarding_client_name") or client_name_from_mapping
                 
-                # 2. Plan Sponsor Name: From Insurance_Plan_Name mapping (Plan Sponsor Name = Insurance Plan Name)
-                plan_sponsor_from_mapping = get_mapping_value("Insurance_Plan_Name", claims_df)
+                # 2. Plan Sponsor Name: From Plan_Sponsor_Name mapping (correct mapping)
+                plan_sponsor_from_mapping = get_mapping_value("Plan_Sponsor_Name", claims_df)
                 default_sponsor = st.session_state.get("onboarding_sponsor") or plan_sponsor_from_mapping
+                
+                # 3. CH Client Name: Separate from DAPClientName, used in config parameters
+                # Defaults to Client Name if not provided separately
+                ch_client_name_from_mapping = get_mapping_value("Client_Name", claims_df)  # Can be different from DAPClientName
+                default_ch_client = st.session_state.get("onboarding_ch_client_name") or ch_client_name_from_mapping or default_client
                 
                 # 3. Domain Name: Default to "PlanSponsorClaims"
                 default_domain = st.session_state.get("onboarding_domain", "PlanSponsorClaims")
                 
-                # 4. Preprocessor Name: Auto-generate from client and domain if not set
-                default_preprocessor = st.session_state.get("onboarding_preprocessor", "")
-                if not default_preprocessor and default_client:
-                    default_preprocessor = f"{default_client.lower().replace(' ', '_')}_plansponsorclaims_prep"
+                # 5. Preprocessor Name: Default to "common_PlanSponsorClaims_prep"
+                default_preprocessor = st.session_state.get("onboarding_preprocessor", "common_PlanSponsorClaims_prep")
                 
-                # 5. File Name Date Format: Infer from file name or use default
+                # 6. File Name Date Format: Infer from file name or use default
                 default_file_date_format = st.session_state.get("onboarding_file_date_format", "yyyyMMdd")
                 if claims_file_obj:
                     filename = claims_file_obj.name
@@ -533,7 +536,7 @@ def render_downloads_tab() -> None:
                     elif re.search(r'\d{2}/\d{2}/\d{4}', filename):  # MM/dd/yyyy
                         default_file_date_format = "MM/dd/yyyy"
                 
-                # 6. File Name Regex Pattern: Infer from file name pattern
+                # 7. File Name Regex Pattern: Infer from file name pattern
                 default_regex_pattern = st.session_state.get("onboarding_regex_pattern", "")
                 if not default_regex_pattern and claims_file_obj:
                     filename = claims_file_obj.name
@@ -544,26 +547,66 @@ def render_downloads_tab() -> None:
                     if pattern != filename:
                         default_regex_pattern = pattern
                 
-                # 7. Primary Key Columns: Infer from layout_df (look for ID/Key fields or required unique fields)
+                # 8. Primary Key Columns: Default to "Claim ID, Claim Line ID" or infer from layout_df
                 default_primary_key = st.session_state.get("onboarding_primary_key", "")
-                if not default_primary_key and layout_df is not None:
-                    primary_key_candidates = []
-                    # Look for fields with "ID", "Key", "Number" in internal field name
-                    for _, row in layout_df.iterrows():
-                        internal_field = str(row.get("Internal Field", "")).lower()
-                        if any(keyword in internal_field for keyword in ["id", "key", "number", "claim_id", "member_id"]):
-                            mapped_value = final_mapping.get(row.get("Internal Field", ""), {}).get("value", "")
-                            if mapped_value:
-                                primary_key_candidates.append(mapped_value)
-                    if primary_key_candidates:
-                        default_primary_key = ",".join(primary_key_candidates[:2])  # Limit to 2 columns
+                if not default_primary_key:
+                    # First, try to find Claim ID and Claim Line ID from mappings
+                    claim_id_value = None
+                    claim_line_id_value = None
+                    
+                    if final_mapping:
+                        # Look for Claim_ID or Claim ID
+                        for field_name in ["Claim_ID", "Claim ID", "ClaimID"]:
+                            if field_name in final_mapping:
+                                mapped_value = final_mapping[field_name].get("value", "")
+                                if mapped_value:
+                                    claim_id_value = mapped_value
+                                    break
+                        
+                        # Look for Claim_Line_ID or Claim Line ID
+                        for field_name in ["Claim_Line_ID", "Claim Line ID", "ClaimLineID", "Claim_LineID"]:
+                            if field_name in final_mapping:
+                                mapped_value = final_mapping[field_name].get("value", "")
+                                if mapped_value:
+                                    claim_line_id_value = mapped_value
+                                    break
+                    
+                    # If both found, use them as default
+                    if claim_id_value and claim_line_id_value:
+                        default_primary_key = f"{claim_id_value},{claim_line_id_value}"
+                    elif claim_id_value:
+                        default_primary_key = claim_id_value
+                    elif layout_df is not None:
+                        # Fallback: Look for fields with "ID", "Key", "Number" in internal field name
+                        primary_key_candidates = []
+                        for _, row in layout_df.iterrows():
+                            internal_field = str(row.get("Internal Field", "")).lower()
+                            if any(keyword in internal_field for keyword in ["id", "key", "number", "claim_id", "member_id"]):
+                                mapped_value = final_mapping.get(row.get("Internal Field", ""), {}).get("value", "")
+                                if mapped_value:
+                                    primary_key_candidates.append(mapped_value)
+                        if primary_key_candidates:
+                            default_primary_key = ",".join(primary_key_candidates[:2])  # Limit to 2 columns
                 
-                # 8. Preprocessing Primary Key: Same as primary key or first ID field
+                # 9. Preprocessing Primary Key: Default to "Claim Line ID" or first primary key
                 default_prep_primary_key = st.session_state.get("onboarding_prep_primary_key", "")
-                if not default_prep_primary_key and default_primary_key:
-                    default_prep_primary_key = default_primary_key.split(",")[0].strip()
+                if not default_prep_primary_key:
+                    # First, try to find Claim Line ID from mappings
+                    claim_line_id_value = None
+                    if final_mapping:
+                        for field_name in ["Claim_Line_ID", "Claim Line ID", "ClaimLineID", "Claim_LineID"]:
+                            if field_name in final_mapping:
+                                mapped_value = final_mapping[field_name].get("value", "")
+                                if mapped_value:
+                                    claim_line_id_value = mapped_value
+                                    break
+                    
+                    if claim_line_id_value:
+                        default_prep_primary_key = claim_line_id_value
+                    elif default_primary_key:
+                        default_prep_primary_key = default_primary_key.split(",")[0].strip()
                 
-                # 9. Sort Column Name: Infer from date fields (Service Date, Claim Date, etc.)
+                # 10. Sort Column Name: Infer from date fields (Service Date, Claim Date, etc.)
                 default_sort_col = st.session_state.get("onboarding_sort_col", "")
                 if not default_sort_col and final_mapping:
                     # Look for date fields that might be used for sorting
@@ -575,21 +618,25 @@ def render_downloads_tab() -> None:
                                 default_sort_col = mapped_value
                                 break
                 
-                # 10. Entity Type: Default "Medical"
+                # 11. Entity Type: Default "Medical"
                 default_entity_type = st.session_state.get("onboarding_entity_type", "Medical")
                 
-                # 11. Demographic Match Tier Config: Default "tier1,tier2"
+                # 12. Demographic Match Tier Config: Default "tier1,tier2"
                 default_demo_tier = st.session_state.get("onboarding_demo_tier", "tier1,tier2")
                 
-                # 12. Null Threshold Percentage: Default 15
+                # 13. Null Threshold Percentage: Default 15
                 default_null_threshold = st.session_state.get("onboarding_null_threshold", 15)
                 
-                # 13. Process Curation: Default True
+                # 14. Process Curation: Default True
                 default_process_curation = st.session_state.get("onboarding_process_curation", True)
+                
+                # 15. Tagging Flag: Default True
+                default_tagging_flag = st.session_state.get("onboarding_tagging_flag", True)
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    onboarding_client_name = st.text_input("Client Name", value=default_client, key="onboarding_client_name", help="Auto-filled from Client_Name mapping if available")
+                    onboarding_client_name = st.text_input("Client Name", value=default_client, key="onboarding_client_name", help="Auto-filled from Client_Name mapping if available. Used for DAPClientName: {client}_{plansponsor}")
+                    onboarding_ch_client_name = st.text_input("CH Client Name (optional)", value=default_ch_client, key="onboarding_ch_client_name", help="CH client name used in config parameters. Defaults to Client Name if not provided.")
                     onboarding_domain = st.text_input("Domain Name", value=default_domain, key="onboarding_domain")
                     onboarding_file_date_format = st.selectbox(
                         "File Name Date Format",
@@ -597,27 +644,31 @@ def render_downloads_tab() -> None:
                         index=["yyyyMMdd", "yyyy-MM-dd", "MMddyyyy", "MM/dd/yyyy", "ddMMyyyy"].index(default_file_date_format) if default_file_date_format in ["yyyyMMdd", "yyyy-MM-dd", "MMddyyyy", "MM/dd/yyyy", "ddMMyyyy"] else 0,
                         key="onboarding_file_date_format"
                     )
-                    onboarding_primary_key = st.text_input("Primary Key Columns (comma-separated)", value=default_primary_key, key="onboarding_primary_key", help="Auto-detected from ID/Key fields in layout if available")
+                    onboarding_primary_key = st.text_input("Primary Key Columns (comma-separated)", value=default_primary_key, key="onboarding_primary_key", help="Defaults to 'Claim ID, Claim Line ID' if available. Auto-detected from ID/Key fields in layout otherwise.")
                     onboarding_entity_type = st.text_input("Entity Type", value=default_entity_type, key="onboarding_entity_type")
                     onboarding_null_threshold = st.number_input("Null Threshold Percentage", min_value=0, max_value=100, value=default_null_threshold, key="onboarding_null_threshold")
                 
                 with col2:
                     onboarding_sponsor = st.text_input("Plan Sponsor Name", value=default_sponsor, key="onboarding_sponsor", help="Auto-filled from Plan_Sponsor_Name mapping if available")
-                    onboarding_preprocessor = st.text_input("Preprocessor Name", value=default_preprocessor, key="onboarding_preprocessor", help="Auto-generated from client name if left empty")
+                    onboarding_preprocessor = st.text_input("Preprocessor Name", value=default_preprocessor, key="onboarding_preprocessor", help="Defaults to 'common_PlanSponsorClaims_prep'")
                     onboarding_regex_pattern = st.text_input("File Name Regex Pattern (optional)", value=default_regex_pattern, key="onboarding_regex_pattern", help="Auto-inferred from file name pattern if available")
-                    onboarding_prep_primary_key = st.text_input("Preprocessing Primary Key (optional)", value=default_prep_primary_key, key="onboarding_prep_primary_key", help="Auto-filled from primary key if available")
+                    onboarding_prep_primary_key = st.text_input("Preprocessing Primary Key (optional)", value=default_prep_primary_key, key="onboarding_prep_primary_key", help="Defaults to 'Claim Line ID' if available. Auto-filled from primary key otherwise.")
                     onboarding_demo_tier = st.text_input("Demographic Match Tier Config", value=default_demo_tier, key="onboarding_demo_tier")
-                    onboarding_sort_col = st.text_input("Sort Column Name (optional)", value=default_sort_col, key="onboarding_sort_col", help="Auto-detected from Service_Date/Claim_Date fields if available")
+                    onboarding_sort_col = st.text_input("Sort Column Name (mandatory)", value=default_sort_col, key="onboarding_sort_col", help="Auto-detected from Service_Date/Claim_Date fields if available")
                     onboarding_process_curation = st.checkbox("Process Curation", value=default_process_curation, key="onboarding_process_curation")
+                    onboarding_tagging_flag = st.checkbox("Tagging Flag", value=default_tagging_flag, key="onboarding_tagging_flag", help="Enable tagging in curation configurations")
                 
                 onboarding_include_in_zip = st.checkbox("Include in ZIP file", value=False, key="onboarding_include_in_zip")
                 
                 if st.button("Generate SQL Script", key="generate_onboarding_script"):
                     if not onboarding_client_name or not onboarding_sponsor:
                         st.error("Please provide Client Name and Plan Sponsor Name")
+                    elif not onboarding_sort_col or not onboarding_sort_col.strip():
+                        st.error("Please provide Sort Column Name (mandatory field)")
                     else:
                         try:
-                            preprocessor_name = onboarding_preprocessor.strip() if onboarding_preprocessor and onboarding_preprocessor.strip() else None
+                            # Use default if empty
+                            preprocessor_name = onboarding_preprocessor.strip() if onboarding_preprocessor and onboarding_preprocessor.strip() else "common_PlanSponsorClaims_prep"
                             sql_script = generate_onboarding_script_output(
                                 client_name=onboarding_client_name,
                                 plan_sponsor_name=onboarding_sponsor,
@@ -629,11 +680,14 @@ def render_downloads_tab() -> None:
                                 preprocessing_primary_key=onboarding_prep_primary_key if onboarding_prep_primary_key and onboarding_prep_primary_key.strip() else None,
                                 entity_type=onboarding_entity_type,
                                 demographic_match_tier_config=onboarding_demo_tier,
-                                sort_col_name=onboarding_sort_col if onboarding_sort_col and onboarding_sort_col.strip() else None,
+                                sort_col_name=onboarding_sort_col if onboarding_sort_col and onboarding_sort_col.strip() else "",
                                 null_threshold_percentage=onboarding_null_threshold,
                                 process_curation=onboarding_process_curation,
                                 layout_df=layout_df,
-                                final_mapping=final_mapping
+                                final_mapping=final_mapping,
+                                ch_client_name=onboarding_ch_client_name if onboarding_ch_client_name and onboarding_ch_client_name.strip() else None,
+                                tagging_flag=onboarding_tagging_flag,
+                                claims_df=claims_df  # Source file DataFrame for raw zone columns
                             )
                             st.session_state.onboarding_sql_script = sql_script
                             render_success_with_next_steps(

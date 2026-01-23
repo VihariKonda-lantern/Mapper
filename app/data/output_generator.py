@@ -63,12 +63,15 @@ def generate_onboarding_script_output(
     preprocessing_primary_key: Optional[str] = None,
     entity_type: str = "Medical",
     demographic_match_tier_config: str = "tier1,tier2",
-    sort_col_name: Optional[str] = None,
+    sort_col_name: str = "",
     null_threshold_percentage: int = 15,
     process_curation: bool = True,
     inbound_path: str = "/mnt/data/inbound/raw/",
     layout_df: Optional[Any] = None,
-    final_mapping: Optional[Dict[str, Dict[str, Any]]] = None
+    final_mapping: Optional[Dict[str, Dict[str, Any]]] = None,
+    ch_client_name: Optional[str] = None,
+    tagging_flag: bool = True,
+    claims_df: Optional[Any] = None  # Source file DataFrame for raw zone columns
 ) -> str:
     """
     Generate onboarding SQL script.
@@ -84,7 +87,8 @@ def generate_onboarding_script_output(
     file_separator = file_metadata.get("sep", "\t")
     file_has_header = file_metadata.get("header", False)
     file_date_format = file_metadata.get("dateFormat", "yyyyMd")
-    mapping_date_format = "yyyy-MM-dd"  # Default mapping date format
+    # Use file_date_format for mapping_date_format (should come from file, not hardcoded)
+    mapping_date_format = file_date_format
     
     return generate_onboarding_sql_script(
         client_name=client_name,
@@ -107,7 +111,10 @@ def generate_onboarding_script_output(
         file_date_format=file_date_format,
         mapping_date_format=mapping_date_format,
         layout_df=layout_df,
-        final_mapping=final_mapping
+        final_mapping=final_mapping,
+        ch_client_name=ch_client_name,
+        tagging_flag=tagging_flag,
+        claims_df=claims_df
     )
 
 

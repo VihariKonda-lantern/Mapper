@@ -127,6 +127,39 @@ def render_file_upload_section() -> None:
                 )
 
                 st.session_state.claims_df = claims_df
+                
+                # Detect date formats from the actual data (comma-separated if multiple)
+                from utils.utils import detect_date_formats_from_dataframe
+                detected_date_formats = detect_date_formats_from_dataframe(claims_df)
+                
+                # Update metadata with detected date formats
+                if "claims_file_metadata" not in st.session_state:
+                    # Initialize metadata if it doesn't exist
+                    if ext.endswith((".csv", ".txt", ".tsv")):
+                        format_detected = "csv"
+                        sep = delimiter
+                    elif ext.endswith((".xlsx", ".xls")):
+                        format_detected = "excel"
+                        sep = None
+                    elif ext.endswith(".json"):
+                        format_detected = "json"
+                        sep = None
+                    elif ext.endswith(".parquet"):
+                        format_detected = "parquet"
+                        sep = None
+                    else:
+                        format_detected = "csv"
+                        sep = delimiter if delimiter else ','
+                    
+                    st.session_state.claims_file_metadata = {
+                        "format": format_detected,
+                        "sep": sep,
+                        "header": header_confirm == "Yes",
+                        "dateFormat": detected_date_formats
+                    }
+                else:
+                    # Update existing metadata with detected date formats
+                    st.session_state.claims_file_metadata["dateFormat"] = detected_date_formats
 
                 if header_confirm == "Yes":
                     st.success("✅ Claims file loaded with headers.")

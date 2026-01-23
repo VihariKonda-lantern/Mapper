@@ -45,29 +45,80 @@ def infer_date_format(sample: str) -> str:
         sample: Example date string.
 
     Returns:
-        A format descriptor like "YYYY-MM-DD", "MM/DD/YYYY", or "Unknown".
+        A format descriptor like "yyyy-MM-dd", "MM/dd/yyyy", or "yyyyMMdd".
     """
-    sample = sample.strip()
+    sample = str(sample).strip()
+    
+    # Remove any time components
+    if ' ' in sample:
+        sample = sample.split(' ')[0]
+    if 'T' in sample:
+        sample = sample.split('T')[0]
 
     if "-" in sample:
-        if len(sample.split("-")[0]) == 4:
-            return "YYYY-MM-DD"
-        else:
-            return "MM-DD-YYYY"
+        parts = sample.split("-")
+        if len(parts) == 3:
+            if len(parts[0]) == 4:
+                return "yyyy-MM-dd"
+            else:
+                return "MM-dd-yyyy"
     elif "/" in sample:
         parts = sample.split("/")
-        if len(parts[2]) == 4:
-            return "MM/DD/YYYY"
+        if len(parts) == 3:
+            if len(parts[2]) == 4:
+                return "MM/dd/yyyy"
+            else:
+                return "MM/dd/yy"
+    elif len(sample) == 8 and sample.isdigit():
+        # Check if it's yyyyMMdd (year first) or MMDDyyyy
+        if int(sample[:4]) >= 1900 and int(sample[:4]) <= 2100:
+            return "yyyyMMdd"
         else:
-            return "MM/DD/YY"
-    elif len(sample) == 8:
-        if sample[:4].isdigit() and sample[4:].isdigit():
-            return "YYYYMMDD"
-        elif sample[:2].isdigit() and sample[2:].isdigit():
-            return "MMDDYYYY"
-    elif len(sample) == 6:
-        return "YYMMDD"
-    return "Unknown"
+            return "MMddyyyy"
+    elif len(sample) == 6 and sample.isdigit():
+        return "yyMMdd"
+    elif len(sample) == 10 and sample.replace("-", "").isdigit():
+        return "yyyy-MM-dd"
+    return "yyyyMMdd"  # Default fallback
+
+
+def detect_date_formats_from_dataframe(df: Any) -> str:
+    """Detect all unique date formats from date-like columns in a DataFrame.
+    
+    Analyzes date columns and returns comma-separated list of unique date formats.
+    
+    Args:
+        df: DataFrame to analyze.
+        
+    Returns:
+        Comma-separated string of date formats (e.g., "yyyyMMdd,yyyy-MM-dd")
+    """
+    if df is None or df.empty:
+        return "yyyyMMdd"  # Default
+    
+    date_formats = set()
+    
+    # Look for columns that might contain dates
+    date_keywords = ['date', 'dob', 'birth', 'service', 'claim', 'admit', 'discharge', 'effective']
+    
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if any(keyword in col_lower for keyword in date_keywords):
+            # Sample non-null values from this column
+            col_data = df[col].dropna().astype(str).head(20)  # Sample up to 20 values
+            
+            for sample in col_data:
+                if sample and str(sample).strip() and str(sample).strip().lower() not in ['nan', 'none', '']:
+                    detected_format = infer_date_format(str(sample))
+                    if detected_format and detected_format != "Unknown":
+                        date_formats.add(detected_format)
+    
+    # If no dates detected, return default
+    if not date_formats:
+        return "yyyyMMdd"
+    
+    # Return comma-separated, sorted for consistency
+    return ",".join(sorted(date_formats))
 
 # --- Main Summary Function ---
 def render_claims_file_summary() -> None:

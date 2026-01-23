@@ -95,6 +95,24 @@ def generate_test_data_with_scenarios(
         # If layout parsing fails, raise a more informative error
         raise ValueError(f"Error parsing layout file: {str(e)}. Please check that the layout file has the required columns.")
     
+    # Get data types from original claims_df for all columns (if available)
+    # This helps generate more accurate dummy data for unmapped columns
+    original_column_types = {}
+    if claims_df is not None and not claims_df.empty:
+        for col in claims_df.columns:
+            dtype = str(claims_df[col].dtype).lower()
+            # Map pandas dtypes to our internal types
+            if 'int' in dtype:
+                original_column_types[col] = 'integer'
+            elif 'float' in dtype:
+                original_column_types[col] = 'float'
+            elif 'date' in dtype or 'datetime' in dtype:
+                original_column_types[col] = 'date'
+            elif 'bool' in dtype:
+                original_column_types[col] = 'boolean'
+            else:
+                original_column_types[col] = 'string'
+    
     # Get source columns from final_mapping
     source_columns = []
     field_mapping = {}  # internal_field -> source_column
@@ -106,8 +124,18 @@ def generate_test_data_with_scenarios(
                     source_columns.append(source_col)
                 field_mapping[internal_field] = source_col
     
-    # If no source columns, use internal fields
-    if not source_columns:
+    # If claims_df is provided, use ALL columns from original file (preserving order)
+    # This ensures test data has the same layout as the original file
+    if claims_df is not None and not claims_df.empty:
+        original_columns = list(claims_df.columns)
+        # Merge with mapped columns, preserving original order
+        # Add any mapped columns that aren't in original (shouldn't happen, but safety check)
+        for col in source_columns:
+            if col not in original_columns:
+                original_columns.append(col)
+        source_columns = original_columns
+    elif not source_columns:
+        # Fallback: use internal fields if no mapping and no claims_df
         source_columns = internal_fields
     
     # Validate we have columns to work with
@@ -155,7 +183,7 @@ def generate_test_data_with_scenarios(
     if "happy_path" in include_scenarios:
         df = _generate_happy_path_data(
             source_columns, field_types, field_mapping, field_usage,
-            records_per_scenario, pandas_date_format
+            records_per_scenario, pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -169,7 +197,7 @@ def generate_test_data_with_scenarios(
     if "messed_up_date_formats" in include_scenarios:
         df = _generate_messed_up_dates_data(
             source_columns, field_types, field_mapping, field_usage,
-            records_per_scenario, pandas_date_format
+            records_per_scenario, pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -179,7 +207,7 @@ def generate_test_data_with_scenarios(
     if "nulls_in_required_fields" in include_scenarios:
         df = _generate_nulls_in_required_data(
             source_columns, field_types, field_mapping, field_usage,
-            required_fields, records_per_scenario, pandas_date_format
+            required_fields, records_per_scenario, pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -189,7 +217,7 @@ def generate_test_data_with_scenarios(
     if "duplicates" in include_scenarios:
         df = _generate_duplicates_data(
             source_columns, field_types, field_mapping, field_usage,
-            records_per_scenario, pandas_date_format
+            records_per_scenario, pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -199,7 +227,7 @@ def generate_test_data_with_scenarios(
     if "demo_mismatch" in include_scenarios:
         df = _generate_demo_mismatch_data(
             source_columns, field_types, field_mapping, field_usage,
-            records_per_scenario, pandas_date_format
+            records_per_scenario, pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -209,7 +237,7 @@ def generate_test_data_with_scenarios(
     if "duplicates_with_recent_service" in include_scenarios:
         df = _generate_duplicates_recent_service_data(
             source_columns, field_types, field_mapping, field_usage,
-            pandas_date_format
+            pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -219,7 +247,7 @@ def generate_test_data_with_scenarios(
     if "validation_edge_cases" in include_scenarios:
         df = _generate_validation_edge_cases_data(
             source_columns, field_types, field_mapping, field_usage,
-            pandas_date_format
+            pandas_date_format, original_column_types
         )
         if apply_reverse_mappings:
             df = _apply_reverse_mappings(df, reverse_mappings, source_columns)
@@ -238,11 +266,15 @@ def _generate_happy_path_data(
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
     n_rows: int,
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate normal, valid test data."""
     if not source_columns:
         return pd.DataFrame()
+    
+    if original_column_types is None:
+        original_column_types = {}
     
     data = {}
     
@@ -260,7 +292,10 @@ def _generate_happy_path_data(
         else:
             field_lower = internal_field.lower()
         
+        # Get data type: prefer layout field type, then original column type, then default to string
         dtype = field_types.get(internal_field, "string") if internal_field else "string"
+        if dtype == "string" and col in original_column_types:
+            dtype = original_column_types[col]
         
         if "date" in field_lower or "dob" in field_lower:
             # DOB: 18-80 years ago
@@ -297,11 +332,28 @@ def _generate_happy_path_data(
                 date_val = fake.date_between(start_date='-2y', end_date='today')
                 dates.append(date_val.strftime(date_format))
             data[col] = dates
+        elif dtype == "integer" or "int" in dtype:
+            data[col] = [fake.random_int(min=1, max=999999) for _ in range(n_rows)]
+        elif dtype == "float":
+            data[col] = [round(random.uniform(0.0, 99999.99), 2) for _ in range(n_rows)]
+        elif dtype == "boolean" or "bool" in dtype:
+            data[col] = [random.choice([True, False]) for _ in range(n_rows)]
         else:
             # Default: random alphanumeric
             data[col] = [fake.bothify(text="??###") for _ in range(n_rows)]
     
-    return pd.DataFrame(data)
+    # Ensure all source_columns are present (even if no data was generated)
+    df = pd.DataFrame(data)
+    # Add any missing columns with empty/default values
+    for col in source_columns:
+        if col not in df.columns:
+            df[col] = [""] * n_rows
+    
+    # Reorder columns to match source_columns order (preserve original file layout)
+    # This ensures the test data has the exact same column layout as the original file
+    df = df[source_columns]
+    
+    return df
 
 
 def _generate_messed_up_dates_data(
@@ -310,13 +362,14 @@ def _generate_messed_up_dates_data(
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
     n_rows: int,
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate data with messed up date formats."""
     if not source_columns:
         return pd.DataFrame()
     
-    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format)
+    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format, original_column_types)
     
     # Find date columns
     date_cols = []
@@ -350,13 +403,14 @@ def _generate_nulls_in_required_data(
     field_usage: Dict[str, str],
     required_fields: List[str],
     n_rows: int,
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate data with nulls in required fields."""
     if not source_columns:
         return pd.DataFrame()
     
-    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format)
+    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format, original_column_types)
     
     # Find required source columns
     required_source_cols = []
@@ -380,7 +434,8 @@ def _generate_duplicates_data(
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
     n_rows: int,
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate data with duplicate records."""
     if not source_columns:
@@ -388,7 +443,7 @@ def _generate_duplicates_data(
     
     # Generate fewer unique records, then duplicate them
     unique_rows = max(5, n_rows // 3)
-    df_unique = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, unique_rows, date_format)
+    df_unique = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, unique_rows, date_format, original_column_types)
     
     # Duplicate rows to reach n_rows
     df_duplicated = df_unique.copy()
@@ -404,13 +459,14 @@ def _generate_demo_mismatch_data(
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
     n_rows: int,
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate data with demographic mismatches."""
     if not source_columns:
         return pd.DataFrame()
     
-    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format)
+    df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, n_rows, date_format, original_column_types)
     
     # Find demographic columns
     sex_col = None
@@ -441,14 +497,15 @@ def _generate_duplicates_recent_service_data(
     field_types: Dict[str, str],
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate 3 duplicate records, one with recent service date."""
     if not source_columns:
         return pd.DataFrame()
     
     # Generate one base record
-    base_df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, 1, date_format)
+    base_df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, 1, date_format, original_column_types)
     
     # Find service date column
     service_date_col = None
@@ -478,14 +535,15 @@ def _generate_validation_edge_cases_data(
     field_types: Dict[str, str],
     field_mapping: Dict[str, str],
     field_usage: Dict[str, str],
-    date_format: str
+    date_format: str,
+    original_column_types: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
     """Generate 3 rows with specific validation issues."""
     if not source_columns:
         return pd.DataFrame()
     
     # Generate 3 base records
-    base_df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, 3, date_format)
+    base_df = _generate_happy_path_data(source_columns, field_types, field_mapping, field_usage, 3, date_format, original_column_types)
     
     # Find DOB and service date columns
     dob_col = None

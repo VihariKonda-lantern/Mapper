@@ -643,12 +643,50 @@ def render_field_mapping_tab():
                                 is_valid=True,
                                 success_message="Manual value entered"
                             )
+                    
+                    # Value Mapping UI for Patient_Relationship
+                    # Patient_Relationship maps to both patient_relationship_code and patient_relationship_desc
+                    # Value mapping is used for patient_relationship_code (SVMRule)
+                    if field_name == "Patient_Relationship" and selected_clean:
+                        value_mapping_key = f"{unique_key}_value_mapping"
+                        existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
+                        
+                        st.markdown("**Value Mapping (for patient_relationship_code):**")
+                        st.caption("Enter value mappings in format: source_value,target_value (one per line). Example:\nM,Male\nF,Female\n18,Child")
+                        value_mapping_input = st.text_area(
+                            "Value Mapping",
+                            value=existing_value_mapping,
+                            key=value_mapping_key,
+                            height=100,
+                            help="Map source values to target values. Format: source_value,target_value (one per line). This will be used in SVMRule for patient_relationship_code mapping."
+                        )
+                        
+                        # Save value mapping immediately when changed
+                        if value_mapping_input and value_mapping_input.strip():
+                            if field_name not in final_mapping:
+                                final_mapping[field_name] = {}
+                            final_mapping[field_name]["value_mapping"] = value_mapping_input.strip()
+                            st.session_state["final_mapping"] = final_mapping.copy()
 
                 if selected_clean:
+                    # Check if this field needs value mapping (e.g., Patient_Relationship)
+                    value_mapping = None
+                    if field_name == "Patient_Relationship":
+                        # Get value mapping from session state
+                        value_mapping_key = f"{unique_key}_value_mapping"
+                        value_mapping = st.session_state.get(value_mapping_key, "")
+                        if value_mapping and value_mapping.strip():
+                            value_mapping = value_mapping.strip()
+                        else:
+                            # Also check if it's already in final_mapping
+                            value_mapping = final_mapping.get(field_name, {}).get("value_mapping", None)
+                    
                     final_mapping[field_name] = {
                             "mode": "manual" if selected_clean != suggested_column else "auto",
                             "value": selected_clean
                         }
+                    if value_mapping:
+                        final_mapping[field_name]["value_mapping"] = value_mapping
                     # Update session state immediately for automatic saving
                     st.session_state["final_mapping"] = final_mapping.copy()
 
@@ -911,6 +949,28 @@ def render_field_mapping_tab():
                                         </div>
                                     </div>
                                 """, unsafe_allow_html=True)
+                        
+                        # Value Mapping UI for Patient_Relationship (optional fields)
+                        if field_name == "Patient_Relationship" and field_selected_clean:
+                            value_mapping_key = f"{unique_key}_value_mapping"
+                            existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
+                            
+                            st.markdown("**Value Mapping (for patient_relationship_code):**")
+                            st.caption("Enter value mappings in format: source_value,target_value (one per line). Example:\nM,Male\nF,Female\n18,Child")
+                            value_mapping_input = st.text_area(
+                                "Value Mapping",
+                                value=existing_value_mapping,
+                                key=value_mapping_key,
+                                height=100,
+                                help="Map source values to target values. Format: source_value,target_value (one per line). This will be used in SVMRule for patient_relationship_code mapping."
+                            )
+                            
+                            # Save value mapping immediately when changed
+                            if value_mapping_input and value_mapping_input.strip():
+                                if field_name not in final_mapping:
+                                    final_mapping[field_name] = {}
+                                final_mapping[field_name]["value_mapping"] = value_mapping_input.strip()
+                                st.session_state["final_mapping"] = final_mapping.copy()
 
                     if field_selected_clean:
                         # Record correction if user overrode AI suggestion
@@ -925,10 +985,24 @@ def render_field_mapping_tab():
                             except Exception:
                                 pass  # Fail silently if learning not available
                         
+                        # Check if this field needs value mapping (e.g., Patient_Relationship)
+                        value_mapping = None
+                        if field_name == "Patient_Relationship":
+                            # Get value mapping from session state
+                            value_mapping_key = f"{unique_key}_value_mapping"
+                            value_mapping = st.session_state.get(value_mapping_key, "")
+                            if value_mapping and value_mapping.strip():
+                                value_mapping = value_mapping.strip()
+                            else:
+                                # Also check if it's already in final_mapping
+                                value_mapping = final_mapping.get(field_name, {}).get("value_mapping", None)
+                        
                         final_mapping[field_name] = {
                             "mode": "manual" if field_selected_clean != suggested_column else "auto",
                             "value": field_selected_clean
                         }
+                        if value_mapping:
+                            final_mapping[field_name]["value_mapping"] = value_mapping
                         # Update session state immediately for automatic saving
                         st.session_state["final_mapping"] = final_mapping.copy()
 
