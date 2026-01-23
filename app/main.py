@@ -102,11 +102,45 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- Main Content Container with Optimized Layout ---
-inject_unified_design_system()
-
-# --- Sidebar: Activity Log Panel ---
+# --- Sidebar: Display Settings and Activity Log Panel ---
 with st.sidebar:
+    with st.expander("⚙️ Display Settings", expanded=False):
+        # Font Family Selection
+        font_family_options = {
+            "Arial": "Arial, sans-serif",
+            "Helvetica": "Helvetica, Arial, sans-serif",
+            "Times New Roman": "'Times New Roman', Times, serif",
+            "Georgia": "Georgia, serif",
+            "Courier New": "'Courier New', Courier, monospace",
+            "Verdana": "Verdana, Geneva, sans-serif",
+            "Comic Sans MS": "'Comic Sans MS', cursive",
+            "Trebuchet MS": "'Trebuchet MS', Helvetica, sans-serif"
+        }
+        
+        selected_font_name = st.selectbox(
+            "Font Family",
+            options=list(font_family_options.keys()),
+            index=list(font_family_options.keys()).index(
+                SessionStateManager.get("font_family_name", "Arial")
+            ) if SessionStateManager.get("font_family_name", "Arial") in font_family_options else 0,
+            key="font_family_select"
+        )
+        font_family = font_family_options[selected_font_name]
+        SessionStateManager.set("font_family", font_family)
+        SessionStateManager.set("font_family_name", selected_font_name)
+        
+        # Font Size Selection
+        font_size_options = ["11px", "12px", "13px", "14px", "15px", "16px", "18px", "20px"]
+        selected_font_size = st.selectbox(
+            "Font Size",
+            options=font_size_options,
+            index=font_size_options.index(
+                SessionStateManager.get("font_size", "13px")
+            ) if SessionStateManager.get("font_size", "13px") in font_size_options else 2,
+            key="font_size_select"
+        )
+        SessionStateManager.set("font_size", selected_font_size)
+    
     with st.expander("Activity Log", expanded=False):
         audit_log = st.session_state.setdefault("audit_log", [])
         if audit_log:
@@ -158,6 +192,42 @@ with st.sidebar:
                 st.session_state.audit_log = []
                 show_toast("Activity log cleared", "🗑️")
                 st.session_state.needs_refresh = True
+
+# --- Main Content Container with Optimized Layout ---
+# Get user preferences for font and spacing (after sidebar updates them)
+# Read directly from widget values in session state to get the latest values
+font_family_options = {
+    "Arial": "Arial, sans-serif",
+    "Helvetica": "Helvetica, Arial, sans-serif",
+    "Times New Roman": "'Times New Roman', Times, serif",
+    "Georgia": "Georgia, serif",
+    "Courier New": "'Courier New', Courier, monospace",
+    "Verdana": "Verdana, Geneva, sans-serif",
+    "Comic Sans MS": "'Comic Sans MS', cursive",
+    "Trebuchet MS": "'Trebuchet MS', Helvetica, sans-serif"
+}
+
+# Get font family from widget or session state
+if "font_family_select" in st.session_state:
+    selected_font_name = st.session_state.font_family_select
+    font_family = font_family_options.get(selected_font_name, "Arial, sans-serif")
+    SessionStateManager.set("font_family", font_family)
+    SessionStateManager.set("font_family_name", selected_font_name)
+else:
+    font_family = SessionStateManager.get("font_family", "Arial, sans-serif")
+
+# Get font size from widget or session state
+if "font_size_select" in st.session_state:
+    font_size = st.session_state.font_size_select
+    SessionStateManager.set("font_size", font_size)
+else:
+    font_size = SessionStateManager.get("font_size", "13px")
+
+inject_unified_design_system(
+    font_family=font_family,
+    font_size=font_size,
+    spacing_value="0.5px"
+)
 
 # Handle refresh flag at the start - use state flag instead of rerun
 if st.session_state.get("needs_refresh", False):

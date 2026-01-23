@@ -17,6 +17,7 @@ from core.state_manager import initialize_undo_redo
 from data.anonymizer import anonymize_claims_data
 from utils.improvements_utils import DEBOUNCE_DELAY_SECONDS
 from ui.ui_components import render_tooltip  # type: ignore[import-untyped]
+from ui.ux_enhancements import render_validation_feedback  # type: ignore[import-untyped]
 
 
 def _calculate_column_confidence(field_name: str, column_name: str) -> float:
@@ -612,6 +613,23 @@ def render_field_mapping_tab():
                                 """, unsafe_allow_html=True)
                             except Exception:
                                 pass
+                            
+                            # Inline validation feedback for mapped columns
+                            try:
+                                col_data = claims_df[selected_clean]
+                                fill_rate = (col_data.notna().sum() / len(col_data) * 100) if len(col_data) > 0 else 0.0
+                                if fill_rate < 50:
+                                    render_validation_feedback(
+                                        is_valid=False,
+                                        error_message=f"Low fill rate ({fill_rate:.1f}%) - many null values"
+                                    )
+                                elif fill_rate >= 50:
+                                    render_validation_feedback(
+                                        is_valid=True,
+                                        success_message=f"Good fill rate ({fill_rate:.1f}%)"
+                                    )
+                            except Exception:
+                                pass
                         elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
                             # For manual inputs, show a simple indicator
                             st.markdown(f"""
@@ -621,6 +639,10 @@ def render_field_mapping_tab():
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
+                            render_validation_feedback(
+                                is_valid=True,
+                                success_message="Manual value entered"
+                            )
 
                 if selected_clean:
                     final_mapping[field_name] = {

@@ -1,3 +1,50 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
 .venv/
+.env
+.env.*
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking & tooling caches
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS & editors
 .DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Streamlit / local app caches
+.streamlit/
+
+# Node-like artifacts (if any components build)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Ignore compiled notebooks or outputs in data caches (but keep project data by default)
+# data/**/.ipynb_checkpoints/

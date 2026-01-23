@@ -120,47 +120,47 @@ def inject_tight_spacing_css():
         
         /* 1. VISUAL HIERARCHY - Ultra-tight vertical spacing (0.5px) */
         .element-container {
-            margin-bottom: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
             margin-top: 0 !important;
         }
         
         /* Consistent heading hierarchy with 0.5px vertical spacing */
         h1, .stMarkdown h1 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 600 !important;
             color: #1f2937 !important;
             letter-spacing: -0.02em !important;
         }
         h2, .stMarkdown h2 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 600 !important;
             color: #1f2937 !important;
             letter-spacing: -0.02em !important;
         }
         h3, .stMarkdown h3 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 600 !important;
             color: #374151 !important;
             letter-spacing: -0.01em !important;
         }
         h4, .stMarkdown h4 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 600 !important;
             color: #4b5563 !important;
         }
         h5, .stMarkdown h5 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 600 !important;
             color: #4b5563 !important;
         }
         h6, .stMarkdown h6 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             font-weight: 500 !important;
             color: #6b7280 !important;
         }
@@ -201,16 +201,16 @@ def inject_tight_spacing_css():
         [data-testid="stTextArea"],
         [data-testid="stNumberInput"],
         [data-testid="stMultiselect"] {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
         }
         
         /* 5. PROGRESSIVE DISCLOSURE - Ultra-tight vertical spacing for expanders (0.5px) */
         [data-testid="stExpander"] {
             border: 1px solid #e5e7eb !important;
             border-radius: 6px !important;
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
+            margin-top: {spacing_value} !important;
             background: #ffffff !important;
         }
         [data-testid="stExpander"]:hover {
@@ -220,8 +220,8 @@ def inject_tight_spacing_css():
         
         /* 6. METRICS - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stMetric"] {
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
+            margin-top: {spacing_value} !important;
             padding: 4px 8px !important;
             background: #f9fafb !important;
             border-radius: 6px !important;
@@ -230,8 +230,8 @@ def inject_tight_spacing_css():
         
         /* 7. JSON/CODE - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stJson"] {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: {spacing_value} !important;
+            margin-bottom: {spacing_value} !important;
             border-radius: 6px !important;
             border: 1px solid #e5e7eb !important;
             padding: 4px !important;
@@ -239,13 +239,13 @@ def inject_tight_spacing_css():
         
         /* 8. RADIO - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stRadio"] {
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
+            margin-top: {spacing_value} !important;
         }
         
         /* 9. MARKDOWN - Ultra-tight vertical spacing (0.5px) */
         [data-testid="stMarkdownContainer"] {
-            margin-bottom: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
             margin-top: 0 !important;
         }
         
@@ -253,7 +253,7 @@ def inject_tight_spacing_css():
         .stMarkdown p,
         p {
             margin-top: 0 !important;
-            margin-bottom: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
         }
         
         /* 10. LOADING STATES - Better spinner visibility */
@@ -266,8 +266,8 @@ def inject_tight_spacing_css():
             border-radius: 6px !important;
             border-left-width: 3px !important;
             padding: 4px 8px !important;
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: {spacing_value} !important;
+            margin-top: {spacing_value} !important;
         }
         
         /* 12. TABLES - Better readability */
@@ -281,7 +281,7 @@ def inject_tight_spacing_css():
             text-align: center !important;
             padding: 0.5rem !important;
             color: #6b7280 !important;
-            margin: 0.5px 0 !important;
+            margin: {spacing_value} 0 !important;
         }
         
         /* 14. MICRO-INTERACTIONS - Smooth transitions */
@@ -628,9 +628,9 @@ def inject_tight_spacing_css():
             margin-top: 0 !important;
         }
         
-        /* Ultra-tight bottom margins for visual separation (0.5px) */
+        /* Minimal bottom margins for visual separation (2px minimum for proper rendering) */
         div[data-testid="stElementContainer"]:not(:empty) {
-            margin-bottom: 0.5px !important;
+            margin-bottom: 2px !important;
         }
         
         /* Ultra-minimal spacing for tabs - reduce gap after tabs to almost zero */
@@ -670,7 +670,7 @@ def inject_tight_spacing_css():
             padding-top: 0 !important;
         }
         
-        /* Ultra-tight vertical spacing for headings that come after tabs (0.5px) */
+        /* Minimal vertical spacing for headings that come after tabs (2px minimum for proper rendering) */
         .stTabs ~ h1,
         .stTabs ~ h2,
         .stTabs ~ h3,
@@ -681,20 +681,20 @@ def inject_tight_spacing_css():
         .stTabs ~ .stMarkdown h2,
         .stTabs ~ .stMarkdown h3,
         .stTabs ~ .stMarkdown h4 {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for headings in tab panels (0.5px) */
+        /* Minimal vertical spacing for headings in tab panels (2px minimum for proper rendering) */
         [data-baseweb="tab-panel"] h1,
         [data-baseweb="tab-panel"] h2,
         [data-baseweb="tab-panel"] h3,
         [data-baseweb="tab-panel"] h4 {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for first element in tab panel (0.5px) */
+        /* Minimal vertical spacing for first element in tab panel (2px minimum for proper rendering) */
         [data-baseweb="tab-panel"] > *:first-child {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
@@ -720,73 +720,73 @@ def inject_tight_spacing_css():
             margin-bottom: 0 !important;
         }
         
-        /* Ultra-tight vertical spacing in Downloads tab panels (0.5px) */
+        /* Minimal vertical spacing in Downloads tab panels (2px minimum for proper rendering) */
         .stTabs [data-baseweb="tab-panel"] {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
         .stTabs [data-baseweb="tab-panel"] > div {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
-        /* Ultra-tight vertical spacing from headings in Downloads tab panels (0.5px) */
+        /* Minimal vertical spacing from headings in Downloads tab panels (2px minimum for proper rendering) */
         .stTabs [data-baseweb="tab-panel"] h3,
         .stTabs [data-baseweb="tab-panel"] h4 {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing from expanders in Downloads tab (0.5px) */
+        /* Minimal vertical spacing from expanders in Downloads tab (2px minimum for proper rendering) */
         .stTabs [data-baseweb="tab-panel"] [data-testid="stExpander"] {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing from markdown in Downloads tab (0.5px) */
+        /* Minimal vertical spacing from markdown in Downloads tab (2px minimum for proper rendering) */
         .stTabs [data-baseweb="tab-panel"] .stMarkdown {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing from containers in Downloads tab (0.5px) */
+        /* Minimal vertical spacing from containers in Downloads tab (2px minimum for proper rendering) */
         .stTabs [data-baseweb="tab-panel"] [data-testid="stElementContainer"] {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for expander headers (0.5px) */
+        /* Minimal vertical spacing for expander headers (2px minimum for proper rendering) */
         .streamlit-expanderHeader {
             padding: 4px 8px !important;
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: 2px !important;
+            margin-top: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for expander content (0.5px) */
+        /* Minimal vertical spacing for expander content (2px minimum for proper rendering) */
         .streamlit-expanderContent {
             padding: 4px 8px !important;
             margin-top: 0 !important;
-            margin-bottom: 0.5px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for buttons (0.5px) */
+        /* Minimal vertical spacing for buttons (2px minimum for proper rendering) */
         [data-testid="stButton"] {
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: 2px !important;
+            margin-top: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for file uploaders (0.5px) */
+        /* Minimal vertical spacing for file uploaders (2px minimum for proper rendering) */
         [data-testid="stFileUploader"] {
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: 2px !important;
+            margin-top: 2px !important;
             padding: 4px !important;
         }
         
-        /* Ultra-tight vertical spacing for dataframes (0.5px) */
+        /* Minimal vertical spacing for dataframes (2px minimum for proper rendering) */
         [data-testid="stDataFrame"] {
-            margin-bottom: 0.5px !important;
-            margin-top: 0.5px !important;
+            margin-bottom: 2px !important;
+            margin-top: 2px !important;
         }
         
         /* Keep horizontal gaps in columns, only reduce vertical (0.5px) */
@@ -820,44 +820,44 @@ def inject_tight_spacing_css():
             padding: 0 !important;
         }
         
-        /* Ultra-tight vertical spacing for vertical blocks (0.5px) */
+        /* Minimal vertical spacing for vertical blocks (2px minimum for proper rendering) */
         .stVerticalBlock {
-            margin: 0.5px 0 !important;
+            margin: 2px 0 !important;
             padding: 0 !important;
         }
         
-        /* Ultra-tight vertical spacing for markdown containers (0.5px) */
+        /* Minimal vertical spacing for markdown containers (2px minimum for proper rendering) */
         [data-testid="stMarkdownContainer"] {
-            margin: 0.5px 0 !important;
+            margin: 2px 0 !important;
             padding: 0 !important;
         }
         
-        /* Ultra-tight vertical padding from Streamlit components (0.5px) */
+        /* Minimal vertical padding from Streamlit components (2px minimum for proper rendering) */
         .main .block-container {
-            padding-top: 0.5px !important;
-            padding-bottom: 0.5px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing between tabs and content (0.5px) */
+        /* Minimal vertical spacing between tabs and content (2px minimum for proper rendering) */
         .stTabs ~ div,
         .stTabs ~ [data-testid="stElementContainer"],
         .stTabs ~ [data-testid="stVerticalBlock"] {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing in tab panels (0.5px) */
+        /* Minimal vertical spacing in tab panels (2px minimum for proper rendering) */
         [data-baseweb="tab-panel"] {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
         [data-baseweb="tab-panel"] > div {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
         [data-baseweb="tab-panel"] > *:first-child {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
             padding-top: 0 !important;
         }
         
@@ -866,26 +866,26 @@ def inject_tight_spacing_css():
             line-height: 1.3 !important;
         }
         
-        /* Ultra-tight vertical spacing for all sections (0.5px) */
+        /* Minimal vertical spacing for all sections (2px minimum for proper rendering) */
         section,
         .main > div,
         .block-container > div {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing for all content blocks (0.5px) */
+        /* Minimal vertical spacing for all content blocks (2px minimum for proper rendering) */
         [data-testid="stElementContainer"]:not(:empty) {
-            margin-top: 0.5px !important;
-            margin-bottom: 0.5px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
         
-        /* Ultra-tight vertical spacing between titles and their content (0.5px) */
+        /* Minimal vertical spacing between titles and their content (2px minimum for proper rendering) */
         h1 + *,
         h2 + *,
         h3 + *,
         h4 + * {
-            margin-top: 0.5px !important;
+            margin-top: 2px !important;
         }
         
         /* Ultra-compact table spacing */
@@ -966,8 +966,18 @@ def inject_tight_spacing_css():
     """, unsafe_allow_html=True)
 
 
-def inject_unified_design_system():
-    """Inject unified design system CSS following UI/UX golden rules."""
+def inject_unified_design_system(
+    font_family: str = "Arial, sans-serif",
+    font_size: str = "13px",
+    spacing_value: str = "0.5px"
+):
+    """Inject unified design system CSS following UI/UX golden rules.
+    
+    Args:
+        font_family: Font family to use (e.g., "Arial, sans-serif", "Georgia, serif")
+        font_size: Base font size (e.g., "13px", "14px")
+        spacing_value: Vertical spacing value in px (e.g., "0.5px", "2px")
+    """
     tokens = DesignTokens
     
     st.markdown(f"""
@@ -979,75 +989,83 @@ def inject_unified_design_system():
     /* 1. TYPOGRAPHY - Consistent Font Sizes */
     /* Base font size for all text */
     body, .main, .stMarkdown, p, div, span, label {{
-        font-size: {tokens.FONT_SIZES['base']} !important;
+        font-family: {font_family} !important;
+        font-size: {font_size} !important;
         line-height: 1.5 !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
-    /* Heading Hierarchy - Ultra-tight vertical spacing (0.5px) */
+    /* Heading Hierarchy - Dynamic vertical spacing */
     h1, .stMarkdown h1 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['3xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.2 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     h2, .stMarkdown h2 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['2xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.3 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
         border-bottom: 1px solid {tokens.COLORS['border-light']} !important;
         padding-bottom: {tokens.SPACING['xs']} !important;
     }}
     
     h3, .stMarkdown h3 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['xl']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.4 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     h4, .stMarkdown h4 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['lg']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         line-height: 1.4 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     h5, .stMarkdown h5 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['md']} !important;
         font-weight: {tokens.FONT_WEIGHTS['medium']} !important;
         line-height: 1.4 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     h6, .stMarkdown h6 {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['sm']} !important;
         font-weight: {tokens.FONT_WEIGHTS['medium']} !important;
         line-height: 1.4 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text-muted']} !important;
     }}
     
-    /* Captions and small text - ultra-tight vertical spacing (0.5px) */
+    /* Captions and small text - Dynamic vertical spacing */
     .stCaption, small, .caption {{
+        font-family: {font_family} !important;
         font-size: {tokens.FONT_SIZES['xs']} !important;
         color: {tokens.COLORS['text-muted']} !important;
         line-height: 1.4 !important;
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
     }}
     
     /* 2. CONTAINER SIZES - Ultra-compact Layout */
@@ -1059,18 +1077,18 @@ def inject_unified_design_system():
         padding-right: {tokens.SPACING['sm']} !important;
     }}
     
-    /* 3. SPACING - Ultra-tight vertical spacing (0.5px) */
-    /* Ultra-tight vertical margins between elements */
+    /* 3. SPACING - Dynamic vertical spacing */
+    /* Minimal vertical margins between elements */
     .element-container {{
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
         margin-top: 0 !important;
     }}
     
-    /* Keep horizontal padding, reduce vertical margins (0.5px) */
+    /* Keep horizontal padding, dynamic vertical margins */
     .stContainer {{
         padding: 0.5rem !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
     }}
     
     /* 4. BUTTONS - Consistent Sizes */
@@ -1170,8 +1188,8 @@ def inject_unified_design_system():
     /* 6. ALERTS - Ultra-tight vertical spacing (0.5px) */
     .stAlert {{
         padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         border-radius: {tokens.RADIUS['md']} !important;
         border-left: 3px solid !important;
         font-size: {tokens.FONT_SIZES['base']} !important;
@@ -1210,8 +1228,8 @@ def inject_unified_design_system():
         border-radius: {tokens.RADIUS['md']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
     }}
     
     .streamlit-expanderContent {{
@@ -1220,13 +1238,13 @@ def inject_unified_design_system():
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-top: none !important;
         border-radius: 0 0 {tokens.RADIUS['md']} {tokens.RADIUS['md']} !important;
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
     }}
     
     /* 8. DATA TABLES - Ultra-tight vertical spacing (0.5px) */
     .stDataFrame {{
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         border-radius: {tokens.RADIUS['md']} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         overflow: hidden !important;
@@ -1258,8 +1276,8 @@ def inject_unified_design_system():
     /* 9. METRICS - Ultra-tight vertical spacing (0.5px) */
     [data-testid="stMetricContainer"] {{
         padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
@@ -1283,23 +1301,23 @@ def inject_unified_design_system():
         background-color: {tokens.COLORS['background-alt']} !important;
         padding: {tokens.SPACING['sm']} !important;
         border-radius: {tokens.RADIUS['md']} !important;
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
         margin-top: {tokens.SPACING['xs']} !important;
     }}
     
     /* Ultra-tight vertical spacing for tab panel content (0.5px) */
     .stTabs [data-baseweb="tab-panel"] {{
-        margin-top: 0.5px !important;
+        margin-top: {spacing_value} !important;
         padding-top: 0 !important;
     }}
     
     .stTabs [data-baseweb="tab-panel"] > div {{
-        margin-top: 0.5px !important;
+        margin-top: {spacing_value} !important;
         padding-top: 0 !important;
     }}
     
     .stTabs [data-baseweb="tab-panel"] > *:first-child {{
-        margin-top: 0.5px !important;
+        margin-top: {spacing_value} !important;
         padding-top: 0 !important;
     }}
     
@@ -1327,8 +1345,8 @@ def inject_unified_design_system():
         border-radius: {tokens.RADIUS['md']} !important;
         padding: {tokens.SPACING['sm']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         min-height: 100px !important;
         transition: all 0.2s ease !important;
     }}
@@ -1352,8 +1370,8 @@ def inject_unified_design_system():
         border-radius: {tokens.RADIUS['lg']} !important;
         padding: {tokens.SPACING['sm']} !important;
         box-shadow: {tokens.SHADOWS['sm']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         min-height: auto !important;
     }}
     
@@ -1361,14 +1379,14 @@ def inject_unified_design_system():
         font-size: {tokens.FONT_SIZES['lg']} !important;
         font-weight: {tokens.FONT_WEIGHTS['semibold']} !important;
         margin-top: 0 !important;
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
         color: {tokens.COLORS['text']} !important;
     }}
     
     .summary-cards-wrapper .stMarkdown p {{
         font-size: {tokens.FONT_SIZES['base']} !important;
         line-height: 1.4 !important;
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
         margin-top: 0 !important;
         color: {tokens.COLORS['text']} !important;
     }}
@@ -1376,8 +1394,8 @@ def inject_unified_design_system():
     /* 13. FORMS - Ultra-tight vertical spacing (0.5px) */
     .stForm {{
         padding: {tokens.SPACING['xs']} {tokens.SPACING['sm']} !important;
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         border: 1px solid {tokens.COLORS['border-light']} !important;
         border-radius: {tokens.RADIUS['lg']} !important;
         background-color: {tokens.COLORS['background-alt']} !important;
@@ -1409,7 +1427,7 @@ def inject_unified_design_system():
     hr {{
         border: none !important;
         border-top: 1px solid {tokens.COLORS['border-light']} !important;
-        margin: 0.5px 0 !important;
+        margin: {spacing_value} 0 !important;
     }}
     
     /* 17. COLUMNS - Keep horizontal gap, reduce vertical spacing (0.5px) */
@@ -1420,8 +1438,8 @@ def inject_unified_design_system():
     
     /* 18. CHECKBOXES & RADIOS - Ultra-tight vertical spacing (0.5px) */
     .stCheckbox, .stRadio {{
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
         font-size: {tokens.FONT_SIZES['base']} !important;
     }}
     
@@ -1532,12 +1550,12 @@ def inject_unified_design_system():
     
     /* 27. ULTRA-TIGHT MARKDOWN VERTICAL SPACING (0.5px) */
     .stMarkdown {{
-        margin-bottom: 0.5px !important;
-        margin-top: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
+        margin-top: {spacing_value} !important;
     }}
     
     .stMarkdown p {{
-        margin-bottom: 0.5px !important;
+        margin-bottom: {spacing_value} !important;
         margin-top: 0 !important;
     }}
     
@@ -1575,14 +1593,14 @@ def inject_unified_design_system():
     /* Apply 0.5px vertical spacing to all main content areas */
     .main .block-container > div,
     .main .block-container > section {{
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
     }}
     
     /* Ultra-tight vertical spacing for all content blocks */
     [data-testid="stElementContainer"]:not(:empty) {{
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
     }}
     
     /* Ultra-tight vertical spacing between titles and their content */
@@ -1592,7 +1610,7 @@ def inject_unified_design_system():
     h4 + *,
     h5 + *,
     h6 + * {{
-        margin-top: 0.5px !important;
+        margin-top: {spacing_value} !important;
     }}
     
     /* Ultra-tight vertical spacing for all Streamlit components */
@@ -1605,8 +1623,8 @@ def inject_unified_design_system():
     [data-testid="stRadio"],
     [data-testid="stButton"],
     [data-testid="stDownloadButton"] {{
-        margin-top: 0.5px !important;
-        margin-bottom: 0.5px !important;
+        margin-top: {spacing_value} !important;
+        margin-bottom: {spacing_value} !important;
     }}
     </style>
     """, unsafe_allow_html=True)

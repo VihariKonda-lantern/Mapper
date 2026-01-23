@@ -181,10 +181,9 @@ def render_validation_tab() -> None:
     # ============================================
     # FILE STATUS SECTION
     # ============================================
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <div style='margin-bottom: 0.5rem;'>
-            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.125rem; letter-spacing: -0.025em;'>File Status</h2>
+        <div style='margin-bottom: 2px; margin-top: 2px;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 2px; margin-top: 2px; letter-spacing: -0.025em;'>File Status</h2>
         </div>
     """, unsafe_allow_html=True)
     
@@ -211,12 +210,12 @@ def render_validation_tab() -> None:
         status_message = "All validation checks passed. File is ready for processing."
     
     st.markdown(f"""
-        <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 6px; border-left: 4px solid {status_color}; margin-bottom: 0.5rem;'>
+        <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 6px; border-left: 4px solid {status_color}; margin-bottom: 2px; margin-top: 2px;'>
             <div style='display: flex; align-items: center; gap: 0.5rem;'>
                 <span style='font-size: 1.5rem;'>{status_icon}</span>
                 <div>
                     <strong style='color: #111827; font-size: 1rem;'>{status_text}</strong>
-                    <p style='color: #6b7280; margin: 0.25rem 0 0 0; font-size: 0.875rem;'>{status_message}</p>
+                    <p style='color: #6b7280; margin: 2px 0 0 0; font-size: 0.875rem;'>{status_message}</p>
                 </div>
             </div>
         </div>
@@ -225,10 +224,9 @@ def render_validation_tab() -> None:
     # ============================================
     # DETAILED ANALYSIS SECTION (TABS)
     # ============================================
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <div style='margin-bottom: 0.75rem;'>
-            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.025em;'>Detailed Analysis</h2>
+        <div style='margin-bottom: 2px; margin-top: 2px;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 2px; margin-top: 2px; letter-spacing: -0.025em;'>Detailed Analysis</h2>
         </div>
     """, unsafe_allow_html=True)
     
@@ -236,6 +234,8 @@ def render_validation_tab() -> None:
     
     # Tab 1: Mandatory Fields
     with tab1:
+        # Add spacing after tab selection
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         if unmapped_required_fields:
             st.error(f"**Missing Fields:** {', '.join(f'`{f}`' for f in unmapped_required_fields)}")
             st.caption("These mandatory fields must be present in the source file and properly mapped.")
@@ -286,8 +286,8 @@ def render_validation_tab() -> None:
             
             if fields_exceeding_threshold:
                 st.markdown("""
-                    <div style='margin-bottom: 0.5rem;'>
-                        <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin: 0;'>Fields Requiring Attention</h4>
+                    <div style='margin-bottom: 2px; margin-top: 2px;'>
+                        <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin-bottom: 2px; margin-top: 2px;'>Fields Requiring Attention</h4>
                     </div>
                 """, unsafe_allow_html=True)
                 total_records = len(transformed_df) if transformed_df is not None else 0
@@ -296,7 +296,11 @@ def render_validation_tab() -> None:
                     null_pct = field_stat["null_percentage"]
                     null_count = field_stat["null_count"]
                     fill_rate = 100 - null_pct
-                    st.markdown(f"- **{field_name}**: {null_pct:.2f}% null ({null_count:,} of {total_records:,} records) - Fill rate: {fill_rate:.2f}%")
+                    st.markdown(f"""
+                        <div style='margin-bottom: 2px; margin-top: 2px;'>
+                            <p style='margin: 0; padding: 0;'>- **{field_name}**: {null_pct:.2f}% null ({null_count:,} of {total_records:,} records) - Fill rate: {fill_rate:.2f}%</p>
+                        </div>
+                    """, unsafe_allow_html=True)
         
         # Other mandatory field validations
         other_failures = [
@@ -336,6 +340,8 @@ def render_validation_tab() -> None:
     
     # --- Tab 2: Data Quality ---
     with tab2:
+        # Add spacing after tab selection
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         # Use claims_df from top-level check (already validated)
         if claims_df is not None and not claims_df.empty:
             # Data Quality Score
@@ -385,8 +391,8 @@ def render_validation_tab() -> None:
             
             # Column Statistics
             st.markdown("""
-                <div style='margin-bottom: 0.5rem;'>
-                    <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin: 0;'>Column Statistics</h4>
+                <div style='margin-bottom: 2px; margin-top: 2px;'>
+                    <h4 style='color: #111827; font-size: 1rem; font-weight: 600; margin-bottom: 2px; margin-top: 2px;'>Column Statistics</h4>
                 </div>
             """, unsafe_allow_html=True)
             selected_col = st.selectbox("Select column to analyze", claims_df.columns.tolist(), key="col_stats_select")
@@ -403,6 +409,8 @@ def render_validation_tab() -> None:
     
     # --- Tab 3: Advanced Analysis ---
     with tab3:
+        # Add spacing after tab selection
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         # Use claims_df from top-level check (already validated)
         if claims_df is not None and not claims_df.empty:
             # Duplicate Detection

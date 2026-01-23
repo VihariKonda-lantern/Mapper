@@ -16,6 +16,12 @@ from utils.batch_processor import process_multiple_claims_files
 from ui.ui_components import _notify
 from utils.audit_logger import log_event
 from utils.improvements_utils import render_empty_state
+from ui.ux_enhancements import (
+    render_empty_state as render_enhanced_empty_state,
+    render_success_with_next_steps,
+    render_data_preview_comparison,
+    render_validation_feedback
+)
 
 st: Any = st
 
@@ -31,12 +37,12 @@ def render_downloads_tab() -> None:
     claims_df = SessionStateManager.get_claims_df()
     
     if layout_df is None or claims_df is None:
-        render_empty_state(
-            icon="📁",
+        render_enhanced_empty_state(
             title="Files Required",
-            message="Please start from the Setup tab to upload both layout and claims files before generating outputs.",
+            description="Please start from the Setup tab to upload both layout and claims files before generating outputs.",
             action_label="Go to Setup Tab",
-            action_callback=lambda: SessionStateManager.set("active_tab", "Setup")
+            action_func=lambda: SessionStateManager.set("active_tab", "Setup"),
+            icon="📁"
         )
         st.stop()
     
@@ -46,19 +52,19 @@ def render_downloads_tab() -> None:
     mapping_table = SessionStateManager.get("mapping_table")
     
     if not final_mapping or (anonymized_df is None and mapping_table is None):
-        render_empty_state(
-            icon="📋",
+        render_enhanced_empty_state(
             title="Mapping Required",
-            message="Please complete field mappings to generate downloadable outputs.",
+            description="Please complete field mappings to generate downloadable outputs. Map at least the required fields in the Field Mapping tab.",
             action_label="Go to Field Mapping Tab",
-            action_callback=lambda: SessionStateManager.set("active_tab", "Field Mapping")
+            action_func=lambda: SessionStateManager.set("active_tab", "Field Mapping"),
+            icon="📋"
         )
         st.stop()
     
     # --- Main Content Tabs ---
     st.markdown("""
-        <div style='margin-bottom: 0; margin-top: 0;'>
-            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0; margin-top: 0; letter-spacing: -0.025em;'>Downloads & Outputs</h2>
+        <div style='margin-bottom: 0; margin-top: 0; padding-bottom: 0; padding-top: 0;'>
+            <h2 style='color: #111827; font-size: 1.25rem; font-weight: 600; margin-bottom: 0; margin-top: 0; padding-bottom: 0; padding-top: 0; letter-spacing: -0.025em;'>Downloads & Outputs</h2>
         </div>
     """, unsafe_allow_html=True)
     
@@ -208,34 +214,6 @@ def render_downloads_tab() -> None:
                             mime_type,
                             key=f"download_test_scenario_{scenario_to_preview}"
                         )
-        
-        with st.expander("📦 Batch Processing (Multiple Files)", expanded=False):
-            st.markdown("Process multiple claims files with the same mapping configuration")
-            batch_files = st.file_uploader(
-                "Upload multiple claims files:",
-                accept_multiple_files=True,
-                key="batch_files",
-                help="Select multiple files to process with the current mapping"
-            )
-            final_mapping = SessionStateManager.get_final_mapping()
-            layout_df = SessionStateManager.get_layout_df()
-            if batch_files and final_mapping:
-                if st.button("Process Batch Files", key="process_batch"):
-                    with st.spinner("Processing batch files..."):
-                        results = process_multiple_claims_files(
-                            batch_files,
-                            layout_df,
-                            final_mapping,
-                            st.session_state.get("lookup_df")
-                        )
-                        st.success(f"Processed {len(batch_files)} file(s)")
-                        for file_name, result in results.items():
-                            if result.get("status") == "processed":
-                                st.info(f"✅ {file_name}: {result.get('rows', 0)} rows processed")
-                            else:
-                                st.error(f"❌ {file_name}: {result.get('error', 'Unknown error')}")
-            elif batch_files and not final_mapping:
-                st.warning("Please complete field mappings first before batch processing")
 
     # Tab 2: Output Previews
     with tab2:
@@ -259,6 +237,54 @@ def render_downloads_tab() -> None:
             else:
                 # Generate mapping_csv early (needed for ZIP creation)
                 mapping_csv = mapping_table.to_csv(index=False).encode('utf-8') if mapping_table is not None else b""
+                
+                # --- Field Mapping Table Section ---
+                with st.expander("Field Mapping Table Preview", expanded=False):
+                    # mapping_csv already defined above for ZIP creation
+                    mapping_table = st.session_state.get("mapping_table")
+                    if mapping_table is not None and len(mapping_table) > 100:
+                        table_page_size = st.slider("Rows per page:", 25, min(500, len(mapping_table)), 100, key="mapping_table_page_size")
+                        page_num = st.session_state.get("mapping_table_page", 1)
+                        start_idx = (page_num - 1) * table_page_size
+                        end_idx = start_idx + table_page_size
+                        paginated_table = mapping_table.iloc[start_idx:end_idx]
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("← Previous", key="prev_mapping_table", disabled=page_num == 1):
+                                st.session_state.mapping_table_page = max(1, page_num - 1)
+                            if st.button("Next →", key="next_mapping_table", disabled=page_num * table_page_size >= len(mapping_table)):
+                                st.session_state.mapping_table_page = page_num + 1
+                        render_sortable_table(paginated_table, key="mapping_table_paginated")
+                    else:
+                        render_sortable_table(mapping_table, key="mapping_table_full")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.download_button(
+                                label="Download Mapping Table",
+                                data=mapping_csv,
+                                file_name="field_mapping_table.csv",
+                                mime="text/csv",
+                                key="download_mapping",
+                                on_click=lambda: _notify("✅ Field Mapping Table Ready!")
+                            )
+                        with col2:
+                            if st.button("Regenerate Mapping Table"):
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+                                try:
+                                    status_text.text("Regenerating mapping table...")
+                                    progress_bar.progress(0.5)
+                                    if layout_df is not None and claims_df is not None:
+                                        st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
+                                    progress_bar.progress(1.0)
+                                    status_text.empty()
+                                    progress_bar.empty()
+                                    _notify("✅ Mapping table regenerated!")
+                                except Exception as e:
+                                    progress_bar.empty()
+                                    status_text.empty()
+                                    error_msg = get_user_friendly_error(e)
+                                    st.error(f"Error regenerating mapping table: {error_msg}")
                 
                 # --- Anonymized Claims File Section ---
                 with st.expander("Anonymized Claims Preview", expanded=False):
@@ -399,54 +425,39 @@ def render_downloads_tab() -> None:
                                 status_text.empty()
                                 error_msg = get_user_friendly_error(e)
                                 st.error(f"Error regenerating anonymized file: {error_msg}")
-
-                # --- Field Mapping Table Section ---
-                with st.expander("Field Mapping Table Preview", expanded=False):
-                    mapping_table = st.session_state.get("mapping_table")
-                    # mapping_csv already defined above for ZIP creation
-                    if mapping_table is not None and len(mapping_table) > 100:
-                        table_page_size = st.slider("Rows per page:", 25, min(500, len(mapping_table)), 100, key="mapping_table_page_size")
-                        page_num = st.session_state.get("mapping_table_page", 1)
-                        start_idx = (page_num - 1) * table_page_size
-                        end_idx = start_idx + table_page_size
-                        paginated_table = mapping_table.iloc[start_idx:end_idx]
-                        col1, col2, col3 = st.columns([1, 2, 1])
-                        with col1:
-                            if st.button("← Previous", key="prev_mapping_table", disabled=page_num == 1):
-                                st.session_state.mapping_table_page = max(1, page_num - 1)
-                            if st.button("Next →", key="next_mapping_table", disabled=page_num * table_page_size >= len(mapping_table)):
-                                st.session_state.mapping_table_page = page_num + 1
-                        render_sortable_table(paginated_table, key="mapping_table_paginated")
-                    else:
-                        render_sortable_table(mapping_table, key="mapping_table_full")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.download_button(
-                                label="Download Mapping Table",
-                                data=mapping_csv,
-                                file_name="field_mapping_table.csv",
-                                mime="text/csv",
-                                key="download_mapping",
-                                on_click=lambda: _notify("✅ Field Mapping Table Ready!")
-                            )
-                        with col2:
-                            if st.button("Regenerate Mapping Table"):
-                                progress_bar = st.progress(0)
-                                status_text = st.empty()
-                                try:
-                                    status_text.text("Regenerating mapping table...")
-                                    progress_bar.progress(0.5)
-                                    if layout_df is not None and claims_df is not None:
-                                        st.session_state.mapping_table = generate_mapping_table(layout_df, final_mapping, claims_df)
-                                    progress_bar.progress(1.0)
-                                    status_text.empty()
-                                    progress_bar.empty()
-                                    _notify("✅ Mapping table regenerated!")
-                                except Exception as e:
-                                    progress_bar.empty()
-                                    status_text.empty()
-                                    error_msg = get_user_friendly_error(e)
-                                    st.error(f"Error regenerating mapping table: {error_msg}")
+                
+                # --- Data Preview: Source vs Transformed ---
+                with st.expander("📊 Data Preview: Source vs Transformed", expanded=True):
+                    render_data_preview_comparison(claims_df, transformed_df, max_rows=10)
+                
+                # --- Batch Processing Section ---
+                with st.expander("📦 Batch Processing (Multiple Files)", expanded=False):
+                    st.markdown("Process multiple claims files with the same mapping configuration")
+                    batch_files = st.file_uploader(
+                        "Upload multiple claims files:",
+                        accept_multiple_files=True,
+                        key="batch_files",
+                        help="Select multiple files to process with the current mapping"
+                    )
+                    final_mapping = SessionStateManager.get_final_mapping()
+                    layout_df = SessionStateManager.get_layout_df()
+                    if batch_files and final_mapping:
+                        if st.button("Process Batch Files", key="process_batch"):
+                            with st.spinner("Processing batch files..."):
+                                results = process_multiple_claims_files(
+                                    batch_files,
+                                    layout_df,
+                                    final_mapping,
+                                    st.session_state.get("lookup_df")
+                                )
+                                st.success(f"Processed {len(batch_files)} file(s)")
+                                for file_name, result in results.items():
+                                    if result.get("status") == "processed":
+                                        st.info(f"✅ {file_name}: {result.get('rows', 0)} rows processed")
+                                    else:
+                                        st.error(f"❌ {file_name}: {result.get('error', 'Unknown error')}")
+                    elif batch_files and not final_mapping:
+                        st.warning("Please complete field mappings first before batch processing")
 
     # Tab 3: Onboarding & Setup
     with tab3:
@@ -625,7 +636,12 @@ def render_downloads_tab() -> None:
                                 final_mapping=final_mapping
                             )
                             st.session_state.onboarding_sql_script = sql_script
-                            _notify("✅ SQL script generated!")
+                            render_success_with_next_steps(
+                                "SQL script generated successfully!",
+                                "Review the generated SQL script below. You can download it individually or include it in the ZIP package.",
+                                next_step_label="Include in ZIP Package",
+                                next_step_action=lambda: SessionStateManager.set("onboarding_include_in_zip", True)
+                            )
                         except Exception as e:
                             error_msg = get_user_friendly_error(e)
                             st.error(f"Error generating SQL script: {error_msg}")
@@ -773,7 +789,7 @@ def render_downloads_tab() -> None:
                 zip_file_name = f"{zip_file_name}.zip"
             else:
                 zip_file_name = "all_outputs.zip"
-            
+
             buffer = io.BytesIO()
             with zipfile.ZipFile(buffer, "w") as zip_file:
                 zip_file.writestr(anon_file_name, anonymized_data)
