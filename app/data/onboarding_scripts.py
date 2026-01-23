@@ -76,105 +76,98 @@ def generate_onboarding_sql_script(
     sql_lines.append("-- CLIENT SETUP")
     sql_lines.append("-- ============================================")
     sql_lines.append("MERGE CDAP.Client AS C")
-    sql_lines.append(f"    USING (Select '{client_name}' as client, coalesce(max(clientkey),0)+1 as max_clientkey from cdap.client) AS S")
-    sql_lines.append(f"        ON lower(C.DAPClientName) = lower(S.client)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (ClientKey, ClientCode, ClientShortName, Name, DAPClientName, IsActive, EffectiveDate, EffectiveThruDate)")
-    sql_lines.append(f"        VALUES (S.max_clientkey, S.client, S.client, S.client, S.client, 1, GETDATE(), '9999-12-31');")
+    sql_lines.append(f"            USING (Select '{client_name}' as client, coalesce(max(clientkey),0)+1 as max_clientkey from cdap.client) AS S")
+    sql_lines.append(f"                ON lower(C.DAPClientName) = lower(S.client)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (ClientKey, ClientCode, ClientShortName, Name, DAPClientName, IsActive, EffectiveDate, EffectiveThruDate)")
+    sql_lines.append(f"                VALUES (S.max_clientkey, S.client, S.client, S.client, S.client, 1, GETDATE(), '9999-12-31');")
     sql_lines.append("")
     
     # Domain setup
-    sql_lines.append("-- Domain Setup")
     sql_lines.append("MERGE CDAP.Domain AS D")
-    sql_lines.append(f"    USING (Select '{domain_name}' as domain) AS S")
-    sql_lines.append(f"        ON lower(D.DomainName) = lower(S.domain)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (DomainName, Description, IsActive)")
-    sql_lines.append(f"        VALUES (S.domain, S.domain, 1);")
+    sql_lines.append(f"            USING (Select '{domain_name}' as domain) AS S")
+    sql_lines.append(f"                ON lower(D.DomainName) = lower(S.domain)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (DomainName, Description, IsActive)")
+    sql_lines.append(f"                VALUES (S.domain, S.domain, 1);")
     sql_lines.append("")
     
     # Plan Sponsor setup
-    sql_lines.append("-- Plan Sponsor Setup")
     sql_lines.append("MERGE CDAP.PlanSponsor AS P")
-    sql_lines.append(f"    USING (Select '{plan_sponsor_name}' as plansponsor) AS S")
-    sql_lines.append(f"        ON lower(P.PlanSponsorName) = lower(S.plansponsor)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (PlanSponsorName, IsActive)")
-    sql_lines.append(f"        VALUES (S.plansponsor, 1);")
+    sql_lines.append(f"            USING (Select '{plan_sponsor_name}' as plansponsor) AS S")
+    sql_lines.append(f"                ON lower(P.PlanSponsorName) = lower(S.plansponsor)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (PlanSponsorName, IsActive)")
+    sql_lines.append(f"                VALUES (S.plansponsor, 1);")
     sql_lines.append("")
     
     # Preprocessor setup
-    sql_lines.append("-- Preprocessor Setup")
     sql_lines.append("MERGE CDAP.Preprocessor AS D")
-    sql_lines.append(f"    USING (Select '{preprocessor_name}' as PreprocessorName) AS S")
-    sql_lines.append(f"        ON lower(D.PreprocessorName) = lower(S.PreprocessorName)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (PreprocessorName, Description)")
-    sql_lines.append(f"        VALUES (S.PreprocessorName, S.PreprocessorName);")
+    sql_lines.append(f"            USING (Select '{preprocessor_name}' as PreprocessorName) AS S")
+    sql_lines.append(f"                ON lower(D.PreprocessorName) = lower(S.PreprocessorName)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (PreprocessorName, Description)")
+    sql_lines.append(f"                VALUES (S.PreprocessorName, S.PreprocessorName);")
     sql_lines.append("")
     
     # Domain-Client relationship
-    sql_lines.append("-- Domain-Client Relationship")
     sql_lines.append("MERGE CDAP.DomainClient AS P")
-    sql_lines.append(f"    USING (Select c.ClientKey, d.DomainId, concat(d.DomainName,':',c.DAPClientName) as Description")
-    sql_lines.append(f"            from CDAP.Client c")
-    sql_lines.append(f"            join CDAP.Domain d on (1=1)")
-    sql_lines.append(f"            where c.DAPClientName = '{client_name}'")
-    sql_lines.append(f"            and d.DomainName = '{domain_name}') AS S")
-    sql_lines.append(f"        ON (P.ClientKey = S.ClientKey and P.DomainId = S.DomainId)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (DomainId, ClientKey, Description, IsActive)")
-    sql_lines.append(f"        VALUES (S.DomainId, S.ClientKey, S.Description, 1);")
+    sql_lines.append(f"            USING (Select c.ClientKey, d.DomainId, concat(d.DomainName,':',c.DAPClientName) as Description")
+    sql_lines.append(f"                    from CDAP.Client c")
+    sql_lines.append(f"                    join CDAP.Domain d on (1=1)")
+    sql_lines.append(f"                    where c.DAPClientName = '{client_name}'")
+    sql_lines.append(f"                    and d.DomainName = '{domain_name}') AS S")
+    sql_lines.append(f"                ON (P.ClientKey = S.ClientKey and P.DomainId = S.DomainId)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (DomainId, ClientKey, Description, IsActive)")
+    sql_lines.append(f"                VALUES (S.DomainId, S.ClientKey, S.Description, 1);")
     sql_lines.append("")
     
     # Client-Sponsor relationship
-    sql_lines.append("-- Client-Sponsor Relationship")
     sql_lines.append("MERGE CDAP.ClientSponsor AS P")
-    sql_lines.append(f"    USING (Select c.ClientKey, p.PlanSponsorId, concat(c.DAPClientName,':',p.PlanSponsorName) as Description")
-    sql_lines.append(f"            from CDAP.Client c")
-    sql_lines.append(f"            join CDAP.PlanSponsor p on (1=1)")
-    sql_lines.append(f"            where c.DAPClientName = '{client_name}'")
-    sql_lines.append(f"            and p.PlanSponsorName = '{plan_sponsor_name}') AS S")
-    sql_lines.append(f"        ON (P.ClientKey = S.ClientKey and P.PlanSponsorId = S.PlanSponsorId)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (PlanSponsorId, ClientKey, Description, IsActive)")
-    sql_lines.append(f"        VALUES (S.PlanSponsorId, S.ClientKey, S.Description, 1);")
+    sql_lines.append(f"            USING (Select c.ClientKey, p.PlanSponsorId, concat(c.DAPClientName,':',p.PlanSponsorName) as Description")
+    sql_lines.append(f"                    from CDAP.Client c")
+    sql_lines.append(f"                    join CDAP.PlanSponsor p on (1=1)")
+    sql_lines.append(f"                    where c.DAPClientName = '{client_name}'")
+    sql_lines.append(f"                    and p.PlanSponsorName = '{plan_sponsor_name}') AS S")
+    sql_lines.append(f"                ON (P.ClientKey = S.ClientKey and P.PlanSponsorId = S.PlanSponsorId)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (PlanSponsorId, ClientKey, Description, IsActive)")
+    sql_lines.append(f"                VALUES (S.PlanSponsorId, S.ClientKey, S.Description, 1);")
     sql_lines.append("")
     
     # Domain-Sponsor relationship
-    sql_lines.append("-- Domain-Sponsor Relationship")
     sql_lines.append("MERGE CDAP.DomainSponsor AS P")
-    sql_lines.append(f"    USING (Select d.DomainId, p.PlanSponsorId, concat(d.DomainName,':',p.PlanSponsorName) as Description")
-    sql_lines.append(f"            from CDAP.Domain d")
-    sql_lines.append(f"            join CDAP.PlanSponsor p on (1=1)")
-    sql_lines.append(f"            where d.DomainName = '{domain_name}'")
-    sql_lines.append(f"            and p.PlanSponsorName = '{plan_sponsor_name}') AS S")
-    sql_lines.append(f"        ON (P.DomainId = S.DomainId and P.PlanSponsorId = S.PlanSponsorId)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (PlanSponsorId, DomainId, Description, IsActive)")
-    sql_lines.append(f"        VALUES (S.PlanSponsorId, S.DomainId, S.Description, 1);")
+    sql_lines.append(f"            USING (Select d.DomainId, p.PlanSponsorId, concat(d.DomainName,':',p.PlanSponsorName) as Description")
+    sql_lines.append(f"                    from CDAP.Domain d")
+    sql_lines.append(f"                    join CDAP.PlanSponsor p on (1=1)")
+    sql_lines.append(f"                    where d.DomainName = '{domain_name}'")
+    sql_lines.append(f"                    and p.PlanSponsorName = '{plan_sponsor_name}') AS S")
+    sql_lines.append(f"                ON (P.DomainId = S.DomainId and P.PlanSponsorId = S.PlanSponsorId)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (PlanSponsorId, DomainId, Description, IsActive)")
+    sql_lines.append(f"                VALUES (S.PlanSponsorId, S.DomainId, S.Description, 1);")
     sql_lines.append("")
     
     # Ingestion Config
-    sql_lines.append("-- Ingestion Config")
     sql_lines.append("MERGE CDAP.IngestionConfig AS P")
-    sql_lines.append(f"    USING (Select dc.DomainClientId, cs.ClientSponsorId, ds.DomainSponsorId,")
-    sql_lines.append(f"                pp.PreprocessorId as PreprocessorId, {file_master_id} as FileMasterId")
-    sql_lines.append(f"            from CDAP.Domain d")
-    sql_lines.append(f"            join CDAP.Client c on (1=1)")
-    sql_lines.append(f"            join CDAP.PlanSponsor p on (1=1)")
-    sql_lines.append(f"            join CDAP.Preprocessor pp on (1=1)")
-    sql_lines.append(f"            join CDAP.DomainClient dc on (dc.DomainId = d.DomainId and dc.ClientKey=c.ClientKey)")
-    sql_lines.append(f"            join CDAP.ClientSponsor cs on (cs.ClientKey = c.ClientKey and cs.PlanSponsorId = p.PlanSponsorId)")
-    sql_lines.append(f"            join CDAP.DomainSponsor ds on (ds.DomainId = d.DomainId and ds.PlanSponsorId = p.PlanSponsorId)")
-    sql_lines.append(f"            where d.DomainName = '{domain_name}'")
-    sql_lines.append(f"            and c.DAPClientName = '{client_name}'")
-    sql_lines.append(f"            and p.PlanSponsorName = '{plan_sponsor_name}'")
-    sql_lines.append(f"            and pp.PreprocessorName = '{preprocessor_name}') AS S")
-    sql_lines.append(f"        ON (P.DomainClientId = S.DomainClientId and P.ClientSponsorId = S.ClientSponsorId and P.DomainSponsorId = S.DomainSponsorId)")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (PreprocessorId, FileMasterId, DomainClientId, ClientSponsorId, DomainSponsorId, IsActive)")
-    sql_lines.append(f"        VALUES (S.PreprocessorId, S.FileMasterId, S.DomainClientId, S.ClientSponsorId, S.DomainSponsorId, 1);")
+    sql_lines.append(f"            USING (Select dc.DomainClientId, cs.ClientSponsorId, ds.DomainSponsorId,")
+    sql_lines.append(f"                        pp.PreprocessorId as PreprocessorId, {file_master_id} as FileMasterId")
+    sql_lines.append(f"                    from CDAP.Domain d")
+    sql_lines.append(f"                    join CDAP.Client c on (1=1)")
+    sql_lines.append(f"                    join CDAP.PlanSponsor p on (1=1)")
+    sql_lines.append(f"                    join CDAP.Preprocessor pp on (1=1)")
+    sql_lines.append(f"                    join CDAP.DomainClient dc on (dc.DomainId = d.DomainId and dc.ClientKey=c.ClientKey)")
+    sql_lines.append(f"                    join CDAP.ClientSponsor cs on (cs.ClientKey = c.ClientKey and cs.PlanSponsorId = p.PlanSponsorId)")
+    sql_lines.append(f"                    join CDAP.DomainSponsor ds on (ds.DomainId = d.DomainId and ds.PlanSponsorId = p.PlanSponsorId)")
+    sql_lines.append(f"                    where d.DomainName = '{domain_name}'")
+    sql_lines.append(f"                    and c.DAPClientName = '{client_name}'")
+    sql_lines.append(f"                    and p.PlanSponsorName = '{plan_sponsor_name}'")
+    sql_lines.append(f"                    and pp.PreprocessorName = '{preprocessor_name}') AS S")
+    sql_lines.append(f"                ON (P.DomainClientId = S.DomainClientId and P.ClientSponsorId = S.ClientSponsorId and P.DomainSponsorId = S.DomainSponsorId)")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (PreprocessorId, FileMasterId, DomainClientId, ClientSponsorId, DomainSponsorId, IsActive)")
+    sql_lines.append(f"                VALUES (S.PreprocessorId, S.FileMasterId, S.DomainClientId, S.ClientSponsorId, S.DomainSponsorId, 1);")
     sql_lines.append("")
     
     # Parameter Types
@@ -191,11 +184,11 @@ def generate_onboarding_sql_script(
     
     for param in domain_params:
         sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-        sql_lines.append(f"    USING (Select 'domain_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
-        sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-        sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+        sql_lines.append(f"        	USING (Select 'domain_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
+        sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+        sql_lines.append(f"            WHEN NOT MATCHED THEN")
+        sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+        sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
         sql_lines.append("")
     
     # Reading configurations parameter types
@@ -204,69 +197,69 @@ def generate_onboarding_sql_script(
     
     for param in reading_params:
         sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-        sql_lines.append(f"    USING (Select 'reading_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
-        sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-        sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+        sql_lines.append(f"        	USING (Select 'reading_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
+        sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+        sql_lines.append(f"            WHEN NOT MATCHED THEN")
+        sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+        sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
         sql_lines.append("")
     
     for param in read_kwargs_params:
         sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-        sql_lines.append(f"    USING (Select 'reading_configurations' as GroupName, (case when 'read_kwargs' = '' then null else 'read_kwargs' end) as SubGroupName, '{param}' as ParamName) AS S")
-        sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-        sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+        sql_lines.append(f"        	USING (Select 'reading_configurations' as GroupName, (case when 'read_kwargs' = '' then null else 'read_kwargs' end) as SubGroupName, '{param}' as ParamName) AS S")
+        sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+        sql_lines.append(f"            WHEN NOT MATCHED THEN")
+        sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+        sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
         sql_lines.append("")
     
     # Read prep configurations
     sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-    sql_lines.append(f"    USING (Select 'read_prep_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'function_name' as ParamName) AS S")
-    sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-    sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+    sql_lines.append(f"        	USING (Select 'read_prep_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'function_name' as ParamName) AS S")
+    sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+    sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
     sql_lines.append("")
     
     # Prep configurations
     sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-    sql_lines.append(f"    USING (Select 'prep_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'transformations' as ParamName) AS S")
-    sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-    sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+    sql_lines.append(f"        	USING (Select 'prep_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'transformations' as ParamName) AS S")
+    sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+    sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
     sql_lines.append("")
     
     # Mapping configurations
     mapping_params = ['dateformat', 'demographic_match', 'retain_not_null_cols']
     for param in mapping_params:
         sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-        sql_lines.append(f"    USING (Select 'mapping_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
-        sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-        sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+        sql_lines.append(f"        	USING (Select 'mapping_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
+        sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+        sql_lines.append(f"            WHEN NOT MATCHED THEN")
+        sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+        sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
         sql_lines.append("")
     
     # Curation configurations
     curation_params = ['tagging', 'demographic_match']
     for param in curation_params:
         sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-        sql_lines.append(f"    USING (Select 'curation_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
-        sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-        sql_lines.append(f"    WHEN NOT MATCHED THEN")
-        sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-        sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+        sql_lines.append(f"        	USING (Select 'curation_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, '{param}' as ParamName) AS S")
+        sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+        sql_lines.append(f"            WHEN NOT MATCHED THEN")
+        sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+        sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
         sql_lines.append("")
     
     # Access configurations
     sql_lines.append(f"MERGE CDAP.IngestionParameterType AS C")
-    sql_lines.append(f"    USING (Select 'access_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'process_type' as ParamName) AS S")
-    sql_lines.append(f"        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
-    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-    sql_lines.append(f"        INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
-    sql_lines.append(f"        VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
+    sql_lines.append(f"        	USING (Select 'access_configurations' as GroupName, (case when '' = '' then null else '' end) as SubGroupName, 'process_type' as ParamName) AS S")
+    sql_lines.append(f"		        ON (lower(C.GroupName) = lower(S.GroupName) AND lower(coalesce(C.SubGroupName,'')) = lower(coalesce(S.SubGroupName,'')) AND lower(C.ParamName) = lower(S.ParamName))")
+    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+    sql_lines.append(f"                INSERT (GroupName, SubGroupName, ParamName, ParamDescription)")
+    sql_lines.append(f"                VALUES (S.GroupName, S.SubGroupName, S.ParamName, Concat(S.GroupName, ':', S.SubGroupName, ':', S.ParamName));")
     sql_lines.append("")
     
     # Parameters
@@ -549,7 +542,20 @@ def generate_onboarding_sql_script(
             config = get_domain_config()
             internal_field_col = config.internal_field_name
             
-            # Generate ColumnDetail for each internal field
+            # Helper function to format column names: remove special chars, replace spaces with underscores
+            def format_column_name(column_name: str, client_name: str) -> str:
+                """Format column name: remove special chars (including apostrophes and hyphens), replace spaces with underscores."""
+                import re
+                # Remove special characters: -, [, ], $, ' (apostrophe)
+                cleaned = re.sub(r"[-\[\]$']", "", column_name)
+                # Replace spaces with underscores
+                cleaned = cleaned.replace(' ', '_')
+                # Remove any remaining special characters except underscores
+                cleaned = re.sub(r"[^a-zA-Z0-9_]", "", cleaned)
+                # Return cleaned column name without client prefix
+                return cleaned
+            
+            # Generate ColumnDetail for each internal field - MUST come BEFORE TableColumn
             try:
                 for idx, row in layout_df.iterrows():
                     internal_field = str(row.get(internal_field_col, '')).strip()
@@ -563,12 +569,14 @@ def generate_onboarding_sql_script(
                     else:
                         data_type = 'string'
                     
+                    formatted_field_name = format_column_name(internal_field, client_name)
                     sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
-                    sql_lines.append(f"    USING (Select '{internal_field}' as ColumnName, '{data_type}' as DataType) AS S")
-                    sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
-                    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                    sql_lines.append(f"        INSERT (ColumnName, DataType)")
-                    sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
+                    sql_lines.append(f"        	USING (Select '{formatted_field_name}' as ColumnName, '{data_type}' as DataType")
+                    sql_lines.append(f"                    ) AS S")
+                    sql_lines.append(f"		        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
+                    sql_lines.append(f"            WHEN NOT MATCHED THEN")
+                    sql_lines.append(f"                INSERT (ColumnName, DataType)")
+                    sql_lines.append(f"                VALUES (S.ColumnName, S.DataType);")
                     sql_lines.append("")
             except Exception:
                 # If iterating layout_df fails, skip column detail generation
@@ -596,7 +604,7 @@ def generate_onboarding_sql_script(
             sql_lines.append(f"        VALUES (S.ZoneId, S.TableName);")
             sql_lines.append("")
             
-            # Generate TableColumn for raw zone (source columns)
+            # Generate ColumnDetail for raw zone (source columns) - MUST come BEFORE TableColumn
             source_columns = []
             for internal_field, mapping_info in final_mapping.items():
                 if isinstance(mapping_info, dict) and 'value' in mapping_info:
@@ -604,32 +612,37 @@ def generate_onboarding_sql_script(
                     if source_col and source_col not in source_columns:
                         source_columns.append(source_col)
             
-            for col_order, source_col in enumerate(source_columns, 1):
-                sql_lines.append(f"MERGE CDAP.TableColumn AS C")
-                sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
-                sql_lines.append(f"            from CDAP.ZoneTable zt")
-                sql_lines.append(f"            join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
-                sql_lines.append(f"            join CDAP.ColumnDetail cd on (1=1)")
-                sql_lines.append(f"            where pz.name = 'raw'")
-                sql_lines.append(f"            and zt.TableName = '{raw_table_name}'")
-                sql_lines.append(f"            and cd.ColumnName = '{source_col}'")
-                sql_lines.append(f"            and cd.DataType = 'string') AS S")
-                sql_lines.append(f"        ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
-                sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                sql_lines.append(f"        INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
-                sql_lines.append(f"        VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
-                sql_lines.append("")
-                
-                # Also create ColumnDetail for source column if it doesn't exist
+            # First, create ColumnDetail for all source columns
+            for source_col in source_columns:
+                formatted_col_name = format_column_name(source_col, client_name)
                 sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
-                sql_lines.append(f"    USING (Select '{source_col}' as ColumnName, 'string' as DataType) AS S")
-                sql_lines.append(f"        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
-                sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                sql_lines.append(f"        INSERT (ColumnName, DataType)")
-                sql_lines.append(f"        VALUES (S.ColumnName, S.DataType);")
+                sql_lines.append(f"        	USING (Select '{formatted_col_name}' as ColumnName, 'string' as DataType")
+                sql_lines.append(f"                    ) AS S")
+                sql_lines.append(f"		        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
+                sql_lines.append(f"            WHEN NOT MATCHED THEN")
+                sql_lines.append(f"                INSERT (ColumnName, DataType)")
+                sql_lines.append(f"                VALUES (S.ColumnName, S.DataType);")
                 sql_lines.append("")
             
-            # Generate TableColumn for prep zone (internal fields)
+            # Then, create TableColumn for raw zone (source columns) - AFTER ColumnDetail
+            for col_order, source_col in enumerate(source_columns, 1):
+                formatted_col_name = format_column_name(source_col, client_name)
+                sql_lines.append(f"MERGE CDAP.TableColumn AS C")
+                sql_lines.append(f"                USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
+                sql_lines.append(f"                        from CDAP.ZoneTable zt")
+                sql_lines.append(f"                        join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
+                sql_lines.append(f"                        join CDAP.ColumnDetail cd on (1=1)")
+                sql_lines.append(f"                        where pz.name = 'raw'")
+                sql_lines.append(f"                        and zt.TableName = '{raw_table_name}'")
+                sql_lines.append(f"                        and cd.ColumnName = '{formatted_col_name}'")
+                sql_lines.append(f"                        and cd.DataType = 'string') AS S")
+                sql_lines.append(f"                    ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
+                sql_lines.append(f"                WHEN NOT MATCHED THEN")
+                sql_lines.append(f"                    INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
+                sql_lines.append(f"                    VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
+                sql_lines.append("")
+            
+            # Generate TableColumn for prep zone (internal fields) - AFTER ColumnDetail
             try:
                 for col_order, (idx, row) in enumerate(layout_df.iterrows(), 1):
                     internal_field = str(row.get(internal_field_col, '')).strip()
@@ -647,19 +660,20 @@ def generate_onboarding_sql_script(
                     usage = str(row.get(usage_col, '')).strip()
                     is_nullable = 1 if usage.lower() == 'optional' else 0
                     
+                    formatted_field_name = format_column_name(internal_field, client_name)
                     sql_lines.append(f"MERGE CDAP.TableColumn AS C")
-                    sql_lines.append(f"    USING (select zt.TableId, cd.ColumnDetailId, {is_nullable} as IsNullable, {col_order} as ColumnOrder")
-                    sql_lines.append(f"            from CDAP.ZoneTable zt")
-                    sql_lines.append(f"            join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
-                    sql_lines.append(f"            join CDAP.ColumnDetail cd on (1=1)")
-                    sql_lines.append(f"            where pz.name = 'prep'")
-                    sql_lines.append(f"            and zt.TableName = '{prep_table_name}'")
-                    sql_lines.append(f"            and cd.ColumnName = '{internal_field}'")
-                    sql_lines.append(f"            and cd.DataType = '{data_type}') AS S")
-                    sql_lines.append(f"        ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
-                    sql_lines.append(f"    WHEN NOT MATCHED THEN")
-                    sql_lines.append(f"        INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
-                    sql_lines.append(f"        VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
+                    sql_lines.append(f"                USING (select zt.TableId, cd.ColumnDetailId, {is_nullable} as IsNullable, {col_order} as ColumnOrder")
+                    sql_lines.append(f"                        from CDAP.ZoneTable zt")
+                    sql_lines.append(f"                        join CDAP.ProcessingZone pz on (pz.zoneid = zt.zoneid)")
+                    sql_lines.append(f"                        join CDAP.ColumnDetail cd on (1=1)")
+                    sql_lines.append(f"                        where pz.name = 'prep'")
+                    sql_lines.append(f"                        and zt.TableName = '{prep_table_name}'")
+                    sql_lines.append(f"                        and cd.ColumnName = '{formatted_field_name}'")
+                    sql_lines.append(f"                        and cd.DataType = '{data_type}') AS S")
+                    sql_lines.append(f"                    ON (C.TableId = S.TableId AND C.ColumnDetailId = S.ColumnDetailId)")
+                    sql_lines.append(f"                WHEN NOT MATCHED THEN")
+                    sql_lines.append(f"                    INSERT (TableId, ColumnDetailId, IsNullable, ColumnOrder)")
+                    sql_lines.append(f"                    VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
                     sql_lines.append("")
             except Exception:
                 # If iterating layout_df fails, skip table column generation
@@ -673,9 +687,9 @@ def generate_onboarding_sql_script(
                     if not source_col:
                         continue
                     
-                    # Normalize column name (remove special chars, spaces, etc.)
-                    normalized_source = source_col.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
-                    normalized_internal = internal_field.replace(' ', '_').replace('.', '').replace(':', '').replace(',', '').replace('(', '').replace(')', '').replace('/', '').replace('&', '').replace('#', '').replace('*', '_')
+                    # Use formatted column names (with client prefix)
+                    formatted_source = format_column_name(source_col, client_name)
+                    formatted_internal = format_column_name(internal_field, client_name)
                     
                     sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
                     sql_lines.append(f"    USING (select ic.IngestionConfigId, ftc.tablecolumnid as SourceTableColumnId, ttc.tablecolumnid as TargetTableColumnId")
@@ -692,8 +706,8 @@ def generate_onboarding_sql_script(
                     sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{prep_table_name}' and tpz.zoneid = tzt.zoneid)")
                     sql_lines.append(f"            join CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
                     sql_lines.append(f"            join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                    sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{source_col}')")
-                    sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{internal_field}')")
+                    sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{formatted_source}')")
+                    sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{formatted_internal}')")
                     sql_lines.append(f"            where c.DAPClientName = '{client_name}' and d.DomainName='{domain_name}'")
                     sql_lines.append(f"            and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
                     sql_lines.append(f"        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
@@ -758,7 +772,8 @@ def generate_onboarding_sql_script(
                         sql_lines.append(f"            join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
                         sql_lines.append(f"            join CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
                         sql_lines.append(f"            join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                        sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{internal_field}')")
+                        formatted_internal = format_column_name(internal_field, client_name)
+                        sql_lines.append(f"            join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName = '{formatted_internal}')")
                         sql_lines.append(f"            join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName = '{standard_field}')")
                         sql_lines.append(f"            where c.DAPClientName = '{client_name}' and d.DomainName='{domain_name}'")
                         sql_lines.append(f"            and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
