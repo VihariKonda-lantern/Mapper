@@ -858,12 +858,11 @@ def generate_onboarding_sql_script(
                     if not internal_field or internal_field.lower() == 'nan':
                         continue
                     
+                    prep_col = None
+                    
                     formatted_internal = format_column_name(internal_field, client_name)
                     internal_lower = formatted_internal.lower()
-                    
-                    # If mapping doesnt exist
-                    prep_col = ''
-
+                
                     if final_mapping and internal_field in final_mapping:
                         source_col = final_mapping[internal_field].get("value", None)
                         if source_col and source_col.strip():
@@ -876,7 +875,7 @@ def generate_onboarding_sql_script(
                             elif source_col.strip():
                                 prep_col = format_column_name(source_col, client_name)
 
-                    prep_col = lower(prep_col)
+                    prep_col = prep_col.lower() if prep_col else ''
 
                     # Special handling for Patient_Relationship: maps to both patient_relationship_code and patient_relationship_desc
                     if internal_field == "patient_relationship_code" or formatted_internal.lower() == "patient_relationship_code":
@@ -969,7 +968,7 @@ def generate_onboarding_sql_script(
                         structured_col = formatted_internal
                     
                     # Generate mapping for this prep column to structured column
-                    struct_col = lower(structured_col)
+                    struct_col = structured_col.lower() if structured_col else ''
     
                     sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
                     sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
