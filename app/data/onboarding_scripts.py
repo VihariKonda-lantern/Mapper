@@ -23,7 +23,7 @@ def generate_onboarding_sql_script(
     file_format: str = "csv",
     file_separator: str = "\t",
     file_has_header: bool = False,
-    file_date_format: str = "yyyyMd",
+    file_date_format: str = "yyyyMMdd",
     mapping_date_format: Optional[str] = None,  # If None, will use file_date_format
     layout_df: Optional[Any] = None,
     final_mapping: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -463,7 +463,7 @@ def generate_onboarding_sql_script(
     # Get insurance_plan_name from final_mapping if available, otherwise use ch_client_display_name
     insurance_plan_name = ch_client_display_name  # Default fallback
     if final_mapping:
-        insurance_plan_mapping = final_mapping.get("Insurance_Plan_Name", {})
+        insurance_plan_mapping = final_mapping.get("insurance_plan_name", {})
         if insurance_plan_mapping and insurance_plan_mapping.get("value"):
             insurance_plan_name = insurance_plan_mapping.get("value")
     
@@ -668,7 +668,8 @@ def generate_onboarding_sql_script(
             
             # First, create ColumnDetail for all source columns (from raw file headers)
             for source_col in source_columns:
-                formatted_col_name = format_column_name(source_col, client_name)
+                # formatted_col_name = format_column_name(source_col, client_name)
+                formatted_col_name = source_col
                 sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
                 sql_lines.append(f"        	USING (Select '{formatted_col_name}' as ColumnName, 'string' as DataType")
                 sql_lines.append(f"                    ) AS S")
@@ -680,7 +681,8 @@ def generate_onboarding_sql_script(
             
             # Then, create TableColumn for raw zone (source columns) - AFTER ColumnDetail
             for col_order, source_col in enumerate(source_columns, 1):
-                formatted_col_name = format_column_name(source_col, client_name)
+                # formatted_col_name = format_column_name(source_col, client_name)
+                formatted_col_name = source_col
                 sql_lines.append(f"MERGE CDAP.TableColumn AS C")
                 sql_lines.append(f"                USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
                 sql_lines.append(f"                        from CDAP.ZoneTable zt")
@@ -768,6 +770,87 @@ def generate_onboarding_sql_script(
                 'date_of_service_end': 'service_date_end',
             }
             
+            #default mapping for file_effective_date 
+            sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
+            sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
+            sql_lines.append(f"                        '' SVMRule")
+            sql_lines.append(f"                    from cdap.IngestionConfig ic")
+            sql_lines.append(f"                    join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
+            sql_lines.append(f"                    join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
+            sql_lines.append(f"                    join CDAP.DomainSponsor ds on (ds.domainsponsorid = ic.domainsponsorid)")
+            sql_lines.append(f"                    join CDAP.Domain d on (d.domainid = dc.domainid)")
+            sql_lines.append(f"                    join CDAP.Client c on (c.clientkey = dc.clientkey)")
+            sql_lines.append(f"                    join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
+            sql_lines.append(f"					join CDAP.ProcessingZone fpz on (fpz.name = 'prep')")
+            sql_lines.append(f"					join CDAP.ProcessingZone tpz on (tpz.name = 'structured')")
+            sql_lines.append(f"					join CDAP.ZoneTable fzt on (fzt.TableName = '{prep_table_name}' and fpz.zoneid=fzt.zoneid) ")
+            sql_lines.append(f"					join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
+            sql_lines.append(f"					join.CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
+            sql_lines.append(f"					join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
+            sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='file_date')")
+            sql_lines.append(f"					join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName='file_effective_date')")
+            sql_lines.append(f"                    where c.DAPClientName = '{dap_client_name}' and d.DomainName='{domain_name}'")
+            sql_lines.append(f"                    and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
+            sql_lines.append(f"		        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
+            sql_lines.append(f"                WHEN NOT MATCHED THEN")
+            sql_lines.append(f"                    INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
+            sql_lines.append(f"                    VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
+            sql_lines.append("")
+
+            #default mapping for created_timestamp 
+            sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
+            sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
+            sql_lines.append(f"                        '' SVMRule")
+            sql_lines.append(f"                    from cdap.IngestionConfig ic")
+            sql_lines.append(f"                    join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
+            sql_lines.append(f"                    join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
+            sql_lines.append(f"                    join CDAP.DomainSponsor ds on (ds.domainsponsorid = ic.domainsponsorid)")
+            sql_lines.append(f"                    join CDAP.Domain d on (d.domainid = dc.domainid)")
+            sql_lines.append(f"                    join CDAP.Client c on (c.clientkey = dc.clientkey)")
+            sql_lines.append(f"                    join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
+            sql_lines.append(f"					join CDAP.ProcessingZone fpz on (fpz.name = 'prep')")
+            sql_lines.append(f"					join CDAP.ProcessingZone tpz on (tpz.name = 'structured')")
+            sql_lines.append(f"					join CDAP.ZoneTable fzt on (fzt.TableName = '{prep_table_name}' and fpz.zoneid=fzt.zoneid) ")
+            sql_lines.append(f"					join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
+            sql_lines.append(f"					join.CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
+            sql_lines.append(f"					join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
+            sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='created_timestamp')")
+            sql_lines.append(f"					join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName='created_timestamp')")
+            sql_lines.append(f"                    where c.DAPClientName = '{dap_client_name}' and d.DomainName='{domain_name}'")
+            sql_lines.append(f"                    and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
+            sql_lines.append(f"		        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
+            sql_lines.append(f"                WHEN NOT MATCHED THEN")
+            sql_lines.append(f"                    INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
+            sql_lines.append(f"                    VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
+            sql_lines.append("")
+
+            #default mapping for modified_timestamp 
+            sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
+            sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
+            sql_lines.append(f"                        '' SVMRule")
+            sql_lines.append(f"                    from cdap.IngestionConfig ic")
+            sql_lines.append(f"                    join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
+            sql_lines.append(f"                    join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
+            sql_lines.append(f"                    join CDAP.DomainSponsor ds on (ds.domainsponsorid = ic.domainsponsorid)")
+            sql_lines.append(f"                    join CDAP.Domain d on (d.domainid = dc.domainid)")
+            sql_lines.append(f"                    join CDAP.Client c on (c.clientkey = dc.clientkey)")
+            sql_lines.append(f"                    join CDAP.PlanSponsor ps on (ps.plansponsorid = cs.plansponsorid)")
+            sql_lines.append(f"					join CDAP.ProcessingZone fpz on (fpz.name = 'prep')")
+            sql_lines.append(f"					join CDAP.ProcessingZone tpz on (tpz.name = 'structured')")
+            sql_lines.append(f"					join CDAP.ZoneTable fzt on (fzt.TableName = '{prep_table_name}' and fpz.zoneid=fzt.zoneid) ")
+            sql_lines.append(f"					join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
+            sql_lines.append(f"					join.CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
+            sql_lines.append(f"					join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
+            sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='modified_timestamp')")
+            sql_lines.append(f"					join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName='modified_timestamp')")
+            sql_lines.append(f"                    where c.DAPClientName = '{dap_client_name}' and d.DomainName='{domain_name}'")
+            sql_lines.append(f"                    and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
+            sql_lines.append(f"		        ON (C.IngestionConfigId = S.IngestionConfigId AND C.SourceTableColumnId = S.SourceTableColumnId AND C.TargetTableColumnId = S.TargetTableColumnId)")
+            sql_lines.append(f"                WHEN NOT MATCHED THEN")
+            sql_lines.append(f"                    INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
+            sql_lines.append(f"                    VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
+            sql_lines.append("")
+
             # Generate mappings for all prep columns from layout_df (should be ~38 based on actual layout)
             try:
                 for idx, row in layout_df.iterrows():
@@ -778,12 +861,28 @@ def generate_onboarding_sql_script(
                     formatted_internal = format_column_name(internal_field, client_name)
                     internal_lower = formatted_internal.lower()
                     
+                    # If mapping doesnt exist
+                    prep_col = ''
+
+                    if final_mapping and internal_field in final_mapping:
+                        source_col = final_mapping[internal_field].get("value", None)
+                        if source_col and source_col.strip():
+                            # Check if source_col exists in source_columns (from claims_df)
+                            if source_col in source_columns:
+                                # Format the source column name (same as prep zone formatting)
+                                prep_col = format_column_name(source_col, client_name)
+                            # If source_col is not in source_columns, it might be a manual text entry
+                            # For manual entries, we still format it
+                            elif source_col.strip():
+                                prep_col = format_column_name(source_col, client_name)
+
+                    prep_col = lower(prep_col)
+
                     # Special handling for Patient_Relationship: maps to both patient_relationship_code and patient_relationship_desc
-                    if internal_field == "Patient_Relationship" or formatted_internal.lower() == "patient_relationship":
-                        # Get value mapping from final_mapping if available
+                    if internal_field == "patient_relationship_code" or formatted_internal.lower() == "patient_relationship_code":
                         value_mapping = None
-                        if final_mapping and internal_field in final_mapping:
-                            value_mapping = final_mapping[internal_field].get("value_mapping", None)
+                        # Get value mapping from final_mapping if available
+                        value_mapping = final_mapping[internal_field].get("value_mapping", None)
                         
                         # Map to patient_relationship_code (with value mapping if provided)
                         svm_rule_code = value_mapping if value_mapping else ''
@@ -806,7 +905,7 @@ def generate_onboarding_sql_script(
                         sql_lines.append(f"					join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
                         sql_lines.append(f"					join.CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
                         sql_lines.append(f"					join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                        sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='{formatted_internal}')")
+                        sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='{prep_col}')")
                         sql_lines.append(f"					join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName='patient_relationship_code')")
                         sql_lines.append(f"                    where c.DAPClientName = '{dap_client_name}' and d.DomainName='{domain_name}'")
                         sql_lines.append(f"                    and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
@@ -815,11 +914,22 @@ def generate_onboarding_sql_script(
                         sql_lines.append(f"                    INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
                         sql_lines.append(f"                    VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
                         sql_lines.append("")
+                        continue  # Skip normal mapping for Patient_Relationship_Code
+                    
+                    if internal_field == "patient_relationship_desc" or formatted_internal.lower() == "patient_relationship_desc":
+                        value_mapping = None
+                        # Get value mapping from final_mapping if available
+                        value_mapping = final_mapping[internal_field].get("value_mapping", None)
+                        
+                        # Map to patient_relationship_desc (with value mapping if provided)
+                        svm_rule_code = value_mapping if value_mapping else ''
+                        # Escape single quotes in SVMRule for SQL
+                        svm_rule_code_escaped = svm_rule_code.replace("'", "''") if svm_rule_code else ''
                         
                         # Map to patient_relationship_desc (without value mapping)
                         sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
                         sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
-                        sql_lines.append(f"                        '' SVMRule")
+                        sql_lines.append(f"                        '{svm_rule_code_escaped}' SVMRule")
                         sql_lines.append(f"                    from cdap.IngestionConfig ic")
                         sql_lines.append(f"                    join CDAP.DomainClient dc on (dc.domainclientid = ic.domainclientid)")
                         sql_lines.append(f"                    join CDAP.ClientSponsor cs on (cs.clientsponsorid = ic.clientsponsorid)")
@@ -833,7 +943,7 @@ def generate_onboarding_sql_script(
                         sql_lines.append(f"					join CDAP.ZoneTable tzt on (tzt.TableName = '{structured_table_name}' and tpz.zoneid = tzt.zoneid)")
                         sql_lines.append(f"					join.CDAP.TableColumn ftc on (ftc.Tableid = fzt.Tableid)")
                         sql_lines.append(f"					join CDAP.TableColumn ttc on (ttc.Tableid = tzt.Tableid)")
-                        sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='{formatted_internal}')")
+                        sql_lines.append(f"					join CDAP.ColumnDetail fcd on (fcd.ColumnDetailid = ftc.ColumnDetailid and fcd.ColumnName='{prep_col}')")
                         sql_lines.append(f"					join CDAP.ColumnDetail tcd on (tcd.ColumnDetailid = ttc.ColumnDetailid and tcd.ColumnName='patient_relationship_desc')")
                         sql_lines.append(f"                    where c.DAPClientName = '{dap_client_name}' and d.DomainName='{domain_name}'")
                         sql_lines.append(f"                    and ps.PlanSponsorName = '{plan_sponsor_name}') AS S")
@@ -842,7 +952,7 @@ def generate_onboarding_sql_script(
                         sql_lines.append(f"                    INSERT (IngestionConfigId, SourceTableColumnId, TargetTableColumnId, SVMRule)")
                         sql_lines.append(f"                    VALUES (S.IngestionConfigId, S.SourceTableColumnId, S.TargetTableColumnId, S.SVMRule);")
                         sql_lines.append("")
-                        continue  # Skip normal mapping for Patient_Relationship
+                        continue  # Skip normal mapping for Patient_Relationship_Desc
                     
                     # Determine structured column name for other fields
                     structured_col = None
@@ -859,8 +969,8 @@ def generate_onboarding_sql_script(
                         structured_col = formatted_internal
                     
                     # Generate mapping for this prep column to structured column
-                    prep_col = formatted_internal
-                    struct_col = structured_col
+                    struct_col = lower(structured_col)
+    
                     sql_lines.append(f"MERGE CDAP.ColumnMapping AS C")
                     sql_lines.append(f"        	    USING (select ic.ingestionconfigid, ftc.tablecolumnid as sourcetablecolumnid, ttc.tablecolumnid as targettablecolumnid, ")
                     sql_lines.append(f"                        '' SVMRule")

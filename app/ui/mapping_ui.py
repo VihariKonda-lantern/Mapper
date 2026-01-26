@@ -522,12 +522,12 @@ def render_field_mapping_tab():
                 
                 with col2:
                     selected_clean: Optional[str] = None
-                    if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
+                    if field_name in ["plan_sponsor_name", "insurance_plan_name", "client_name"]:
                         widget_counter += 1
                         key_prefix = f"req_{group}_{field_name}_{widget_counter}"
                         key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
                         # Allow manual input for Plan_Sponsor_Name and Insurance_Plan_Name
-                        allow_manual = field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]
+                        allow_manual = field_name in ["insurance_plan_name", "plan_sponsor_name", "client_name"]
                         # Pass the default value so it shows the mapped column
                         selected = dual_input_field(field_name, field_col_options, key_prefix=key_prefix, col_name_map=field_col_name_map, default_value=req_default_label, allow_manual_input=allow_manual)
                         selected_clean = selected.strip() if selected else None
@@ -630,7 +630,7 @@ def render_field_mapping_tab():
                                     )
                             except Exception:
                                 pass
-                        elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
+                        elif field_name in ["plan_sponsor_name", "insurance_plan_name", "client_name"]:
                             # For manual inputs, show a simple indicator
                             st.markdown(f"""
                                 <div style='background-color: #e8f5e9; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 0.85rem;'>
@@ -647,7 +647,7 @@ def render_field_mapping_tab():
                     # Value Mapping UI for Patient_Relationship
                     # Patient_Relationship maps to both patient_relationship_code and patient_relationship_desc
                     # Value mapping is used for patient_relationship_code (SVMRule)
-                    if field_name == "Patient_Relationship" and selected_clean:
+                    if field_name == "patient_relationship_code" and selected_clean:
                         value_mapping_key = f"{unique_key}_value_mapping"
                         existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
                         
@@ -668,10 +668,31 @@ def render_field_mapping_tab():
                             final_mapping[field_name]["value_mapping"] = value_mapping_input.strip()
                             st.session_state["final_mapping"] = final_mapping.copy()
 
+                    # Value Mapping UI for Patient_Relationship_Desc
+                    if field_name == "patient_relationship_desc" and selected_clean:
+                        value_mapping_key = f"{unique_key}_value_mapping"
+                        existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
+                        
+                        st.markdown("**Value Mapping (for patient_relationship_desc):**")
+                        st.caption("Enter value mappings in format: source_value,target_value (one per line). Example:\nM,Male\nF,Female\n18,Child")
+                        value_mapping_input = st.text_area(
+                            "Value Mapping",
+                            value=existing_value_mapping,
+                            key=value_mapping_key,
+                            height=100,
+                            help="Map source values to target values. Format: source_value,target_value (one per line). This will be used in SVMRule for patient_relationship_desc mapping."
+                        )
+                        
+                        # Save value mapping immediately when changed
+                        if value_mapping_input and value_mapping_input.strip():
+                            if field_name not in final_mapping:
+                                final_mapping[field_name] = {}
+                            final_mapping[field_name]["value_mapping"] = value_mapping_input.strip()
+                            st.session_state["final_mapping"] = final_mapping.copy() 
                 if selected_clean:
                     # Check if this field needs value mapping (e.g., Patient_Relationship)
                     value_mapping = None
-                    if field_name == "Patient_Relationship":
+                    if field_name == "patient_relationship_code" or field_name == "patient_relationship_desc":
                         # Get value mapping from session state
                         value_mapping_key = f"{unique_key}_value_mapping"
                         value_mapping = st.session_state.get(value_mapping_key, "")
@@ -842,12 +863,12 @@ def render_field_mapping_tab():
                     
                     with col2:
                         field_selected_clean: Optional[str] = None
-                        if field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name", "Client_Name"]:
+                        if field_name in ["plan_sponsor_name", "insurance_plan_name", "client_name"]:
                             widget_counter += 1
                             key_prefix = f"opt_{group}_{field_name}_{widget_counter}"
                             key_prefix = key_prefix.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_").replace(".", "_")
                             # Allow manual input for Plan_Sponsor_Name and Insurance_Plan_Name
-                            allow_manual = field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]
+                            allow_manual = field_name in ["plan_sponsor_name", "insurance_plan_name", "client_name"]
                             # Get default value for optional fields too
                             opt_default_value = final_mapping.get(field_name, {}).get("value", None)
                             opt_default_label = str(opt_default_value) if opt_default_value else None
@@ -940,7 +961,7 @@ def render_field_mapping_tab():
                             """, unsafe_allow_html=True)
                                 except Exception:
                                     pass
-                        elif field_name in ["Plan_Sponsor_Name", "Insurance_Plan_Name"]:
+                        elif field_name in ["plan_sponsor_name", "insurance_plan_name", "client_name"]:
                                 # For manual inputs, show a simple indicator
                                 st.markdown(f"""
                                     <div style='background-color: #e8f5e9; padding: 0.5rem; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 0.85rem;'>
@@ -951,7 +972,7 @@ def render_field_mapping_tab():
                                 """, unsafe_allow_html=True)
                         
                         # Value Mapping UI for Patient_Relationship (optional fields)
-                        if field_name == "Patient_Relationship" and field_selected_clean:
+                        if field_name == "patient_relationship_code" and field_selected_clean:
                             value_mapping_key = f"{unique_key}_value_mapping"
                             existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
                             
@@ -963,6 +984,28 @@ def render_field_mapping_tab():
                                 key=value_mapping_key,
                                 height=100,
                                 help="Map source values to target values. Format: source_value,target_value (one per line). This will be used in SVMRule for patient_relationship_code mapping."
+                            )
+                            
+                            # Save value mapping immediately when changed
+                            if value_mapping_input and value_mapping_input.strip():
+                                if field_name not in final_mapping:
+                                    final_mapping[field_name] = {}
+                                final_mapping[field_name]["value_mapping"] = value_mapping_input.strip()
+                                st.session_state["final_mapping"] = final_mapping.copy()
+
+                        # Value Mapping UI for Patient_Relationship_Desc (optional fields)
+                        if field_name == "patient_relationship_desc" and field_selected_clean:
+                            value_mapping_key = f"{unique_key}_value_mapping"
+                            existing_value_mapping = final_mapping.get(field_name, {}).get("value_mapping", "")
+                            
+                            st.markdown("**Value Mapping (for patient_relationship_desc):**")
+                            st.caption("Enter value mappings in format: source_value,target_value (one per line). Example:\nM,Male\nF,Female\n18,Child")
+                            value_mapping_input = st.text_area(
+                                "Value Mapping",
+                                value=existing_value_mapping,
+                                key=value_mapping_key,
+                                height=100,
+                                help="Map source values to target values. Format: source_value,target_value (one per line). This will be used in SVMRule for patient_relationship_desc mapping."
                             )
                             
                             # Save value mapping immediately when changed
@@ -987,7 +1030,7 @@ def render_field_mapping_tab():
                         
                         # Check if this field needs value mapping (e.g., Patient_Relationship)
                         value_mapping = None
-                        if field_name == "Patient_Relationship":
+                        if field_name == "patient_relationship_code" or field_name == "patient_relationship_desc":
                             # Get value mapping from session state
                             value_mapping_key = f"{unique_key}_value_mapping"
                             value_mapping = st.session_state.get(value_mapping_key, "")
