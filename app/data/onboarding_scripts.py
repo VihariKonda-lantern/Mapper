@@ -669,7 +669,7 @@ def generate_onboarding_sql_script(
             # First, create ColumnDetail for all source columns (from raw file headers)
             for source_col in source_columns:
                 # formatted_col_name = format_column_name(source_col, client_name)
-                formatted_col_name = source_col
+                formatted_col_name = source_col.lower()
                 sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
                 sql_lines.append(f"        	USING (Select '{formatted_col_name}' as ColumnName, 'string' as DataType")
                 sql_lines.append(f"                    ) AS S")
@@ -682,7 +682,7 @@ def generate_onboarding_sql_script(
             # Then, create TableColumn for raw zone (source columns) - AFTER ColumnDetail
             for col_order, source_col in enumerate(source_columns, 1):
                 # formatted_col_name = format_column_name(source_col, client_name)
-                formatted_col_name = source_col
+                formatted_col_name = source_col.lower()
                 sql_lines.append(f"MERGE CDAP.TableColumn AS C")
                 sql_lines.append(f"                USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
                 sql_lines.append(f"                        from CDAP.ZoneTable zt")
@@ -698,10 +698,25 @@ def generate_onboarding_sql_script(
                 sql_lines.append(f"                    VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
                 sql_lines.append("")
             
+            prep_columns = source_columns + ['file_date', 'created_timestamp', 'modified_timestamp']
+            # create ColumnDetail for all prep columns
+            for source_col in prep_columns:
+                formatted_col_name = format_column_name(source_col, client_name)
+                formatted_col_name = formatted_col_name.lower()
+                sql_lines.append(f"MERGE CDAP.ColumnDetail AS C")
+                sql_lines.append(f"        	USING (Select '{formatted_col_name}' as ColumnName, 'string' as DataType")
+                sql_lines.append(f"                    ) AS S")
+                sql_lines.append(f"		        ON (lower(C.ColumnName) = lower(S.ColumnName) AND lower(coalesce(C.DataType,'')) = lower(coalesce(S.DataType,'')))")
+                sql_lines.append(f"            WHEN NOT MATCHED THEN")
+                sql_lines.append(f"                INSERT (ColumnName, DataType)")
+                sql_lines.append(f"                VALUES (S.ColumnName, S.DataType);")
+                sql_lines.append("")
+
             # Generate TableColumn for prep zone (source columns with cleaned names) - AFTER ColumnDetail
             # Prep zone uses actual file layout (source columns) with special characters cleaned, same as raw
-            for col_order, source_col in enumerate(source_columns, 1):
+            for col_order, source_col in enumerate(prep_columns, 1):
                 formatted_col_name = format_column_name(source_col, client_name)
+                formatted_col_name = formatted_col_name.lower()
                 sql_lines.append(f"MERGE CDAP.TableColumn AS C")
                 sql_lines.append(f"                USING (select zt.TableId, cd.ColumnDetailId, 1 as IsNullable, {col_order} as ColumnOrder")
                 sql_lines.append(f"                        from CDAP.ZoneTable zt")
@@ -859,7 +874,6 @@ def generate_onboarding_sql_script(
                         continue
                     
                     prep_col = None
-                    
                     formatted_internal = format_column_name(internal_field, client_name)
                     internal_lower = formatted_internal.lower()
                 
