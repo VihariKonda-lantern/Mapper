@@ -409,7 +409,8 @@ def render_field_mapping_tab():
         
         group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
 
-        with st.expander(group_label, expanded=False):
+        # Keep expander open if it has mapped fields to prevent collapse when selecting dropdown
+        with st.expander(group_label, expanded=(mapped_count > 0)):
             for _, (_, row) in enumerate(group_fields.iterrows()):
                 field_name = row["Internal Field"]
                 raw_columns = claims_df.columns.tolist()
@@ -768,7 +769,8 @@ def render_field_mapping_tab():
             total_in_group = len(group_field_names)
             group_label = f"{group} ({mapped_count}/{total_in_group} mapped)"
 
-            with st.expander(group_label, expanded=False):
+            # Keep expander open if it has mapped fields to prevent collapse when selecting dropdown
+            with st.expander(group_label, expanded=(mapped_count > 0)):
                 for _, (_, row) in enumerate(group_fields.iterrows()):
                     field_name = row["Internal Field"]
                     raw_columns = claims_df.columns.tolist()
