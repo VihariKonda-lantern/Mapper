@@ -504,18 +504,18 @@ def render_downloads_tab() -> None:
                     # Otherwise, it's a manual input or direct value
                     return value
                 
-                # 1. Client Name: From Client_Name mapping (correct mapping)
-                client_name_from_mapping = get_mapping_value("Client_Name", claims_df)
+                # 1. Client Name: From client_name mapping (correct mapping)
+                client_name_from_mapping = get_mapping_value("client_name", claims_df)
                 # If manual input was provided, use that; otherwise use mapping
                 default_client = st.session_state.get("onboarding_client_name") or client_name_from_mapping
                 
-                # 2. Plan Sponsor Name: From Plan_Sponsor_Name mapping (correct mapping)
-                plan_sponsor_from_mapping = get_mapping_value("Plan_Sponsor_Name", claims_df)
+                # 2. Plan Sponsor Name: From plan_sponsor_name mapping (correct mapping)
+                plan_sponsor_from_mapping = get_mapping_value("plan_sponsor_name", claims_df)
                 default_sponsor = st.session_state.get("onboarding_sponsor") or plan_sponsor_from_mapping
                 
                 # 3. CH Client Name: Separate from DAPClientName, used in config parameters
                 # Defaults to Client Name if not provided separately
-                ch_client_name_from_mapping = get_mapping_value("Client_Name", claims_df)  # Can be different from DAPClientName
+                ch_client_name_from_mapping = get_mapping_value("client_name", claims_df)  # Can be different from DAPClientName
                 default_ch_client = st.session_state.get("onboarding_ch_client_name") or ch_client_name_from_mapping or default_client
                 
                 # 3. Domain Name: Default to "PlanSponsorClaims"
@@ -556,7 +556,7 @@ def render_downloads_tab() -> None:
                     
                     if final_mapping:
                         # Look for Claim_ID or Claim ID
-                        for field_name in ["Claim_ID", "Claim ID", "ClaimID"]:
+                        for field_name in ["claim_id","Claim_ID", "Claim ID", "ClaimID"]:
                             if field_name in final_mapping:
                                 mapped_value = final_mapping[field_name].get("value", "")
                                 if mapped_value:
@@ -564,7 +564,7 @@ def render_downloads_tab() -> None:
                                     break
                         
                         # Look for Claim_Line_ID or Claim Line ID
-                        for field_name in ["Claim_Line_ID", "Claim Line ID", "ClaimLineID", "Claim_LineID"]:
+                        for field_name in ["claim_line","Claim_Line_ID", "Claim Line ID", "ClaimLineID", "Claim_LineID"]:
                             if field_name in final_mapping:
                                 mapped_value = final_mapping[field_name].get("value", "")
                                 if mapped_value:
