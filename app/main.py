@@ -92,11 +92,11 @@ st.markdown("""
         background: #f0f0f0;
         color: #000000;
         padding: 0.5rem 1rem;
-        margin: -1rem -1rem 1rem -1rem;
+        margin: -1rem 0 1rem 0;
         box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         border-bottom: 1px solid #ddd;
     '>
-        <div style='display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto;'>
+        <div style='display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; padding-left: 1rem; padding-right: 1rem;'>
             <div style='font-size: 14px; font-weight: 600;'>Claims Mapper & Validator</div>
         </div>
     </div>
