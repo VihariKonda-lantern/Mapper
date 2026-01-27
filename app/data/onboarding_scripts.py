@@ -698,7 +698,7 @@ def generate_onboarding_sql_script(
                 sql_lines.append(f"                    VALUES (S.TableId, S.ColumnDetailId, S.IsNullable, S.ColumnOrder);")
                 sql_lines.append("")
             
-            prep_columns = source_columns + ['file_date', 'created_timestamp', 'modified_timestamp']
+            prep_columns = source_columns + ['file_date', 'created_timestamp', 'modified_timestamp','validation_results']
             # create ColumnDetail for all prep columns
             for source_col in prep_columns:
                 formatted_col_name = format_column_name(source_col, client_name)
